@@ -44,6 +44,7 @@ class ParsedArticle:
     channel_name: str
     source_name: str
     stocks: tuple[StockMention, ...] = ()
+    industry_tags: tuple[str, ...] = ()
     filtered_reason: str | None = None
     fetch_error: str | None = None
 
@@ -58,6 +59,7 @@ class ParsedArticle:
             "channel_name": self.channel_name,
             "source_name": self.source_name,
             "stocks": [stock.to_dict() for stock in self.stocks],
+            "industry_tags": list(self.industry_tags),
             "filtered_reason": self.filtered_reason,
             "fetch_error": self.fetch_error,
         }
@@ -74,6 +76,7 @@ class ParsedArticle:
             channel_name=str(data.get("channel_name", "")),
             source_name=str(data.get("source_name", "")),
             stocks=tuple(StockMention.from_dict(item) for item in data.get("stocks", [])),
+            industry_tags=tuple(str(item) for item in data.get("industry_tags", []) if str(item).strip()),
             filtered_reason=data.get("filtered_reason"),
             fetch_error=data.get("fetch_error"),
         )
@@ -116,6 +119,7 @@ class RankingRow:
     raw_article_count: int
     latest_mention: datetime
     event_ids: tuple[str, ...]
+    industry_tags: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -126,6 +130,7 @@ class RankingRow:
             "raw_article_count": self.raw_article_count,
             "latest_mention": self.latest_mention.isoformat(),
             "event_ids": list(self.event_ids),
+            "industry_tags": list(self.industry_tags),
         }
 
     @classmethod
@@ -138,6 +143,7 @@ class RankingRow:
             raw_article_count=int(data["raw_article_count"]),
             latest_mention=datetime.fromisoformat(data["latest_mention"]),
             event_ids=tuple(str(item) for item in data.get("event_ids", [])),
+            industry_tags=tuple(str(item) for item in data.get("industry_tags", []) if str(item).strip()),
         )
 
 

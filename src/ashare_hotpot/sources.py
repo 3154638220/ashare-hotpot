@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 import threading
 import time
@@ -72,6 +73,15 @@ class PoliteHttpClient:
                 if self._cancel_event.wait(wait_seconds):
                     raise RefreshCancelled("刷新已取消")
         raise RuntimeError(f"请求失败：{url}（{last_error}）")
+
+    def get_json(self, url: str) -> dict[str, object]:
+        try:
+            payload = json.loads(self.get_text(url))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"接口返回的不是有效 JSON：{url}") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"接口返回格式异常：{url}")
+        return payload
 
 
 @dataclass(frozen=True, slots=True)

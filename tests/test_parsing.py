@@ -57,6 +57,7 @@ def test_parse_next_article_extracts_only_a_share() -> None:
     html = (FIXTURES / "article_next.html").read_text(encoding="utf-8")
     article = parse_article_detail(_candidate(), html)
     assert [(stock.code, stock.name) for stock in article.stocks] == [("000783", "长江证券")]
+    assert article.industry_tags == ("证券",)
     assert article.source_name == "上海证券报"
     assert article.published_at == datetime(2026, 8, 4, 18, 7, 54, tzinfo=SHANGHAI_TZ)
 
@@ -65,6 +66,28 @@ def test_parse_legacy_article_and_beijing_stock() -> None:
     html = (FIXTURES / "article_legacy.html").read_text(encoding="utf-8")
     article = parse_article_detail(_candidate(), html)
     assert {stock.code for stock in article.stocks} == {"688001", "920047"}
+
+
+def test_parse_article_excludes_brokerage_as_rating_source() -> None:
+    candidate = ArticleCandidate(
+        seq="rating",
+        url="https://stock.10jqka.com.cn/20260804/crating.shtml",
+        title="中信证券：维持贵州茅台买入评级",
+        summary="",
+        published_at=datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ),
+        channel_key="test",
+        channel_name="测试栏目",
+    )
+    html = """
+    <html><body><div class="news-content-parsed">
+      <a data-code="600030" data-type="stock">中信证券</a>
+      <a data-code="600519" data-type="stock">贵州茅台</a>
+    </div></body></html>
+    """
+
+    article = parse_article_detail(candidate, html)
+
+    assert [(stock.code, stock.name) for stock in article.stocks] == [("600519", "贵州茅台")]
 
 
 def test_a_share_code_filter() -> None:

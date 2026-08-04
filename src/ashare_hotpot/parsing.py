@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 from bs4 import BeautifulSoup, Tag
 
 from .config import SHANGHAI_TZ
+from .filtering import filter_brokerage_research_mentions
 from .models import ArticleCandidate, ParsedArticle, StockMention
 
 
@@ -200,6 +201,25 @@ def _extract_stocks_from_dom(body: Tag | BeautifulSoup) -> dict[str, str]:
     return stocks
 
 
+def _extract_industry_tags_from_dom(body: Tag | BeautifulSoup) -> tuple[str, ...]:
+    """Extract article-level industry labels without treating them as stock codes."""
+
+    tags: list[str] = []
+    seen: set[str] = set()
+    for anchor in body.select("a[data-type]"):
+        data_type = str(anchor.get("data-type", "")).strip().lower()
+        if data_type not in {"industry", "hy"} and "industry" not in data_type:
+            continue
+        tag = re.sub(r"\s+", " ", anchor.get_text(" ", strip=True)).strip(" ：:，,[]【】")
+        code = str(anchor.get("data-code", "")).strip()
+        if code:
+            tag = _clean_stock_name(tag, code)
+        if tag and tag not in seen:
+            seen.add(tag)
+            tags.append(tag)
+    return tuple(tags)
+
+
 def _extract_stocks_from_embedded_data(html: str) -> dict[str, str]:
     stocks: dict[str, str] = {}
     unescaped = html.replace("\\u003c", "<").replace("\\u003e", ">").replace("\\\"", '"')
@@ -251,7 +271,14 @@ def parse_article_detail(candidate: ArticleCandidate, html: str) -> ParsedArticl
     if not stocks:
         stocks.update(_extract_stocks_from_embedded_data(html))
     published_at = _extract_precise_time(soup, html) or candidate.published_at
-    ordered_stocks = tuple(StockMention(code, stocks[code]) for code in sorted(stocks))
+    extracted_stocks = tuple(StockMention(code, stocks[code]) for code in sorted(stocks))
+    ordered_stocks = filter_brokerage_research_mentions(
+        extracted_stocks,
+        title=candidate.title,
+        summary=candidate.summary,
+        body_text=body.get_text(" ", strip=True),
+    )
+    industry_tags = _extract_industry_tags_from_dom(body)
     return ParsedArticle(
         seq=candidate.seq,
         url=candidate.url,
@@ -262,4 +289,5 @@ def parse_article_detail(candidate: ArticleCandidate, html: str) -> ParsedArticl
         channel_name=candidate.channel_name,
         source_name=_extract_source_name(soup, html),
         stocks=ordered_stocks,
+        industry_tags=industry_tags,
     )

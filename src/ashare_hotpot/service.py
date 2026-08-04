@@ -4,12 +4,14 @@ import logging
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from dataclasses import replace
 from datetime import datetime, timedelta
 
 from .config import AppSettings, SHANGHAI_TZ
 from .dedupe import Deduplicator
-from .filtering import template_filter_reason
-from .models import ArticleCandidate, ParsedArticle, Snapshot, SourceCoverage
+from .filtering import filter_brokerage_research_mentions, template_filter_reason
+from .industries import fetch_stock_industries
+from .models import ArticleCandidate, ParsedArticle, RankingRow, Snapshot, SourceCoverage
 from .parsing import parse_article_detail
 from .ranking import RankingService
 from .sources import NewsSource, PoliteHttpClient, RefreshCancelled
@@ -62,6 +64,37 @@ class RefreshService:
         html = client.get_text(candidate.url)
         return parse_article_detail(candidate, html)
 
+    def _attach_stock_industries(
+        self,
+        rankings: list[RankingRow],
+        *,
+        now: datetime,
+        cancel: threading.Event,
+    ) -> list[RankingRow]:
+        codes = {row.code for row in rankings}
+        industries = self.storage.get_stock_industries(codes)
+        missing_codes = codes.difference(industries)
+        if missing_codes:
+            with PoliteHttpClient(self.settings, cancel) as client:
+                fetched_industries = fetch_stock_industries(client, missing_codes)
+            resolved_industries = {
+                code: industry
+                for code, industry in fetched_industries.items()
+                if code in missing_codes
+            }
+            self.storage.upsert_stock_industries(resolved_industries, now)
+            industries.update(resolved_industries)
+
+        return [
+            replace(
+                row,
+                industry_tags=(industries[row.code],),
+            )
+            if row.code in industries
+            else row
+            for row in rankings
+        ]
+
     def refresh(
         self,
         *,
@@ -83,6 +116,7 @@ class RefreshService:
             "unmapped": 0,
             "ranked_articles": 0,
             "events": 0,
+            "industry_mapped": 0,
         }
         try:
             self._progress(progress, 1, "准备刷新…")
@@ -197,15 +231,42 @@ class RefreshService:
                 raise RefreshCancelled("刷新已取消")
             self._progress(progress, 92, "正在去重并生成排行榜…")
             stored_articles = self.storage.get_articles_between(window_start, window_end)
+            # Cached articles from an earlier version did not have this filter
+            # applied. Re-run the title/summary portion here so users benefit on
+            # the next refresh without clearing their local cache.
+            ranking_articles = [
+                replace(
+                    article,
+                    stocks=filter_brokerage_research_mentions(
+                        article.stocks,
+                        title=article.title,
+                        summary=article.summary,
+                    ),
+                )
+                for article in stored_articles
+            ]
             usable_articles = [
                 article
-                for article in stored_articles
+                for article in ranking_articles
                 if not article.filtered_reason and not article.fetch_error and article.stocks
             ]
             stats["ranked_articles"] = len(usable_articles)
             events = self.deduplicator.group(usable_articles)
             rankings = self.ranking_service.build_rankings(events)
             stats["events"] = len(events)
+            if rankings:
+                self._progress(progress, 94, "正在补全股票所属行业…")
+                try:
+                    rankings = self._attach_stock_industries(
+                        rankings,
+                        now=window_end,
+                        cancel=cancel,
+                    )
+                except RefreshCancelled:
+                    raise
+                except Exception as exc:
+                    logger.warning("stock industry lookup failed: %s", exc)
+                stats["industry_mapped"] = sum(bool(row.industry_tags) for row in rankings)
             partial = any(not item.reached_cutoff or bool(item.error) for item in coverages)
             snapshot = Snapshot(
                 snapshot_id=None,

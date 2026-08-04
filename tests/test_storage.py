@@ -27,6 +27,9 @@ def test_storage_article_and_snapshot_roundtrip(tmp_path) -> None:
     assert cached.stocks == article.stocks
     assert storage.get_articles_between(now - timedelta(hours=1), now + timedelta(hours=1))[0].title == "测试新闻"
 
+    storage.upsert_stock_industries({"000001": "银行"}, now)
+    assert storage.get_stock_industries({"000001", "600519"}) == {"000001": "银行"}
+
     snapshot = Snapshot(
         snapshot_id=None,
         window_start=now - timedelta(hours=24),
@@ -49,3 +52,12 @@ def test_storage_article_and_snapshot_roundtrip(tmp_path) -> None:
     assert storage.load_latest_snapshot() is None
     assert storage.get_cached_article(article.url) is None
 
+
+def test_storage_clear_all_removes_stock_industries(tmp_path) -> None:
+    storage = Storage(tmp_path / "hotpot.db")
+    now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
+    storage.upsert_stock_industries({"000001": "银行"}, now)
+
+    storage.clear_all()
+
+    assert storage.get_stock_industries({"000001"}) == {}

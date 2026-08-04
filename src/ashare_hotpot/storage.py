@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS snapshots (
     payload_json TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_ts DESC);
+
+CREATE TABLE IF NOT EXISTS stock_industries (
+    code TEXT PRIMARY KEY,
+    industry TEXT NOT NULL,
+    updated_ts INTEGER NOT NULL
+);
 """
 
 
@@ -186,6 +192,39 @@ class Storage:
             ).fetchone()
         return Snapshot.from_dict(json.loads(row["payload_json"])) if row else None
 
+    def get_stock_industries(self, codes: set[str]) -> dict[str, str]:
+        if not codes:
+            return {}
+        result: dict[str, str] = {}
+        ordered_codes = sorted(codes)
+        with self._connect() as connection:
+            for start in range(0, len(ordered_codes), 900):
+                batch = ordered_codes[start : start + 900]
+                placeholders = ", ".join("?" for _ in batch)
+                rows = connection.execute(
+                    f"SELECT code, industry FROM stock_industries WHERE code IN ({placeholders})",  # noqa: S608
+                    batch,
+                ).fetchall()
+                result.update({str(row["code"]): str(row["industry"]) for row in rows})
+        return result
+
+    def upsert_stock_industries(self, industries: dict[str, str], updated_at: datetime) -> None:
+        rows = [
+            (code, industry, int(updated_at.timestamp()))
+            for code, industry in industries.items()
+            if code and industry
+        ]
+        if not rows:
+            return
+        with self._connect() as connection:
+            connection.executemany(
+                """
+                INSERT INTO stock_industries(code, industry, updated_ts) VALUES (?, ?, ?)
+                ON CONFLICT(code) DO UPDATE SET industry=excluded.industry, updated_ts=excluded.updated_ts
+                """,
+                rows,
+            )
+
     def purge_older_than(self, timestamp: datetime) -> None:
         cutoff = int(timestamp.timestamp())
         with self._connect() as connection:
@@ -196,5 +235,6 @@ class Storage:
             connection.execute("DELETE FROM snapshots")
             connection.execute("DELETE FROM refresh_runs")
             connection.execute("DELETE FROM articles")
+            connection.execute("DELETE FROM stock_industries")
         with self._connect() as connection:
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")

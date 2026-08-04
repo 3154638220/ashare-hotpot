@@ -12,8 +12,15 @@ class RankingService:
         names: dict[str, str] = {}
         latest: dict[str, datetime] = {}
         raw_counts: dict[str, int] = defaultdict(int)
+        industry_tags: dict[str, set[str]] = defaultdict(set)
 
         for event in events:
+            event_industry_tags = {
+                tag.strip()
+                for article in event.articles
+                for tag in article.industry_tags
+                if tag.strip()
+            }
             for stock in event.stocks:
                 event_ids[stock.code].append(event.event_id)
                 if stock.code not in names or names[stock.code] == stock.code:
@@ -21,6 +28,7 @@ class RankingService:
                 previous = latest.get(stock.code)
                 if previous is None or event.published_at > previous:
                     latest[stock.code] = event.published_at
+                industry_tags[stock.code].update(event_industry_tags)
             for article in event.articles:
                 for stock in article.stocks:
                     raw_counts[stock.code] += 1
@@ -38,7 +46,7 @@ class RankingService:
                 raw_article_count=raw_counts[code],
                 latest_mention=latest[code],
                 event_ids=tuple(event_ids[code]),
+                industry_tags=tuple(sorted(industry_tags[code])),
             )
             for index, code in enumerate(ordered_codes, start=1)
         ]
-
