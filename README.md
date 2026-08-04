@@ -4,6 +4,11 @@
 
 > 新闻提及热度仅用于信息整理，不构成任何投资建议。
 
+## 下载与安装
+
+Windows x64 安装包可从 [v0.1.0 Release](https://github.com/3154638220/ashare-hotpot/releases/tag/v0.1.0) 下载：
+[AshareHotPot-Setup-0.1.0-x64.exe](https://github.com/3154638220/ashare-hotpot/releases/download/v0.1.0/AshareHotPot-Setup-0.1.0-x64.exe)。
+
 ## 功能
 
 - PySide6 原生桌面界面，不启动浏览器或本地 Web 服务。
