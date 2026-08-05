@@ -1,16 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_data_files
 
 
 datas = collect_data_files("certifi")
+icon_dir = Path("src/ashare_hotpot/assets/icons")
+datas += [
+    (str(path), "ashare_hotpot/assets/icons")
+    for path in icon_dir.iterdir()
+    if path.is_file()
+]
 
 a = Analysis(
     ["launcher.py"],
     pathex=["src"],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=["PySide6.QtSvg"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -62,6 +70,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon="src/ashare_hotpot/assets/icons/app.ico",
 )
 
 coll = COLLECT(

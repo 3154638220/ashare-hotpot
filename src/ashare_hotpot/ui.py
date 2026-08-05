@@ -39,6 +39,19 @@ from .config import APP_NAME, APP_VERSION, AppSettings
 from .models import NewsEvent, PopularityRankRow, RankingRow, Snapshot
 from .service import RefreshService
 from .storage import Storage
+from .theme import (
+    COLOR_BACKGROUND as PRO_COLOR_BACKGROUND,
+    COLOR_BORDER as PRO_COLOR_BORDER,
+    COLOR_HOT as PRO_COLOR_HOT,
+    COLOR_LINK as PRO_COLOR_LINK,
+    COLOR_MUTED as PRO_COLOR_MUTED,
+    COLOR_SUCCESS as PRO_COLOR_SUCCESS,
+    COLOR_SURFACE as PRO_COLOR_SURFACE,
+    COLOR_SURFACE_RAISED as PRO_COLOR_SURFACE_RAISED,
+    COLOR_TEXT as PRO_COLOR_TEXT,
+    COLOR_WARNING as PRO_COLOR_WARNING,
+    DARK_STYLESHEET as PROFESSIONAL_DARK_STYLESHEET,
+)
 from .worker import RefreshWorker
 
 
@@ -233,6 +246,19 @@ QScrollBar:horizontal {{ height: 10px; background: #111822; margin: 2px; }}
 QScrollBar::handle:horizontal {{ min-width: 28px; background: #3a4a60; border-radius: 5px; }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
 """
+
+# Preserve the established symbols while active widgets use the shared theme.
+COLOR_BACKGROUND = PRO_COLOR_BACKGROUND
+COLOR_SURFACE = PRO_COLOR_SURFACE
+COLOR_SURFACE_RAISED = PRO_COLOR_SURFACE_RAISED
+COLOR_BORDER = PRO_COLOR_BORDER
+COLOR_TEXT = PRO_COLOR_TEXT
+COLOR_MUTED = PRO_COLOR_MUTED
+COLOR_LINK = PRO_COLOR_LINK
+COLOR_HOT = PRO_COLOR_HOT
+COLOR_SUCCESS = PRO_COLOR_SUCCESS
+COLOR_WARNING = PRO_COLOR_WARNING
+DARK_STYLESHEET = PROFESSIONAL_DARK_STYLESHEET
 
 
 def format_datetime(value: datetime | None, *, seconds: bool = False) -> str:
@@ -445,11 +471,15 @@ class RankingTableModel(QAbstractTableModel):
             return raw_values[index.column()]
         if role == Qt.TextAlignmentRole:
             if isinstance(row, PopularityRankRow):
-                centered = {0, 2, 3, 4} if self.source_key == "pop" else {0, 2, 3, 4, 5}
+                centered = {0, 2}
             else:
-                centered = {0, 2, 4, 5}
+                centered = {0, 2}
             if index.column() in centered:
                 return int(Qt.AlignCenter)
+            if index.column() == self.STOCK_NAME_COLUMN:
+                return int(Qt.AlignVCenter | Qt.AlignLeft)
+            if isinstance(row, PopularityRankRow) or index.column() in {4, 5, 6}:
+                return int(Qt.AlignVCenter | Qt.AlignRight)
             return int(Qt.AlignVCenter | Qt.AlignLeft)
         if role == Qt.ForegroundRole and index.column() == self.STOCK_NAME_COLUMN:
             return QColor(COLOR_LINK)
@@ -467,8 +497,6 @@ class RankingTableModel(QAbstractTableModel):
         if role == Qt.FontRole and index.column() in {self.STOCK_NAME_COLUMN, self.HEAT_COLUMN}:
             font = QFont()
             font.setBold(True)
-            if index.column() == self.STOCK_NAME_COLUMN:
-                font.setUnderline(True)
             return font
         return None
 
@@ -740,7 +768,7 @@ class ArticleDetailDialog(QDialog):
             QDesktopServices.openUrl(QUrl(str(url)))
 
 
-class MainWindow(QMainWindow):
+class LegacyMainWindow(QMainWindow):
     snapshot_changed = Signal(object)
 
     def __init__(self, settings: AppSettings, storage: Storage, service: RefreshService) -> None:
@@ -1329,3 +1357,13 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         event.accept()
+
+
+def __getattr__(name: str):
+    """Lazily expose the redesigned shell without a circular module import."""
+
+    if name == "MainWindow":
+        from .professional_window import ProfessionalMainWindow
+
+        return ProfessionalMainWindow
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

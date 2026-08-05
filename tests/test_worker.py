@@ -8,7 +8,8 @@ pytest.importorskip("PySide6")
 
 from PySide6.QtCore import QThread
 
-from ashare_hotpot.worker import RefreshWorker
+from ashare_hotpot.updates import UpdateCheckResult
+from ashare_hotpot.worker import RefreshWorker, UpdateCheckWorker
 
 
 class FakeService:
@@ -32,3 +33,16 @@ def test_worker_emits_progress_and_completion(qtbot) -> None:
     qtbot.waitUntil(lambda: not thread.isRunning(), timeout=2000)
     worker.deleteLater()
     thread.deleteLater()
+
+
+def test_update_check_worker_emits_result_from_background_thread(qtbot, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "ashare_hotpot.worker.check_for_updates",
+        lambda *_args, **_kwargs: UpdateCheckResult(latest=None),
+    )
+    worker = UpdateCheckWorker("https://github.com/3154638220/ashare-hotpot", "0.1.0")
+
+    with qtbot.waitSignal(worker.finished, timeout=3000) as blocker:
+        worker.start()
+
+    assert blocker.args == [UpdateCheckResult(latest=None)]

@@ -8,8 +8,15 @@ from zoneinfo import ZoneInfo
 
 APP_NAME = "A股热度"
 APP_SLUG = "AshareHotPot"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
+PROJECT_URL = "https://github.com/3154638220/ashare-hotpot"
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
+
+
+def release_url(version: str = APP_VERSION) -> str:
+    """Return the GitHub release page for an application version."""
+
+    return f"{PROJECT_URL}/releases/tag/v{version}"
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,6 +1,6 @@
 #define MyAppName "A股热度"
 #define MyAppEnglishName "AshareHotPot"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.2.0"
 #define MyAppPublisher "AshareHotPot"
 #define MyAppExeName "AshareHotPot.exe"
 
@@ -28,6 +28,7 @@ VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=A股新闻与官方人气热度桌面工具
 VersionInfoProductVersion={#MyAppVersion}
 SetupLogging=yes
+SetupIconFile=..\src\ashare_hotpot\assets\icons\app.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

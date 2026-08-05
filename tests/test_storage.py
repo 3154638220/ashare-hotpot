@@ -109,6 +109,36 @@ def test_storage_clear_all_removes_stock_industries(tmp_path) -> None:
     assert storage.get_stock_industries({"000001"}) == {}
 
 
+def test_storage_diagnostics_summarize_counts_and_latest_run(tmp_path) -> None:
+    storage = Storage(tmp_path / "hotpot.db")
+    now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
+    run_id = storage.create_run(now)
+    storage.finish_run(run_id, "failed", "测试失败", now + timedelta(seconds=3))
+    storage.upsert_article(
+        ParsedArticle(
+            "1",
+            "https://example.test/diagnostics",
+            "诊断测试",
+            "",
+            now,
+            "companynews",
+            "公司资讯",
+            "测试来源",
+        ),
+        now,
+    )
+
+    stats = storage.get_storage_stats()
+
+    assert stats.database_bytes > 0
+    assert stats.article_count == 1
+    assert stats.snapshot_count == 0
+    assert stats.latest_run is not None
+    assert stats.latest_run.run_id == run_id
+    assert stats.latest_run.status == "failed"
+    assert stats.latest_run.message == "测试失败"
+
+
 def test_migration_clears_legacy_guba_tables_and_snapshot_payload(tmp_path) -> None:
     now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
     storage = Storage(tmp_path / "hotpot.db")

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -87,6 +88,23 @@ CREATE TABLE IF NOT EXISTS app_state (
 """
 
 POPULARITY_STATE_KEY = "popularity"
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshRunSummary:
+    run_id: int
+    started_at: datetime
+    finished_at: datetime | None
+    status: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class StorageStats:
+    database_bytes: int
+    article_count: int
+    snapshot_count: int
+    latest_run: RefreshRunSummary | None
 
 
 class Storage:
@@ -250,6 +268,41 @@ class Storage:
                 "SELECT payload_json FROM snapshots ORDER BY created_ts DESC, id DESC LIMIT 1"
             ).fetchone()
         return Snapshot.from_dict(json.loads(row["payload_json"])) if row else None
+
+    def get_latest_refresh_run(self) -> RefreshRunSummary | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT id, started_ts, finished_ts, status, message "
+                "FROM refresh_runs ORDER BY started_ts DESC, id DESC LIMIT 1"
+            ).fetchone()
+        if row is None:
+            return None
+        return RefreshRunSummary(
+            run_id=int(row["id"]),
+            started_at=datetime.fromtimestamp(row["started_ts"], tz=SHANGHAI_TZ),
+            finished_at=(
+                datetime.fromtimestamp(row["finished_ts"], tz=SHANGHAI_TZ)
+                if row["finished_ts"] is not None
+                else None
+            ),
+            status=str(row["status"]),
+            message=str(row["message"] or ""),
+        )
+
+    def get_storage_stats(self) -> StorageStats:
+        with self._connect() as connection:
+            article_count = int(connection.execute("SELECT COUNT(*) FROM articles").fetchone()[0])
+            snapshot_count = int(connection.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0])
+        try:
+            database_bytes = self.database_path.stat().st_size
+        except OSError:
+            database_bytes = 0
+        return StorageStats(
+            database_bytes=database_bytes,
+            article_count=article_count,
+            snapshot_count=snapshot_count,
+            latest_run=self.get_latest_refresh_run(),
+        )
 
     def get_stock_industries(self, codes: set[str]) -> dict[str, str]:
         if not codes:

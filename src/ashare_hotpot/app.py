@@ -9,8 +9,10 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QStyleFactory
 
 from .config import APP_NAME, APP_VERSION, AppSettings
+from .icons import app_icon
 from .service import RefreshService
 from .storage import Storage
+from .titlebar import TitleBarWindowFilter, apply_dark_title_bar
 from .ui import MainWindow
 
 
@@ -35,14 +37,21 @@ def main() -> int:
     application.setApplicationName(APP_NAME)
     application.setApplicationVersion(APP_VERSION)
     application.setOrganizationName("AshareHotPot")
+    application.setWindowIcon(app_icon())
     application.setStyle(QStyleFactory.create("Fusion"))
     application.setFont(QFont("Microsoft YaHei UI", 10))
     application.setAttribute(Qt.AA_DontShowIconsInMenus, False)
+
+    # Keep a reference so the filter is not garbage-collected, and let it tint
+    # the native caption (min/max/close area) of the main window and dialogs.
+    application.title_bar_filter = TitleBarWindowFilter(application)
+    application.installEventFilter(application.title_bar_filter)
 
     storage = Storage(settings.database_path)
     service = RefreshService(settings, storage)
     window = MainWindow(settings, storage, service)
     window.show()
+    apply_dark_title_bar(window)
     return application.exec()
 
 
