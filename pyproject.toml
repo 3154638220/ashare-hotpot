@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ashare-hotpot"
 version = "0.1.0"
-description = "基于同花顺新闻提及次数的 A 股新闻热度 Windows 桌面工具"
+description = "基于同花顺新闻与东方财富官方人气榜的 A 股热度 Windows 桌面工具"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -39,5 +39,5 @@ pythonpath = ["src"]
 addopts = "-q"
 qt_api = "pyside6"
 markers = [
-  "live: requires network access to 10jqka.com.cn",
+  "live: requires network access to the configured public data sites",
 ]

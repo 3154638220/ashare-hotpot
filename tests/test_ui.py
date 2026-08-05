@@ -6,7 +6,16 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView
 
 from ashare_hotpot.config import AppSettings, SHANGHAI_TZ
-from ashare_hotpot.models import NewsEvent, ParsedArticle, RankingRow, Snapshot, SourceCoverage, StockMention
+from ashare_hotpot.models import (
+    NewsEvent,
+    OfficialPopularitySnapshot,
+    ParsedArticle,
+    PopularityRankRow,
+    RankingRow,
+    Snapshot,
+    SourceCoverage,
+    StockMention,
+)
 from ashare_hotpot.service import RefreshService
 from ashare_hotpot.storage import Storage
 from ashare_hotpot.ui import ArticleDetailDialog, MainWindow, RankingTableModel
@@ -18,7 +27,8 @@ def test_main_window_displays_snapshot_and_filters(qtbot, tmp_path) -> None:
     window = MainWindow(settings, storage, RefreshService(settings, storage))
     qtbot.addWidget(window)
     assert window.content_stack.currentWidget() is window.empty_state
-    assert window.stocks_metric.value_label.text() == "—"
+    assert window.ths_card.value_label.text() == "—"
+    assert window.pop_card.value_label.text() == "—"
     assert window.window_hours_input.value() == 24
     header = window.table.horizontalHeader()
     assert header.sectionResizeMode(0) == QHeaderView.Interactive
@@ -27,6 +37,7 @@ def test_main_window_displays_snapshot_and_filters(qtbot, tmp_path) -> None:
     window.window_hours_input.setValue(12)
     assert settings.window_hours == 12
     assert "12 小时" in window.subtitle_label.text()
+    assert "仅影响同花顺新闻榜" in window.subtitle_label.text()
     now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
     ping_an = StockMention("000001", "平安银行")
     article = ParsedArticle(
@@ -63,13 +74,25 @@ def test_main_window_displays_snapshot_and_filters(qtbot, tmp_path) -> None:
         ],
         events=[NewsEvent("event-1", article.title, now, (ping_an,), [article])],
         stats={"list_items": 10, "unique_urls": 9, "filtered": 1, "failed": 0, "unmapped": 1, "events": 5},
+        popularity=OfficialPopularitySnapshot(
+            available=True,
+            is_stale=False,
+            success_at=now,
+            error=None,
+            popularity=[
+                PopularityRankRow(1, "000001", "平安银行", None, 11.25, 1.5, "https://guba.eastmoney.com/rank/stock?code=000001"),
+                PopularityRankRow(2, "600519", "贵州茅台", None, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519"),
+            ],
+            surging=[
+                PopularityRankRow(3, "600519", "贵州茅台", 5, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519"),
+            ],
+        ),
     )
     window.set_snapshot(snapshot)
     assert window.table_model.rowCount() == 2
     assert window.content_stack.currentWidget() is window.table
-    assert window.stocks_metric.value_label.text() == "2"
-    assert window.events_metric.value_label.text() == "5"
-    assert window.articles_metric.value_label.text() == "9"
+    assert window.ths_card.value_label.text() == "2 只"
+    assert window.pop_card.value_label.text() == "2 只"
     assert "有效事件 5" in window.stats_label.text()
     assert window.heat_bar_delegate.maximum == 3
 
@@ -88,6 +111,34 @@ def test_main_window_displays_snapshot_and_filters(qtbot, tmp_path) -> None:
     assert window.industry_filter.text() == "已选 2 个行业"
     window.industry_filter.set_selected_tags(set())
     assert window.proxy_model.rowCount() == 2
+
+    window.search_input.setText("000001")
+    window._select_source("pop")
+    assert window.selected_source == "pop"
+    assert window.table_model.source_key == "pop"
+    assert window.table_model.headerData(3, Qt.Horizontal) == "现价"
+    assert window.table_model.headerData(4, Qt.Horizontal) == "涨跌幅"
+    assert not window.rank_toggle_pop.isHidden()
+    assert window.rank_toggle_pop.isChecked()
+    assert window.table_model.rowCount() == 2
+    assert window.proxy_model.rowCount() == 1
+    assert "官方榜单" in window.stats_label.text()
+    assert "数据截至" in window.stats_label.text()
+    assert window.heat_bar_delegate.maximum == 1
+
+    window.search_input.clear()
+    window._select_source("surge")
+    assert window.selected_source == "surge"
+    assert window.table_model.headerData(3, Qt.Horizontal) == "较昨日变动"
+    assert window.table_model.headerData(4, Qt.Horizontal) == "现价"
+    assert window.table_model.headerData(5, Qt.Horizontal) == "涨跌幅"
+    assert window.rank_toggle_surge.isChecked()
+    assert window.proxy_model.rowCount() == 1
+    assert window.table_model.data(window.table_model.index(0, 3), Qt.DisplayRole) == "↑ 5"
+
+    window._select_source("ths")
+    assert window.selected_source == "ths"
+    assert window.rank_toggle_pop.isHidden()
 
 
 def test_main_window_restores_controls_after_refresh(qtbot, tmp_path) -> None:
@@ -188,3 +239,90 @@ def test_stock_name_click_shows_effective_article_titles_and_links(qtbot, tmp_pa
     window.table.clicked.emit(name_index)
     assert shown_rows == [ranking]
     assert window.table_model.data(window.table_model.index(0, RankingTableModel.STOCK_NAME_COLUMN), Qt.ForegroundRole)
+
+
+def test_popularity_stock_name_click_opens_official_page(qtbot, tmp_path, monkeypatch) -> None:
+    settings = AppSettings(app_root=tmp_path)
+    storage = Storage(settings.database_path)
+    window = MainWindow(settings, storage, RefreshService(settings, storage))
+    qtbot.addWidget(window)
+    now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
+    pop_row = PopularityRankRow(
+        1,
+        "000001",
+        "平安银行",
+        None,
+        11.25,
+        1.5,
+        "https://guba.eastmoney.com/rank/stock?code=000001",
+    )
+    snapshot = Snapshot(
+        snapshot_id=1,
+        window_start=now - timedelta(hours=24),
+        window_end=now,
+        created_at=now,
+        partial=False,
+        coverages=[],
+        rankings=[],
+        events=[],
+        stats={},
+        popularity=OfficialPopularitySnapshot(
+            available=True,
+            is_stale=False,
+            success_at=now,
+            error=None,
+            popularity=[pop_row],
+            surging=[],
+        ),
+    )
+    window.set_snapshot(snapshot)
+    window._select_source("pop")
+
+    opened: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.ui.QDesktopServices.openUrl",
+        lambda url: opened.append(url.toString()),
+    )
+    name_index = window.proxy_model.index(0, RankingTableModel.STOCK_NAME_COLUMN)
+    other_index = window.proxy_model.index(0, 0)
+    window.table.clicked.emit(other_index)
+    assert opened == []
+    window.table.clicked.emit(name_index)
+    assert opened == ["https://guba.eastmoney.com/rank/stock?code=000001"]
+
+
+def test_popularity_stale_shows_expiry_and_failure_reason(qtbot, tmp_path) -> None:
+    settings = AppSettings(app_root=tmp_path)
+    storage = Storage(settings.database_path)
+    window = MainWindow(settings, storage, RefreshService(settings, storage))
+    qtbot.addWidget(window)
+    now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
+    snapshot = Snapshot(
+        snapshot_id=1,
+        window_start=now - timedelta(hours=24),
+        window_end=now,
+        created_at=now,
+        partial=False,
+        coverages=[],
+        rankings=[],
+        events=[],
+        stats={},
+        popularity=OfficialPopularitySnapshot(
+            available=True,
+            is_stale=True,
+            success_at=now - timedelta(hours=1),
+            error="身份核实页",
+            popularity=[
+                PopularityRankRow(1, "000001", "平安银行", None, 11.25, 1.5, "https://guba.eastmoney.com/rank/stock?code=000001")
+            ],
+            surging=[],
+        ),
+    )
+    window.set_snapshot(snapshot)
+    window._select_source("pop")
+
+    assert "已过期" in window.ranking_caption.text()
+    assert "数据截至" in window.stats_label.text()
+    assert "身份核实页" in window.stats_label.text()
+    assert window.pop_card.value_label.text() == "1 只"
+    assert "已过期" in window.pop_card.detail_label.text()

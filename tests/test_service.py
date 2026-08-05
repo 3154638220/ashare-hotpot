@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from ashare_hotpot.config import AppSettings, SHANGHAI_TZ, SourceConfig
-from ashare_hotpot.models import ArticleCandidate, ParsedArticle, StockMention
+from ashare_hotpot.models import ArticleCandidate, ParsedArticle, PopularityRankRow, StockMention
 from ashare_hotpot.service import RefreshService
 from ashare_hotpot.sources import PageResult, RefreshCancelled
 from ashare_hotpot.storage import Storage
@@ -89,6 +89,7 @@ def test_refresh_pipeline_and_cache(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
     monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
     FakeClient.detail_calls = 0
     FakeClient.industry_calls = 0
     settings = AppSettings(
@@ -109,6 +110,9 @@ def test_refresh_pipeline_and_cache(monkeypatch, tmp_path) -> None:
     assert snapshot.rankings[0].industry_tags == ("金融",)
     assert snapshot.stats["industry_mapped"] == 1
     assert progress[-1] == (100, "刷新完成")
+    assert snapshot.popularity.available is True
+    assert snapshot.popularity.popularity[0].code == "000001"
+    assert snapshot.popularity.surging[0].change == 3
     assert FakeClient.detail_calls == 1
     assert FakeClient.industry_calls == 1
 
@@ -124,6 +128,7 @@ def test_refresh_uses_configured_window_hours(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
     monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
@@ -186,6 +191,7 @@ def test_refresh_reapplies_brokerage_filter_to_cached_articles(monkeypatch, tmp_
 
     monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
     monkeypatch.setattr(service_module, "NewsSource", CachedRatingSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
@@ -212,3 +218,132 @@ def test_refresh_reapplies_brokerage_filter_to_cached_articles(monkeypatch, tmp_
 
     assert snapshot.stats["cached"] == 1
     assert [row.code for row in snapshot.rankings] == ["600519"]
+
+
+def test_popularity_10min_cache_only_fetches_once(monkeypatch, tmp_path) -> None:
+    import ashare_hotpot.service as service_module
+
+    calls: list[int] = []
+
+    def counting_fetch(_client):
+        calls.append(1)
+        return fake_popularity_fetch(_client)
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", counting_fetch)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        max_pages_per_source=2,
+        detail_workers=1,
+    )
+    service = RefreshService(settings, Storage(settings.database_path))
+
+    first = service.refresh(now=NOW)
+    assert len(calls) == 1
+    assert first.popularity.success_at == NOW
+
+    second = service.refresh(now=NOW + timedelta(minutes=5))
+    assert len(calls) == 1
+    assert second.popularity.success_at == NOW
+
+    third = service.refresh(now=NOW + timedelta(minutes=11))
+    assert len(calls) == 2
+    assert third.popularity.success_at == NOW + timedelta(minutes=11)
+
+
+@pytest.mark.parametrize(
+    "failure_message",
+    ["身份核实页", "HTTP 500 服务器错误", "东方财富人气榜返回空数据", "东方财富人气榜接口返回结构异常"],
+)
+def test_popularity_failure_falls_back_to_last_success(monkeypatch, tmp_path, failure_message) -> None:
+    import ashare_hotpot.service as service_module
+
+    state = {"fail": False}
+
+    def flaky_fetch(_client):
+        if state["fail"]:
+            raise RuntimeError(failure_message)
+        return fake_popularity_fetch(_client)
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", flaky_fetch)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        max_pages_per_source=2,
+        detail_workers=1,
+    )
+    service = RefreshService(settings, Storage(settings.database_path))
+
+    ok = service._refresh_popularity(now=NOW, cancel=threading.Event(), progress=None)
+    assert ok.available is True
+    assert ok.is_stale is False
+    assert ok.success_at == NOW
+
+    state["fail"] = True
+    failed = service._refresh_popularity(
+        now=NOW + timedelta(minutes=11),
+        cancel=threading.Event(),
+        progress=None,
+    )
+    assert failed.available is True
+    assert failed.is_stale is True
+    assert failed.success_at == NOW
+    assert failure_message in failed.error
+    assert failed.popularity[0].code == "000001"
+
+
+def test_popularity_failure_without_history_is_unavailable(monkeypatch, tmp_path) -> None:
+    import ashare_hotpot.service as service_module
+
+    def failing_fetch(_client):
+        raise RuntimeError("空数据")
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", failing_fetch)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        max_pages_per_source=2,
+        detail_workers=1,
+    )
+    service = RefreshService(settings, Storage(settings.database_path))
+
+    result = service._refresh_popularity(now=NOW, cancel=threading.Event(), progress=None)
+    assert result.available is False
+    assert result.is_stale is False
+    assert result.success_at is None
+    assert result.popularity == []
+    assert result.surging == []
+    assert "空数据" in result.error
+
+
+def fake_popularity_fetch(_client):
+    return (
+        [
+            PopularityRankRow(
+                1,
+                "000001",
+                "平安银行",
+                None,
+                11.25,
+                1.5,
+                "https://guba.eastmoney.com/rank/stock?code=000001",
+            )
+        ],
+        [
+            PopularityRankRow(
+                2,
+                "600519",
+                "贵州茅台",
+                3,
+                1600.0,
+                2.0,
+                "https://guba.eastmoney.com/rank/stock?code=600519",
+            )
+        ],
+    )

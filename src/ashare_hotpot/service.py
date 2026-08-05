@@ -11,8 +11,16 @@ from .config import AppSettings, SHANGHAI_TZ
 from .dedupe import Deduplicator
 from .filtering import filter_brokerage_research_mentions, template_filter_reason
 from .industries import fetch_stock_industries
-from .models import ArticleCandidate, ParsedArticle, RankingRow, Snapshot, SourceCoverage
+from .models import (
+    ArticleCandidate,
+    OfficialPopularitySnapshot,
+    ParsedArticle,
+    RankingRow,
+    Snapshot,
+    SourceCoverage,
+)
 from .parsing import parse_article_detail
+from .popularity import fetch_official_popularity
 from .ranking import RankingService
 from .sources import NewsSource, PoliteHttpClient, RefreshCancelled
 from .storage import Storage
@@ -94,6 +102,58 @@ class RefreshService:
             else row
             for row in rankings
         ]
+
+    def _refresh_popularity(
+        self,
+        *,
+        now: datetime,
+        cancel: threading.Event,
+        progress: ProgressCallback | None,
+    ) -> OfficialPopularitySnapshot:
+        """Read the official popularity board at low frequency.
+
+        Within the configured cache window a successful read is reused; any
+        whole-board failure (identity check, empty data, structure change) falls
+        back to the last successful boards and marks them stale.
+        """
+
+        cached = self.storage.get_popularity_state()
+        cache_minutes = max(1, self.settings.popularity_cache_minutes)
+        if (
+            cached is not None
+            and cached.available
+            and cached.success_at is not None
+            and (now - cached.success_at) < timedelta(minutes=cache_minutes)
+        ):
+            self._progress(progress, 97, f"东方财富人气榜：{cache_minutes} 分钟内已读取，复用缓存")
+            return cached
+        try:
+            with PoliteHttpClient(self.settings, cancel) as client:
+                popularity, surging = fetch_official_popularity(client)
+            snapshot = OfficialPopularitySnapshot(
+                available=True,
+                is_stale=False,
+                success_at=now,
+                error=None,
+                popularity=popularity,
+                surging=surging,
+            )
+            self.storage.set_popularity_state(snapshot, now)
+            return snapshot
+        except RefreshCancelled:
+            raise
+        except Exception as exc:
+            logger.warning("official popularity refresh failed: %s", exc)
+            if cached is not None and cached.available:
+                cached.is_stale = True
+                cached.error = str(exc)[:1000]
+                return cached
+            return OfficialPopularitySnapshot(
+                available=False,
+                is_stale=False,
+                success_at=None,
+                error=str(exc)[:1000],
+            )
 
     def refresh(
         self,
@@ -267,6 +327,12 @@ class RefreshService:
                 except Exception as exc:
                     logger.warning("stock industry lookup failed: %s", exc)
                 stats["industry_mapped"] = sum(bool(row.industry_tags) for row in rankings)
+            self._progress(progress, 95, "正在读取东方财富综合人气榜…")
+            popularity = self._refresh_popularity(
+                now=window_end,
+                cancel=cancel,
+                progress=progress,
+            )
             partial = any(not item.reached_cutoff or bool(item.error) for item in coverages)
             snapshot = Snapshot(
                 snapshot_id=None,
@@ -278,6 +344,7 @@ class RefreshService:
                 rankings=rankings,
                 events=events,
                 stats=stats,
+                popularity=popularity,
             )
             self.storage.save_snapshot(snapshot)
             self.storage.purge_older_than(window_end - timedelta(days=self.settings.retention_days))

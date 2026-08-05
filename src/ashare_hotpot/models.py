@@ -9,6 +9,24 @@ def _dt(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
 
 
+def _to_int(value: object) -> int | None:
+    try:
+        if value is None or value == "" or value == "-":
+            return None
+        return int(float(str(value)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_float(value: object) -> float | None:
+    try:
+        if value is None or value == "" or value == "-":
+            return None
+        return float(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass(frozen=True, slots=True)
 class StockMention:
     code: str
@@ -184,6 +202,86 @@ class SourceCoverage:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class PopularityRankRow:
+    """One row of the official Eastmoney popularity board.
+
+    The official board only exposes ranks and rank changes; the underlying
+    attention score is not public and its weighting is not disclosed.
+    """
+
+    rank: int
+    code: str
+    name: str
+    change: int | None
+    current_price: float | None
+    change_percent: float | None
+    url: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rank": self.rank,
+            "code": self.code,
+            "name": self.name,
+            "change": self.change,
+            "current_price": self.current_price,
+            "change_percent": self.change_percent,
+            "url": self.url,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PopularityRankRow":
+        return cls(
+            rank=int(data["rank"]),
+            code=str(data["code"]),
+            name=str(data.get("name") or data["code"]),
+            change=_to_int(data.get("change")),
+            current_price=_to_float(data.get("current_price")),
+            change_percent=_to_float(data.get("change_percent")),
+            url=str(data.get("url") or ""),
+        )
+
+
+@dataclass(slots=True)
+class OfficialPopularitySnapshot:
+    """Latest official Eastmoney popularity state for one refresh.
+
+    ``success_at`` is the actual read time of the last successful board fetch.
+    On a failed refresh the previous successful boards are kept and marked
+    stale together with the failure reason, so no partial board is produced.
+    """
+
+    available: bool = False
+    is_stale: bool = False
+    success_at: datetime | None = None
+    error: str | None = None
+    popularity: list[PopularityRankRow] = field(default_factory=list)
+    surging: list[PopularityRankRow] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "available": self.available,
+            "is_stale": self.is_stale,
+            "success_at": self.success_at.isoformat() if self.success_at else None,
+            "error": self.error,
+            "popularity": [row.to_dict() for row in self.popularity],
+            "surging": [row.to_dict() for row in self.surging],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "OfficialPopularitySnapshot":
+        if not data:
+            return cls()
+        return cls(
+            available=bool(data.get("available", False)),
+            is_stale=bool(data.get("is_stale", False)),
+            success_at=_dt(data.get("success_at")),
+            error=data.get("error"),
+            popularity=[PopularityRankRow.from_dict(item) for item in data.get("popularity", [])],
+            surging=[PopularityRankRow.from_dict(item) for item in data.get("surging", [])],
+        )
+
+
 @dataclass(slots=True)
 class Snapshot:
     snapshot_id: int | None
@@ -195,6 +293,7 @@ class Snapshot:
     rankings: list[RankingRow]
     events: list[NewsEvent]
     stats: dict[str, int]
+    popularity: OfficialPopularitySnapshot = field(default_factory=OfficialPopularitySnapshot)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -207,6 +306,7 @@ class Snapshot:
             "rankings": [row.to_dict() for row in self.rankings],
             "events": [event.to_dict() for event in self.events],
             "stats": dict(self.stats),
+            "popularity": self.popularity.to_dict(),
         }
 
     @classmethod
@@ -221,4 +321,9 @@ class Snapshot:
             rankings=[RankingRow.from_dict(item) for item in data.get("rankings", [])],
             events=[NewsEvent.from_dict(item) for item in data.get("events", [])],
             stats={str(key): int(value) for key, value in data.get("stats", {}).items()},
+            # Legacy snapshots may still carry a "guba" key from the old
+            # self-computed stock-forum ranking; it is intentionally ignored so
+            # the historical news snapshot is kept while the old guba result is
+            # dropped.
+            popularity=OfficialPopularitySnapshot.from_dict(data.get("popularity")),
         )

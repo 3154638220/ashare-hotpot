@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from .config import APP_NAME, APP_VERSION, AppSettings
-from .models import NewsEvent, RankingRow, Snapshot
+from .models import NewsEvent, PopularityRankRow, RankingRow, Snapshot
 from .service import RefreshService
 from .storage import Storage
 from .worker import RefreshWorker
@@ -101,6 +101,7 @@ QFrame#metricCard {{
     border: 1px solid #2a3748;
     border-radius: 9px;
 }}
+QFrame#metricCard[selected="true"] {{ background: #202d3d; border-color: {COLOR_LINK}; }}
 QFrame#metricCard[accent="hot"] {{ border-left: 3px solid {COLOR_HOT}; }}
 QFrame#metricCard[accent="link"] {{ border-left: 3px solid {COLOR_LINK}; }}
 QFrame#metricCard[accent="success"] {{ border-left: 3px solid {COLOR_SUCCESS}; }}
@@ -241,14 +242,39 @@ def format_datetime(value: datetime | None, *, seconds: bool = False) -> str:
     return value.strftime(pattern)
 
 
+def format_price(value: float | None) -> str:
+    if value is None:
+        return "—"
+    return f"{value:,.2f}"
+
+
+def format_percent(value: float | None) -> str:
+    if value is None:
+        return "—"
+    return f"{value:+.2f}%"
+
+
+def format_change(value: int | None) -> str:
+    if value is None:
+        return "—"
+    if value > 0:
+        return f"↑ {value}"
+    if value < 0:
+        return f"↓ {abs(value)}"
+    return "0"
+
+
 class MetricCard(QFrame):
     """A compact snapshot metric shown in the overview row."""
+
+    clicked = Signal()
 
     def __init__(self, title: str, accent: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("metricCard")
         self.setProperty("accent", accent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.setCursor(Qt.PointingHandCursor)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(13, 10, 13, 10)
         layout.setSpacing(2)
@@ -273,6 +299,16 @@ class MetricCard(QFrame):
         self.setProperty("accent", accent)
         self.style().unpolish(self)
         self.style().polish(self)
+
+    def set_selected(self, selected: bool) -> None:
+        self.setProperty("selected", "true" if selected else "false")
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.LeftButton and self.rect().contains(event.position().toPoint()):
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
 
 
 class HeatBarDelegate(QStyledItemDelegate):
@@ -306,66 +342,124 @@ class HeatBarDelegate(QStyledItemDelegate):
 
 
 class RankingTableModel(QAbstractTableModel):
-    HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效提及", "原始篇数", "最近提及")
+    NEWS_HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效提及", "原始篇数", "最近提及")
+    POP_HEADERS = ("排名", "股票名称", "代码", "现价", "涨跌幅")
+    SURGE_HEADERS = ("排名", "股票名称", "代码", "较昨日变动", "现价", "涨跌幅")
     STOCK_NAME_COLUMN = 1
     INDUSTRY_COLUMN = 3
     HEAT_COLUMN = 4
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self.rows: list[RankingRow] = []
+        self.rows: list[RankingRow | PopularityRankRow] = []
+        self.source_key = "ths"
 
-    def set_rows(self, rows: list[RankingRow]) -> None:
+    @property
+    def headers(self) -> tuple[str, ...]:
+        if self.source_key == "pop":
+            return self.POP_HEADERS
+        if self.source_key == "surge":
+            return self.SURGE_HEADERS
+        return self.NEWS_HEADERS
+
+    def set_rows(self, rows: list[RankingRow] | list[PopularityRankRow], *, source_key: str = "ths") -> None:
         self.beginResetModel()
         self.rows = list(rows)
+        self.source_key = source_key
         self.endResetModel()
+        self.headerDataChanged.emit(Qt.Horizontal, 0, max(0, len(self.headers) - 1))
 
-    def row_at(self, row: int) -> RankingRow | None:
+    def row_at(self, row: int) -> RankingRow | PopularityRankRow | None:
         return self.rows[row] if 0 <= row < len(self.rows) else None
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
         return 0 if parent.isValid() else len(self.rows)
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
-        return 0 if parent.isValid() else len(self.HEADERS)
+        return 0 if parent.isValid() else len(self.headers)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):  # noqa: N802
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal and 0 <= section < len(self.HEADERS):
-            return self.HEADERS[section]
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal and 0 <= section < len(self.headers):
+            return self.headers[section]
         return None
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
         if not index.isValid() or not (0 <= index.row() < len(self.rows)):
             return None
         row = self.rows[index.row()]
-        raw_values = (
-            row.rank,
-            row.name,
-            row.code,
-            row.industry_tags or ("未标注",),
-            row.event_count,
-            row.raw_article_count,
-            row.latest_mention.timestamp(),
-        )
-        display_values = (
-            str(row.rank),
-            row.name,
-            row.code,
-            "、".join(row.industry_tags) if row.industry_tags else "未标注",
-            str(row.event_count),
-            str(row.raw_article_count),
-            format_datetime(row.latest_mention),
-        )
+        if isinstance(row, PopularityRankRow):
+            if self.source_key == "surge":
+                raw_values = (
+                    row.rank,
+                    row.name,
+                    row.code,
+                    row.change,
+                    row.current_price,
+                    row.change_percent,
+                )
+                display_values = (
+                    str(row.rank),
+                    row.name,
+                    row.code,
+                    format_change(row.change),
+                    format_price(row.current_price),
+                    format_percent(row.change_percent),
+                )
+            else:
+                raw_values = (
+                    row.rank,
+                    row.name,
+                    row.code,
+                    row.current_price,
+                    row.change_percent,
+                )
+                display_values = (
+                    str(row.rank),
+                    row.name,
+                    row.code,
+                    format_price(row.current_price),
+                    format_percent(row.change_percent),
+                )
+        else:
+            raw_values = (
+                row.rank,
+                row.name,
+                row.code,
+                row.industry_tags or ("未标注",),
+                row.event_count,
+                row.raw_article_count,
+                row.latest_mention.timestamp(),
+            )
+            display_values = (
+                str(row.rank),
+                row.name,
+                row.code,
+                "、".join(row.industry_tags) if row.industry_tags else "未标注",
+                str(row.event_count),
+                str(row.raw_article_count),
+                format_datetime(row.latest_mention),
+            )
         if role == Qt.DisplayRole:
             return display_values[index.column()]
         if role == Qt.UserRole:
             return raw_values[index.column()]
         if role == Qt.TextAlignmentRole:
-            if index.column() in {0, 2, 4, 5}:
+            if isinstance(row, PopularityRankRow):
+                centered = {0, 2, 3, 4} if self.source_key == "pop" else {0, 2, 3, 4, 5}
+            else:
+                centered = {0, 2, 4, 5}
+            if index.column() in centered:
                 return int(Qt.AlignCenter)
             return int(Qt.AlignVCenter | Qt.AlignLeft)
         if role == Qt.ForegroundRole and index.column() == self.STOCK_NAME_COLUMN:
             return QColor(COLOR_LINK)
+        if isinstance(row, PopularityRankRow):
+            percent_column = 4 if self.source_key == "pop" else 5
+            if index.column() == percent_column and row.change_percent is not None:
+                if row.change_percent > 0:
+                    return QColor(COLOR_HOT)
+                if row.change_percent < 0:
+                    return QColor(COLOR_SUCCESS)
         if role == Qt.ForegroundRole and index.column() == self.HEAT_COLUMN:
             return QColor(COLOR_HOT)
         if role == Qt.ForegroundRole and index.column() == 0 and row.rank <= 3:
@@ -535,14 +629,20 @@ class RankingProxyModel(QSortFilterProxyModel):
         model = self.sourceModel()
         if not isinstance(model, RankingTableModel):
             return 1
-        return max((row.event_count for row in model.rows if self._matches(row)), default=1)
+        return max((self._heat(row) for row in model.rows if self._matches(row)), default=1)
 
-    def _matches(self, row: RankingRow) -> bool:
+    @staticmethod
+    def _heat(row: RankingRow | PopularityRankRow) -> int:
+        if isinstance(row, PopularityRankRow):
+            return 0
+        return row.event_count
+
+    def _matches(self, row: RankingRow | PopularityRankRow) -> bool:
         if self._query and self._query not in row.name.lower() and self._query not in row.code.lower():
             return False
         if not self._industry_tags:
             return True
-        industry_tags = row.industry_tags or (self.UNCATEGORIZED_LABEL,)
+        industry_tags = getattr(row, "industry_tags", ()) or (self.UNCATEGORIZED_LABEL,)
         return bool(set(industry_tags).intersection(self._industry_tags))
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:  # noqa: N802
@@ -649,6 +749,7 @@ class MainWindow(QMainWindow):
         self.storage = storage
         self.service = service
         self.snapshot: Snapshot | None = None
+        self.selected_source = "ths"
         self._thread: QThread | None = None
         self._worker: RefreshWorker | None = None
 
@@ -672,10 +773,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         status = QStatusBar()
-        disclaimer = QLabel("数据来源：同花顺公开新闻页面 · 新闻提及热度不构成任何投资建议")
+        disclaimer = QLabel("数据来源：同花顺公开新闻页面、东方财富公开官方人气榜 · 热度仅供信息整理")
         disclaimer.setObjectName("mutedLabel")
         status.addWidget(disclaimer, 1)
-        status.addPermanentWidget(QLabel("A 股新闻热度"))
+        status.addPermanentWidget(QLabel(APP_NAME))
         self.setStatusBar(status)
 
     def _build_header(self) -> QFrame:
@@ -715,12 +816,12 @@ class MainWindow(QMainWindow):
         self.window_hours_input.setValue(self.settings.window_hours)
         self.window_hours_input.setSuffix(" 小时")
         self.window_hours_input.setFixedWidth(104)
-        self.window_hours_input.setToolTip("选择本次刷新向前抓取新闻的时间范围")
+        self.window_hours_input.setToolTip("选择本次刷新向前统计同花顺新闻的时间范围")
         self.window_hours_input.valueChanged.connect(self._set_window_hours)
         layout.addWidget(window_hours_label)
         layout.addWidget(self.window_hours_input)
 
-        self.refresh_button = QPushButton("刷新新闻")
+        self.refresh_button = QPushButton("刷新数据")
         self.refresh_button.setObjectName("primaryButton")
         self.refresh_button.clicked.connect(self.start_refresh)
         self.cancel_button = QPushButton("取消")
@@ -742,17 +843,20 @@ class MainWindow(QMainWindow):
         kicker.setObjectName("sectionKicker")
         heading.addWidget(kicker)
         heading.addStretch(1)
-        self.window_label = QLabel("尚无本地快照 · 点击刷新新闻开始采集")
+        self.window_label = QLabel("尚无本地快照 · 点击刷新数据开始采集")
         self.window_label.setObjectName("windowLabel")
         heading.addWidget(self.window_label)
         layout.addLayout(heading)
 
         metrics = QHBoxLayout()
         metrics.setSpacing(10)
-        self.stocks_metric = MetricCard("热度个股", "link")
-        self.events_metric = MetricCard("有效事件", "hot")
-        self.articles_metric = MetricCard("已收录文章", "link")
-        for metric in (self.stocks_metric, self.events_metric, self.articles_metric):
+        self.ths_card = MetricCard("同花顺新闻", "link")
+        self.pop_card = MetricCard("东方财富综合人气", "hot")
+        self.ths_card.setToolTip("切换到同花顺新闻热度榜")
+        self.pop_card.setToolTip("切换到东方财富官方综合人气榜（含飙升榜）")
+        self.ths_card.clicked.connect(lambda: self._select_source("ths"))
+        self.pop_card.clicked.connect(lambda: self._select_source("pop"))
+        for metric in (self.ths_card, self.pop_card):
             metrics.addWidget(metric)
         layout.addLayout(metrics)
 
@@ -790,18 +894,32 @@ class MainWindow(QMainWindow):
         title_box.setSpacing(2)
         title = QLabel("热度排行榜")
         title.setObjectName("sectionTitle")
-        caption = QLabel("按去重后的有效新闻提及次数排序")
-        caption.setObjectName("mutedLabel")
+        self.ranking_caption = QLabel("按去重后的有效新闻提及次数排序")
+        self.ranking_caption.setObjectName("mutedLabel")
         title_box.addWidget(title)
-        title_box.addWidget(caption)
+        title_box.addWidget(self.ranking_caption)
         heading.addLayout(title_box)
         heading.addStretch(1)
         self.result_count_label = QLabel("0 只股票")
         self.result_count_label.setObjectName("mutedLabel")
         heading.addWidget(self.result_count_label)
-        industry_label = QLabel("行业")
-        industry_label.setObjectName("mutedLabel")
-        heading.addWidget(industry_label)
+        self.rank_toggle_pop = QPushButton("人气榜")
+        self.rank_toggle_surge = QPushButton("飙升榜")
+        self.rank_toggle_pop.setCheckable(True)
+        self.rank_toggle_surge.setCheckable(True)
+        self.rank_toggle_pop.setFixedWidth(86)
+        self.rank_toggle_surge.setFixedWidth(86)
+        self.rank_toggle_pop.setToolTip("官方综合人气榜 Top 100")
+        self.rank_toggle_surge.setToolTip("官方飙升榜 Top 100（较昨日排名提升最多）")
+        self.rank_toggle_pop.clicked.connect(lambda: self._select_source("pop"))
+        self.rank_toggle_surge.clicked.connect(lambda: self._select_source("surge"))
+        self.rank_toggle_pop.setVisible(False)
+        self.rank_toggle_surge.setVisible(False)
+        heading.addWidget(self.rank_toggle_pop)
+        heading.addWidget(self.rank_toggle_surge)
+        self.industry_label = QLabel("行业")
+        self.industry_label.setObjectName("mutedLabel")
+        heading.addWidget(self.industry_label)
         self.industry_filter = IndustryFilterButton()
         heading.addWidget(self.industry_filter)
         search_label = QLabel("搜索")
@@ -831,7 +949,7 @@ class MainWindow(QMainWindow):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setToolTip("单击蓝色股票名称查看有效提及文章")
+        self.table.setToolTip("单击蓝色股票名称查看明细")
         self.table.setMouseTracking(True)
         self.table.setSortingEnabled(True)
         self.table.sortByColumn(0, Qt.AscendingOrder)
@@ -840,14 +958,7 @@ class MainWindow(QMainWindow):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
-        for column in range(2, self.table_model.columnCount()):
-            header.setSectionResizeMode(column, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 58)
-        self.table.setColumnWidth(2, 82)
-        self.table.setColumnWidth(RankingTableModel.INDUSTRY_COLUMN, 160)
-        self.table.setColumnWidth(RankingTableModel.HEAT_COLUMN, 92)
-        self.table.setColumnWidth(5, 92)
-        self.table.setColumnWidth(6, 154)
+        self._configure_table_columns()
         self.table.clicked.connect(self.show_selected_details)
         self.table.entered.connect(self._update_table_cursor)
 
@@ -874,7 +985,7 @@ class MainWindow(QMainWindow):
         title.setObjectName("sectionTitle")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
-        hint = QLabel("刷新新闻后，将在这里呈现去重后的 A 股新闻热度排行。")
+        hint = QLabel("刷新数据后，将在这里呈现新闻与官方人气两类独立的 A 股热度排行。")
         hint.setObjectName("mutedLabel")
         hint.setAlignment(Qt.AlignCenter)
         layout.addWidget(hint)
@@ -891,7 +1002,7 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         data_menu = QMenu("数据", self)
-        refresh_action = QAction("刷新新闻", self)
+        refresh_action = QAction("刷新数据", self)
         refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self.start_refresh)
         data_menu.addAction(refresh_action)
@@ -920,31 +1031,141 @@ class MainWindow(QMainWindow):
 
     def set_snapshot(self, snapshot: Snapshot) -> None:
         self.snapshot = snapshot
-        self.table_model.set_rows(snapshot.rankings)
-        self._set_industry_filter_options(snapshot.rankings)
-        self.table.sortByColumn(0, Qt.AscendingOrder)
-        self.content_stack.setCurrentWidget(self.table)
         self.window_label.setText(
             f"统计窗口：{format_datetime(snapshot.window_start, seconds=True)} 至 "
             f"{format_datetime(snapshot.window_end, seconds=True)} · 刷新于 {format_datetime(snapshot.created_at, seconds=True)}"
         )
-        stats = snapshot.stats
-        self.stocks_metric.set_value(f"{len(snapshot.rankings):,}", "进入当前榜单")
-        self.events_metric.set_value(f"{stats.get('events', 0):,}", "去重后的有效事件")
-        self.articles_metric.set_value(f"{stats.get('unique_urls', 0):,}", "去重后的新闻链接")
-        self.stats_label.setText(
-            f"列表 {stats.get('list_items', 0)} 篇 · 去重 URL {stats.get('unique_urls', 0)} · "
-            f"模板过滤 {stats.get('filtered', 0)} · 正文失败 {stats.get('failed', 0)} · "
-            f"未映射 {stats.get('unmapped', 0)} · 有效事件 {stats.get('events', 0)}"
+        news_stats = snapshot.stats
+        self.ths_card.set_value(
+            f"{len(snapshot.rankings):,} 只",
+            f"有效事件 {news_stats.get('events', 0):,} · 点击查看",
         )
-        self._update_result_count()
+        popularity = snapshot.popularity
+        if popularity.available:
+            pop_detail = f"数据截至 {format_datetime(popularity.success_at) if popularity.success_at else '—'}"
+            if popularity.is_stale:
+                pop_detail += " · 已过期"
+            self.pop_card.set_value(
+                f"{len(popularity.popularity):,} 只",
+                pop_detail,
+                status="warning" if popularity.is_stale else None,
+            )
+        else:
+            pop_detail = "读取失败" if popularity.error else "等待刷新"
+            self.pop_card.set_value("—", pop_detail, status="warning" if popularity.error else None)
+        if self.selected_source in {"pop", "surge"} and not snapshot.popularity.available:
+            self.selected_source = "ths"
+        self._render_selected_source(reset_industry=False)
         self.snapshot_changed.emit(snapshot)
 
-    def _set_industry_filter_options(self, rankings: list[RankingRow]) -> None:
+    def _selected_rows(self) -> list[RankingRow] | list[PopularityRankRow]:
+        if not self.snapshot:
+            return []
+        if self.selected_source == "pop":
+            return self.snapshot.popularity.popularity
+        if self.selected_source == "surge":
+            return self.snapshot.popularity.surging
+        return self.snapshot.rankings
+
+    def _select_source(self, source_key: str) -> None:
+        if not self.snapshot:
+            return
+        if source_key == "ths":
+            self.selected_source = "ths"
+        elif source_key in {"pop", "surge"}:
+            if not self.snapshot.popularity.available:
+                return
+            self.selected_source = source_key
+        else:
+            return
+        self._render_selected_source(reset_industry=True)
+
+    def _update_rank_toggles(self) -> None:
+        is_pop = self.selected_source in {"pop", "surge"}
+        self.rank_toggle_pop.setVisible(is_pop)
+        self.rank_toggle_surge.setVisible(is_pop)
+        if is_pop:
+            self.rank_toggle_pop.setChecked(self.selected_source == "pop")
+            self.rank_toggle_surge.setChecked(self.selected_source == "surge")
+
+    def _render_selected_source(self, *, reset_industry: bool) -> None:
+        if not self.snapshot:
+            return
+        if reset_industry:
+            self.industry_filter.set_selected_tags(set(), emit=False)
+        source_key = self.selected_source
+        is_news = source_key == "ths"
+        is_pop = source_key in {"pop", "surge"}
+        rows = self._selected_rows()
+        self.ths_card.set_selected(is_news)
+        self.pop_card.set_selected(is_pop)
+        self._update_rank_toggles()
+        self.industry_label.setVisible(is_news)
+        self.industry_filter.setVisible(is_news)
+        self.table_model.set_rows(rows, source_key=source_key)
+        self._configure_table_columns()
+        self.table.sortByColumn(0, Qt.AscendingOrder)
+        self.content_stack.setCurrentWidget(self.table)
+        self._set_industry_filter_options(rows)
+        if is_news:
+            stats = self.snapshot.stats
+            self.ranking_caption.setText("按去重后的有效新闻提及次数排序")
+            self.table.setToolTip("单击蓝色股票名称查看有效提及文章")
+            self.stats_label.setText(
+                f"列表 {stats.get('list_items', 0)} 篇 · 去重 URL {stats.get('unique_urls', 0)} · "
+                f"模板过滤 {stats.get('filtered', 0)} · 正文失败 {stats.get('failed', 0)} · "
+                f"未映射 {stats.get('unmapped', 0)} · 有效事件 {stats.get('events', 0)}"
+            )
+        else:
+            popularity = self.snapshot.popularity
+            if source_key == "pop":
+                base_caption = "东方财富官方综合人气榜 Top 100 · 按官方关注度排名"
+            else:
+                base_caption = "东方财富官方飙升榜 Top 100 · 较昨日排名提升最多"
+            self.table.setToolTip("单击蓝色股票名称打开官方人气页")
+            if popularity.available:
+                success_text = (
+                    format_datetime(popularity.success_at, seconds=True) if popularity.success_at else "—"
+                )
+                if popularity.is_stale:
+                    self.ranking_caption.setText(f"{base_caption} · ⚠ 数据已过期")
+                    self.stats_label.setText(
+                        f"数据截至 {success_text}（已过期） · 本次失败原因：{popularity.error or '未知'}"
+                    )
+                else:
+                    self.ranking_caption.setText(base_caption)
+                    self.stats_label.setText(f"官方榜单 · 数据截至 {success_text}")
+            else:
+                self.ranking_caption.setText(f"{base_caption} · 暂无数据")
+                self.stats_label.setText(f"本次读取失败：{popularity.error or '未知'}")
+        self._update_result_count()
+
+    def _configure_table_columns(self) -> None:
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        for column in range(2, self.table_model.columnCount()):
+            header.setSectionResizeMode(column, QHeaderView.Interactive)
+        self.table.setColumnWidth(0, 58)
+        self.table.setColumnWidth(2, 82)
+        if self.selected_source == "pop":
+            self.table.setColumnWidth(3, 96)
+            self.table.setColumnWidth(4, 130)
+        elif self.selected_source == "surge":
+            self.table.setColumnWidth(3, 110)
+            self.table.setColumnWidth(4, 96)
+            self.table.setColumnWidth(5, 130)
+        else:
+            self.table.setColumnWidth(RankingTableModel.INDUSTRY_COLUMN, 160)
+            self.table.setColumnWidth(RankingTableModel.HEAT_COLUMN, 92)
+            self.table.setColumnWidth(5, 92)
+            self.table.setColumnWidth(6, 154)
+
+    def _set_industry_filter_options(self, rankings: list[RankingRow] | list[PopularityRankRow]) -> None:
         tags = {
             tag
             for row in rankings
-            for tag in (row.industry_tags or (RankingProxyModel.UNCATEGORIZED_LABEL,))
+            for tag in (getattr(row, "industry_tags", None) or (RankingProxyModel.UNCATEGORIZED_LABEL,))
         }
         self.industry_filter.set_options(tags)
         self.proxy_model.set_industry_tags(set(self.industry_filter.selected_tags))
@@ -958,7 +1179,10 @@ class MainWindow(QMainWindow):
         self.heat_bar_delegate.set_maximum(self.proxy_model.maximum_filtered_heat())
 
     def _update_subtitle(self) -> None:
-        self.subtitle_label.setText(f"按同花顺最近 {self.settings.window_hours} 小时已发现新闻的去重提及次数排名")
+        self.subtitle_label.setText(
+            f"观察窗口 {self.settings.window_hours} 小时仅影响同花顺新闻榜；"
+            "东方财富综合人气为官方榜单、低频更新"
+        )
 
     def _set_window_hours(self, hours: int) -> None:
         self.settings.window_hours = hours
@@ -1041,9 +1265,11 @@ class MainWindow(QMainWindow):
             return
         source_index = self.proxy_model.mapToSource(index)
         row = self.table_model.row_at(source_index.row())
-        if row:
+        if isinstance(row, RankingRow):
             dialog = ArticleDetailDialog(row, self.snapshot.events, self)
             dialog.exec()
+        elif isinstance(row, PopularityRankRow) and row.url:
+            QDesktopServices.openUrl(QUrl(row.url))
 
     def clear_local_data(self) -> None:
         if self._thread and self._thread.isRunning():
@@ -1063,11 +1289,16 @@ class MainWindow(QMainWindow):
         self.table_model.set_rows([])
         self._set_industry_filter_options([])
         self.content_stack.setCurrentWidget(self.empty_state)
-        self.window_label.setText("尚无本地快照 · 点击刷新新闻开始采集")
+        self.window_label.setText("尚无本地快照 · 点击刷新数据开始采集")
         self.stats_label.setText("")
-        self.stocks_metric.set_value("—", "等待刷新")
-        self.events_metric.set_value("—", "等待刷新")
-        self.articles_metric.set_value("—", "等待刷新")
+        self.ths_card.set_value("—", "等待刷新")
+        self.pop_card.set_value("—", "等待刷新")
+        self.ths_card.set_selected(True)
+        self.pop_card.set_selected(False)
+        self.selected_source = "ths"
+        self.industry_label.setVisible(True)
+        self.industry_filter.setVisible(True)
+        self._update_rank_toggles()
         self._set_activity("本地数据已清除", active=False)
 
     def show_about(self) -> None:
@@ -1075,7 +1306,7 @@ class MainWindow(QMainWindow):
             self,
             f"关于 {APP_NAME}",
             f"<b>{APP_NAME} {APP_VERSION}</b><br><br>"
-            "基于同花顺公开新闻页面统计 A 股被提及的去重事件次数。<br>"
+            "基于同花顺公开新闻与东方财富官方公开人气榜，分别统计 A 股新闻事件与官方综合人气排名。<br>"
             "仅供信息整理，不构成投资建议。",
         )
 

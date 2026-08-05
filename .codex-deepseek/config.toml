@@ -1,0 +1,21 @@
+model = "deepseek-v4-flash"
+model_provider = "deepseek"
+model_reasoning_effort = "max"
+preferred_auth_method = "apikey"
+forced_login_method = "api"
+model_catalog_json = "models.json"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+[model_providers.deepseek]
+name = "DeepSeek"
+base_url = "https://api.deepseek.com/"
+env_key = "DEEPSEEK_API_KEY"
+env_key_instructions = "Set the DEEPSEEK_API_KEY environment variable to a DeepSeek API key."
+wire_api = "responses"
+
+[projects.'d:\projects\ashare-hot-pot']
+trust_level = "trusted"
+
+[windows]
+sandbox = "unelevated"

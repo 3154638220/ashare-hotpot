@@ -1,0 +1,8 @@
+{
+  "name": "ashare-hot-pot-codex-cli",
+  "private": true,
+  "description": "Project-local Codex CLI launcher dependency.",
+  "devDependencies": {
+    "@openai/codex": "0.146.0"
+  }
+}

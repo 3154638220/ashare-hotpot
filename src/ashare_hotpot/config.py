@@ -6,7 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
-APP_NAME = "A股新闻热度"
+APP_NAME = "A股热度"
 APP_SLUG = "AshareHotPot"
 APP_VERSION = "0.1.0"
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
@@ -49,6 +49,7 @@ class AppSettings:
     minimum_request_interval_seconds: float = 0.25
     request_retries: int = 3
     retention_days: int = 7
+    popularity_cache_minutes: int = 10
 
     @property
     def data_dir(self) -> Path:
@@ -65,4 +66,3 @@ class AppSettings:
     def ensure_directories(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.log_dir.mkdir(parents=True, exist_ok=True)
-

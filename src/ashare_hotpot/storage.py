@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import SHANGHAI_TZ
-from .models import ParsedArticle, Snapshot
+from .models import OfficialPopularitySnapshot, ParsedArticle, Snapshot
 
 
 SCHEMA = """
@@ -50,7 +50,43 @@ CREATE TABLE IF NOT EXISTS stock_industries (
     industry TEXT NOT NULL,
     updated_ts INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS guba_stock_catalog (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    updated_ts INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS guba_posts (
+    post_id TEXT PRIMARY KEY,
+    code TEXT NOT NULL,
+    stock_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    published_ts INTEGER NOT NULL,
+    author TEXT NOT NULL,
+    comment_count INTEGER NOT NULL,
+    fetched_ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_guba_posts_published ON guba_posts(published_ts);
+CREATE INDEX IF NOT EXISTS idx_guba_posts_code_published ON guba_posts(code, published_ts DESC);
+
+CREATE TABLE IF NOT EXISTS guba_scan_state (
+    code TEXT PRIMARY KEY,
+    scanned_ts INTEGER NOT NULL,
+    pages_scanned INTEGER NOT NULL,
+    reached_cutoff INTEGER NOT NULL,
+    error TEXT
+);
+
+CREATE TABLE IF NOT EXISTS app_state (
+    key TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_ts INTEGER NOT NULL
+);
 """
+
+POPULARITY_STATE_KEY = "popularity"
 
 
 class Storage:
@@ -70,6 +106,29 @@ class Storage:
     def initialize(self) -> None:
         with self._connect() as connection:
             connection.executescript(SCHEMA)
+        self._migrate_legacy_guba()
+
+    def _migrate_legacy_guba(self) -> None:
+        """Clear the old per-stock-bar scan data and drop old self-computed guba
+        results from historical snapshots while keeping the news snapshot."""
+
+        with self._connect() as connection:
+            connection.execute("DELETE FROM guba_posts")
+            connection.execute("DELETE FROM guba_scan_state")
+            connection.execute("DELETE FROM guba_stock_catalog")
+            rows = connection.execute("SELECT id, payload_json FROM snapshots").fetchall()
+            for row in rows:
+                try:
+                    payload = json.loads(row["payload_json"])
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if "guba" not in payload:
+                    continue
+                payload.pop("guba")
+                connection.execute(
+                    "UPDATE snapshots SET payload_json=? WHERE id=?",
+                    (json.dumps(payload, ensure_ascii=False), row["id"]),
+                )
 
     def create_run(self, started_at: datetime) -> int:
         with self._connect() as connection:
@@ -225,6 +284,35 @@ class Storage:
                 rows,
             )
 
+    def set_popularity_state(self, snapshot: OfficialPopularitySnapshot, updated_at: datetime) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO app_state(key, value_json, updated_ts) VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value_json=excluded.value_json,
+                    updated_ts=excluded.updated_ts
+                """,
+                (
+                    POPULARITY_STATE_KEY,
+                    json.dumps(snapshot.to_dict(), ensure_ascii=False),
+                    int(updated_at.timestamp()),
+                ),
+            )
+
+    def get_popularity_state(self) -> OfficialPopularitySnapshot | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT value_json FROM app_state WHERE key=?",
+                (POPULARITY_STATE_KEY,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            return OfficialPopularitySnapshot.from_dict(json.loads(row["value_json"]))
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return None
+
     def purge_older_than(self, timestamp: datetime) -> None:
         cutoff = int(timestamp.timestamp())
         with self._connect() as connection:
@@ -236,5 +324,9 @@ class Storage:
             connection.execute("DELETE FROM refresh_runs")
             connection.execute("DELETE FROM articles")
             connection.execute("DELETE FROM stock_industries")
+            connection.execute("DELETE FROM guba_posts")
+            connection.execute("DELETE FROM guba_stock_catalog")
+            connection.execute("DELETE FROM guba_scan_state")
+            connection.execute("DELETE FROM app_state")
         with self._connect() as connection:
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")

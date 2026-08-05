@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+/.pytest_tmp_*/
 .coverage
 htmlcov/
 .venv/
@@ -12,3 +13,12 @@ dist/
 data/
 logs/
 
+# Codex keeps runtime state, logs, and session data here; only config.toml is tracked.
+.codex-deepseek/*
+!.codex-deepseek/
+!.codex-deepseek/config.toml
+!.codex-deepseek/models.json
+
+# Project-local Codex CLI installation and its npm cache.
+.codex-cli/node_modules/
+.codex-npm-cache/
