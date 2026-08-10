@@ -1,0 +1,59 @@
+{
+  "institution": {
+    "record_count": 200,
+    "labeled_entity_count": 2053,
+    "entity_precision": 0.9669515669515669,
+    "labeled_group_count": 2053,
+    "group_precision": 0.9995129079396006,
+    "named_institution_count": 1800,
+    "named_institution_recall": 0.8567016676961087,
+    "research_entity_precision": 0.9669515669515669,
+    "research_named_recall": 0.8567016676961087,
+    "all_org_entity_precision": 0.9157330735509012,
+    "all_org_named_recall": 0.91,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 200.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "200 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.9669515669515669,
+        "required": 0.92,
+        "passed": true,
+        "detail": "0.967 >= 0.92"
+      },
+      {
+        "name": "group_precision",
+        "value": 0.9995129079396006,
+        "required": 0.95,
+        "passed": true,
+        "detail": "1.000 >= 0.95"
+      },
+      {
+        "name": "named_institution_recall",
+        "value": 0.8567016676961087,
+        "required": 0.92,
+        "passed": false,
+        "detail": "0.857 >= 0.92"
+      },
+      {
+        "name": "all_org_entity_precision",
+        "value": 0.9157330735509012,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.916 >= 0.9"
+      },
+      {
+        "name": "all_org_named_recall",
+        "value": 0.91,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.910 >= 0.9"
+      }
+    ]
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "short_term": {
+    "event_cluster_count": 300,
+    "board_row_count": 48,
+    "precision_at_10": 1.0,
+    "top20_irrelevant_ratio": 0.0,
+    "top20_duplicate_ratio": 0.0,
+    "must_hit_recall": 0.4166666666666667,
+    "must_hit_count": 12,
+    "error_ledger": {
+      "counts": {
+        "type_error": 4,
+        "direction_error": 0,
+        "materiality_error": 1,
+        "duplicate_clustering": 0
+      },
+      "total_events": 300,
+      "samples": [
+        {
+          "event_id": "0178a2195f224c11bb52a69635cb477e",
+          "error_type": "type_error",
+          "canonical_title": "关于注销回购股份并减少注册资本暨通知债权人的公告"
+        },
+        {
+          "event_id": "12f8ee855d674809b0499ddd1e087593",
+          "error_type": "type_error",
+          "canonical_title": "中证鹏元关于关注广东宝莱特医用科技股份有限公司筹划控制权变更的公告"
+        },
+        {
+          "event_id": "5a44de6fecc147bd8cb598afd9da5edb",
+          "error_type": "type_error",
+          "canonical_title": "2026年半年度报告摘要"
+        },
+        {
+          "event_id": "83baa32c193d4279b1567baf843aefd1",
+          "error_type": "materiality_error",
+          "canonical_title": "关于控股股东、实际控制人增持公司股份计划实施完成的公告"
+        },
+        {
+          "event_id": "9c861caf8c9e44e7b597367fa9890b2b",
+          "error_type": "type_error",
+          "canonical_title": "天合光能股份有限公司2026年半年度报告摘要"
+        }
+      ]
+    },
+    "gates": [
+      {
+        "name": "event_cluster_set_size",
+        "value": 300.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "300 >= 300"
+      },
+      {
+        "name": "precision_at_10",
+        "value": 1.0,
+        "required": 0.8,
+        "passed": true,
+        "detail": "1.000 >= 0.8"
+      },
+      {
+        "name": "top20_irrelevant",
+        "value": 0.0,
+        "required": 0.1,
+        "passed": true,
+        "detail": "0.000 <= 0.1"
+      },
+      {
+        "name": "top20_duplicate",
+        "value": 0.0,
+        "required": 0.05,
+        "passed": true,
+        "detail": "0.000 <= 0.05"
+      },
+      {
+        "name": "must_hit_recall",
+        "value": 0.4166666666666667,
+        "required": 0.95,
+        "passed": false,
+        "detail": "0.417 >= 0.95"
+      }
+    ]
+  },
+  "institution": {
+    "record_count": 100,
+    "labeled_entity_count": 4070,
+    "entity_precision": 0.21081081081081082,
+    "labeled_group_count": 4070,
+    "group_precision": 0.9933660933660934,
+    "named_institution_count": 1159,
+    "named_institution_recall": 0.6971527178602244,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 100.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "100 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.21081081081081082,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.211 >= 0.9"
+      },
+      {
+        "name": "group_precision",
+        "value": 0.9933660933660934,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.993 >= 0.9"
+      },
+      {
+        "name": "named_institution_recall",
+        "value": 0.6971527178602244,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.697 >= 0.9"
+      }
+    ]
+  },
+  "discovery": {
+    "sample_count": 386,
+    "should_discover_count": 386,
+    "candidate_recall": 1.0,
+    "fixed_case_count": 5,
+    "fixed_case_misses": [],
+    "gates": [
+      {
+        "name": "discovery_set_size",
+        "value": 386.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "386 >= 300"
+      },
+      {
+        "name": "candidate_recall",
+        "value": 1.0,
+        "required": 0.95,
+        "passed": true,
+        "detail": "1.000 >= 0.95"
+      },
+      {
+        "name": "fixed_case_zero_miss",
+        "value": 0.0,
+        "required": 0.0,
+        "passed": true,
+        "detail": "零遗漏"
+      }
+    ]
+  }
+}

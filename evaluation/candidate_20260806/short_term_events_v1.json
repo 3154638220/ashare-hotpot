@@ -1,0 +1,2782 @@
+{
+  "schema_version": 1,
+  "kind": "short_term_events",
+  "meta": {
+    "exported_at": "2026-08-06T20:19:55.391432+08:00",
+    "database": "hotpot.db",
+    "seed": 20260806,
+    "event_cluster_count_total": 112,
+    "event_cluster_count_sampled": 112,
+    "signal_count": 3,
+    "min_event_clusters": 300
+  },
+  "board": [
+    {
+      "rank": 1,
+      "event_id": "68894fbdbc784c9fb91df89c18f23df0",
+      "stock_code": "300389",
+      "board": "confirmed_positive",
+      "score": 75.17,
+      "materiality_level": 2,
+      "certainty": 1.0,
+      "provisional": false,
+      "event_type": "major_contract",
+      "extractor_kind": "rules",
+      "relevant": null,
+      "duplicate": null
+    },
+    {
+      "rank": 2,
+      "event_id": "ed6909d25b4b4170b23a8e0779719829",
+      "stock_code": "300568",
+      "board": "potential_catalyst",
+      "score": 53.55,
+      "materiality_level": 1,
+      "certainty": 0.9,
+      "provisional": true,
+      "event_type": "buyback_or_increase",
+      "extractor_kind": "rules",
+      "relevant": null,
+      "duplicate": null
+    },
+    {
+      "rank": 3,
+      "event_id": "bb17cd01d0d0460d84f551891efa13a8",
+      "stock_code": "300389",
+      "board": "potential_catalyst",
+      "score": 41.7,
+      "materiality_level": 4,
+      "certainty": 0.45,
+      "provisional": true,
+      "event_type": "mna",
+      "extractor_kind": "rules",
+      "relevant": null,
+      "duplicate": null
+    }
+  ],
+  "events": [
+    {
+      "event_id": "02c7c982c6d04b5da026f3f76b57c8d3",
+      "stock_codes": [
+        "300894"
+      ],
+      "canonical_title": "北京德恒（杭州）律师事务所关于火星人厨具股份有限公司2026年第三次临时股东会的法律意见",
+      "first_seen_at": "2026-08-06T19:40:30+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462004",
+        "title": "北京德恒（杭州）律师事务所关于火星人厨具股份有限公司2026年第三次临时股东会的法律意见",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462004.PDF",
+        "published_at": "2026-08-06T19:40:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "0402553cf1414102a3b385e798debdd5",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "关于四会富仕电子科技股份有限公司申请向特定对象发行股票的审核问询函的回复（修订稿）（豁免版）",
+      "first_seen_at": "2026-08-06T19:22:27+08:00",
+      "last_seen_at": "2026-08-06T19:22:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461572",
+        "title": "关于四会富仕电子科技股份有限公司申请向特定对象发行股票的审核问询函的回复（修订稿）（豁免版）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461572.PDF",
+        "published_at": "2026-08-06T19:22:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "54c7abdf3a7d6b6b",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "ad0fe3a93d975068",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "069b13c52aa644a6aca92115e7285229",
+      "stock_codes": [
+        "003032"
+      ],
+      "canonical_title": "003032传智教育投资者关系管理信息20260804",
+      "first_seen_at": "2026-08-04T22:18:12+08:00",
+      "last_seen_at": "2026-08-04T22:18:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458645",
+        "title": "003032传智教育投资者关系管理信息20260804",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-04/1225458645.PDF",
+        "published_at": "2026-08-04T22:18:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "0d70ff164a304330848ef590437abcd3",
+      "stock_codes": [
+        "300689"
+      ],
+      "canonical_title": "国金证券股份有限公司关于深圳市澄天伟业科技股份有限公司向特定对象发行股票之发行保荐书（2026年半年度财务数据更新）",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462298",
+        "title": "国金证券股份有限公司关于深圳市澄天伟业科技股份有限公司向特定对象发行股票之发行保荐书（2026年半年度财务数据更新）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462298.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "78d256ab366df910",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "e0de0a55e665d369",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "0e328d05b58d4bb79f28dfceae713f9b",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "立信会计师事务所（特殊普通合伙）关于四会富仕电子科技股份有限公司申请向特定对象发行股票的审核问询函的回复（修订稿）（豁免版）",
+      "first_seen_at": "2026-08-06T19:22:29+08:00",
+      "last_seen_at": "2026-08-06T19:22:29+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461566",
+        "title": "立信会计师事务所（特殊普通合伙）关于四会富仕电子科技股份有限公司申请向特定对象发行股票的审核问询函的回复（修订稿）（豁免版）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461566.PDF",
+        "published_at": "2026-08-06T19:22:29+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "1925bfe5b462b60d",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "7c4705c0e4eeb53a",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "0ecaec38de8646d097a6a6639bb76d5e",
+      "stock_codes": [
+        "300007"
+      ],
+      "canonical_title": "300007汉威科技投资者关系管理信息20260804",
+      "first_seen_at": "2026-08-04T20:36:12+08:00",
+      "last_seen_at": "2026-08-04T20:36:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458585",
+        "title": "300007汉威科技投资者关系管理信息20260804",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-04/1225458585.PDF",
+        "published_at": "2026-08-04T20:36:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "1164efb57d184313bec51a91e19af5be",
+      "stock_codes": [
+        "300285"
+      ],
+      "canonical_title": "300285国瓷材料投资者关系管理信息20260805",
+      "first_seen_at": "2026-08-06T10:24:08+08:00",
+      "last_seen_at": "2026-08-06T10:24:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460933",
+        "title": "300285国瓷材料投资者关系管理信息20260805",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225460933.PDF",
+        "published_at": "2026-08-06T10:24:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "118d3e90469e471a9853b924b9f5db87",
+      "stock_codes": [
+        "300491"
+      ],
+      "canonical_title": "第五届董事会第二十一次会议决议公告",
+      "first_seen_at": "2026-08-06T19:40:30+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461991",
+        "title": "第五届董事会第二十一次会议决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461991.PDF",
+        "published_at": "2026-08-06T19:40:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "1448ef9355cb49c5a76357911eb5a25b",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "向不特定对象发行可转换公司债券方案的论证分析报告（修订稿）",
+      "first_seen_at": "2026-08-06T19:40:20+08:00",
+      "last_seen_at": "2026-08-06T19:40:20+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462228",
+        "title": "向不特定对象发行可转换公司债券方案的论证分析报告（修订稿）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462228.PDF",
+        "published_at": "2026-08-06T19:40:20+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "1715389697597cbf",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "d5dceaf0e2d33beb",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "145fa987986641e29c0f0c9ca9027006",
+      "stock_codes": [
+        "002572"
+      ],
+      "canonical_title": "2026年8月6日投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T17:58:11+08:00",
+      "last_seen_at": "2026-08-06T17:58:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462000",
+        "title": "2026年8月6日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462000.PDF",
+        "published_at": "2026-08-06T17:58:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "16d0c04e208d44cbbfec7447faf32c8c",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "第五届董事会第十次会议决议公告",
+      "first_seen_at": "2026-08-06T19:40:30+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462061",
+        "title": "第五届董事会第十次会议决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462061.PDF",
+        "published_at": "2026-08-06T19:40:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "1b126063b1254cc8a9f94bbcda3a55d7",
+      "stock_codes": [
+        "300689"
+      ],
+      "canonical_title": "关于向特定对象发行股票的募集说明书等申请文件更新的提示性公告",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462295",
+        "title": "关于向特定对象发行股票的募集说明书等申请文件更新的提示性公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462295.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 2,
+      "evidence": [
+        {
+          "evidence_id": "1d97b7f7fe55fb30",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "dc499416c4ac20a3",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "1b252140ed384b65b015fff0a0e80672",
+      "stock_codes": [
+        "002152"
+      ],
+      "canonical_title": "2026年8月5日投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T19:43:00+08:00",
+      "last_seen_at": "2026-08-06T19:43:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461142",
+        "title": "2026年8月5日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461142.PDF",
+        "published_at": "2026-08-06T19:43:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "1ca7d72b54f144dcb9ad1d8837755a98",
+      "stock_codes": [
+        "002746"
+      ],
+      "canonical_title": "2026年08月06日投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T16:40:01+08:00",
+      "last_seen_at": "2026-08-06T16:40:01+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461191",
+        "title": "2026年08月06日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461191.PDF",
+        "published_at": "2026-08-06T16:40:01+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "1cdfbcd9666248d980072475d4db0b5b",
+      "stock_codes": [
+        "300491"
+      ],
+      "canonical_title": "关于不向下修正通合转债转股价格的公告",
+      "first_seen_at": "2026-08-06T19:40:11+08:00",
+      "last_seen_at": "2026-08-06T19:40:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461990",
+        "title": "关于不向下修正通合转债转股价格的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461990.PDF",
+        "published_at": "2026-08-06T19:40:11+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "2030a8b761d44cafb371f854b1292a3a",
+      "stock_codes": [
+        "301156"
+      ],
+      "canonical_title": "关于控股股东、实际控制人及其一致行动人权益变动触及1%及5%整数倍的公告",
+      "first_seen_at": "2026-08-06T19:30:29+08:00",
+      "last_seen_at": "2026-08-06T19:30:29+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462469",
+        "title": "关于控股股东、实际控制人及其一致行动人权益变动触及1%及5%整数倍的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462469.PDF",
+        "published_at": "2026-08-06T19:30:29+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "3b6748f37b52c1f7",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "adbae554ea50505c",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "21311835f56845d8a79fdcb04b8327b4",
+      "stock_codes": [
+        "301085"
+      ],
+      "canonical_title": "2026年8月4日投资者关系活动记录表",
+      "first_seen_at": "2026-08-04T22:02:12+08:00",
+      "last_seen_at": "2026-08-04T22:02:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458638",
+        "title": "2026年8月4日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-04/1225458638.PDF",
+        "published_at": "2026-08-04T22:02:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "216c89331c57413c8b2ff36099c39947",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "2026年限制性股票激励计划实施考核管理办法",
+      "first_seen_at": "2026-08-06T19:16:27+08:00",
+      "last_seen_at": "2026-08-06T19:16:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462347",
+        "title": "2026年限制性股票激励计划实施考核管理办法",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462347.PDF",
+        "published_at": "2026-08-06T19:16:27+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "2509420b911c4e1a970295a6a8ca5a3d",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "关于向2026年限制性股票激励计划激励对象授予限制性股票的公告",
+      "first_seen_at": "2026-08-06T19:40:11+08:00",
+      "last_seen_at": "2026-08-06T19:40:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462065",
+        "title": "关于向2026年限制性股票激励计划激励对象授予限制性股票的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462065.PDF",
+        "published_at": "2026-08-06T19:40:11+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "77a7446a41fac842",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "d71bcb0d675f8b44",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "2af094cbe2bb44329c9edf87b12e13aa",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "董事会薪酬与考核委员会关于2026年限制性股票激励计划激励对象名单(授予日)的核查意见",
+      "first_seen_at": "2026-08-06T19:40:11+08:00",
+      "last_seen_at": "2026-08-06T19:40:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462060",
+        "title": "董事会薪酬与考核委员会关于2026年限制性股票激励计划激励对象名单(授予日)的核查意见",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462060.PDF",
+        "published_at": "2026-08-06T19:40:11+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "4318b7ecb94110d8",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "499e7deb0c6ad110",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "2c02c87a7a944c489de5e557dc54400c",
+      "stock_codes": [
+        "300277"
+      ],
+      "canonical_title": "300277汽轮科技投资者关系管理信息20260804",
+      "first_seen_at": "2026-08-04T19:30:12+08:00",
+      "last_seen_at": "2026-08-04T19:30:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458406",
+        "title": "300277汽轮科技投资者关系管理信息20260804",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-04/1225458406.PDF",
+        "published_at": "2026-08-04T19:30:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "2df80616654549419ed38093c9b14155",
+      "stock_codes": [
+        "300866"
+      ],
+      "canonical_title": "H股公告-翌日披露报表",
+      "first_seen_at": "2026-08-06T19:16:30+08:00",
+      "last_seen_at": "2026-08-06T19:16:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462359",
+        "title": "H股公告-翌日披露报表",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462359.PDF",
+        "published_at": "2026-08-06T19:16:30+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "2f29e3282f244dd09d885a41c712f916",
+      "stock_codes": [
+        "600483"
+      ],
+      "canonical_title": "【2026年7月】投资者关系活动记录表",
+      "first_seen_at": "2026-08-04T18:23:00+08:00",
+      "last_seen_at": "2026-08-04T18:23:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776504",
+        "title": "【2026年7月】投资者关系活动记录表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608041729037142572061.docx",
+        "published_at": "2026-08-04T18:23:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "349af74b114e43bf8341094ea56082da",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "2026年员工持股计划（草案）摘要",
+      "first_seen_at": "2026-08-06T19:16:29+08:00",
+      "last_seen_at": "2026-08-06T19:16:29+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462341",
+        "title": "2026年员工持股计划（草案）摘要",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462341.PDF",
+        "published_at": "2026-08-06T19:16:29+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "377ad459ba794255877639a76c389887",
+      "stock_codes": [
+        "603998"
+      ],
+      "canonical_title": "方盛制药：投资者关系活动记录表（2026-014）",
+      "first_seen_at": "2026-08-06T17:06:14+08:00",
+      "last_seen_at": "2026-08-06T17:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1777264",
+        "title": "方盛制药：投资者关系活动记录表（2026-014）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/20260806153605882497660.doc",
+        "published_at": "2026-08-06T17:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "4081babb8a174aec92dd38ad51c2d84a",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "董事会薪酬与考核委员会关于2026年限制性股票激励计划相关事项的核查意见",
+      "first_seen_at": "2026-08-06T19:16:30+08:00",
+      "last_seen_at": "2026-08-06T19:16:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462349",
+        "title": "董事会薪酬与考核委员会关于2026年限制性股票激励计划相关事项的核查意见",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462349.PDF",
+        "published_at": "2026-08-06T19:16:30+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "4243ea7a1102494e80627e347fd57deb",
+      "stock_codes": [
+        "002158"
+      ],
+      "canonical_title": "2026年7月1日-7月24日投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T11:36:12+08:00",
+      "last_seen_at": "2026-08-05T11:36:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458731",
+        "title": "2026年7月1日-7月24日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225458731.PDF",
+        "published_at": "2026-08-05T11:36:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "455a3aadd1a6410a82fa4cad311d426c",
+      "stock_codes": [
+        "301121"
+      ],
+      "canonical_title": "关于部分首次公开发行前已发行股份上市流通的提示性公告",
+      "first_seen_at": "2026-08-06T19:38:27+08:00",
+      "last_seen_at": "2026-08-06T19:38:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461938",
+        "title": "关于部分首次公开发行前已发行股份上市流通的提示性公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461938.PDF",
+        "published_at": "2026-08-06T19:38:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "145ef80fe9389401",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "b654bc07c539843e",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "45918da0031c44fe98ff98a19a191345",
+      "stock_codes": [
+        "688368"
+      ],
+      "canonical_title": "上海晶丰明源半导体股份有限公司投资者关系活动记录表（2026年8月5日）",
+      "first_seen_at": "2026-08-06T17:06:14+08:00",
+      "last_seen_at": "2026-08-06T17:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1777270",
+        "title": "上海晶丰明源半导体股份有限公司投资者关系活动记录表（2026年8月5日）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080615460371026683496.doc",
+        "published_at": "2026-08-06T17:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "4f0ee3b81ac8472ca6e65e4002a176d4",
+      "stock_codes": [
+        "300866"
+      ],
+      "canonical_title": "H股公告-截至2026年7月31日止之股份发行人的证券变动月报表",
+      "first_seen_at": "2026-08-06T19:16:27+08:00",
+      "last_seen_at": "2026-08-06T19:16:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462358",
+        "title": "H股公告-截至2026年7月31日止之股份发行人的证券变动月报表",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462358.PDF",
+        "published_at": "2026-08-06T19:16:27+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "520b4bad9f2c4f3283bbdd4f0772c149",
+      "stock_codes": [
+        "300689"
+      ],
+      "canonical_title": "深圳市澄天伟业科技股份有限公司2026年度向特定对象发行A股股票募集说明书(申报稿)（2026年半年度财务数据更新）",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462297",
+        "title": "深圳市澄天伟业科技股份有限公司2026年度向特定对象发行A股股票募集说明书(申报稿)（2026年半年度财务数据更新）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462297.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "09d03506bf54c8d7",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "47af52fecd4d7172",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "53b0822fe8f0469a8ec5059a6b4dc0e2",
+      "stock_codes": [
+        "300272"
+      ],
+      "canonical_title": "关于回购股份事项前十大股东和前十大无限售条件股东持股情况的公告",
+      "first_seen_at": "2026-08-06T19:38:27+08:00",
+      "last_seen_at": "2026-08-06T19:38:29+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461942",
+        "title": "关于回购股份事项前十大股东和前十大无限售条件股东持股情况的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461942.PDF",
+        "published_at": "2026-08-06T19:38:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 2,
+      "evidence": [
+        {
+          "evidence_id": "82ff1077baa64e0f",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": "回购"
+        },
+        {
+          "evidence_id": "d11272c6812a5c67",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "549a869aa3454125ae7928d35d2d6dad",
+      "stock_codes": [
+        "300689"
+      ],
+      "canonical_title": "北京市金杜律师事务所关于深圳市澄天伟业科技股份有限公司2026年度向特定对象发行A股股票之补充法律意见书（一）",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462300",
+        "title": "北京市金杜律师事务所关于深圳市澄天伟业科技股份有限公司2026年度向特定对象发行A股股票之补充法律意见书（一）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462300.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "18b8da9b0f959265",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "93798cefbd02d22a",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "571d09ac5826434b8735136e48aeed53",
+      "stock_codes": [
+        "301368"
+      ],
+      "canonical_title": "投资者关系活动记录表（2026-005）",
+      "first_seen_at": "2026-08-05T16:12:08+08:00",
+      "last_seen_at": "2026-08-05T16:12:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458907",
+        "title": "投资者关系活动记录表（2026-005）",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225458907.PDF",
+        "published_at": "2026-08-05T16:12:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "58b4a8c2dfaa41a9ae56cbdc7a8c8fb6",
+      "stock_codes": [
+        "300298"
+      ],
+      "canonical_title": "2026年8月4日投资者关系活动记录表",
+      "first_seen_at": "2026-08-04T23:59:59+08:00",
+      "last_seen_at": "2026-08-04T23:59:59+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458642",
+        "title": "2026年8月4日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-04/1225458642.PDF",
+        "published_at": "2026-08-04T23:59:59+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "5b6c93c7116b4200b3964c378063063f",
+      "stock_codes": [
+        "688392"
+      ],
+      "canonical_title": "投资者关系活动记录表（2026.7.30）",
+      "first_seen_at": "2026-08-05T09:44:00+08:00",
+      "last_seen_at": "2026-08-05T09:44:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776107",
+        "title": "投资者关系活动记录表（2026.7.30）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080317340081828016595.docx",
+        "published_at": "2026-08-05T09:44:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "60c2d823727a4079aadd29b2f1cca227",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "湖南启元律师事务所关于广东创世纪智能装备集团股份有限公司2026年员工持股计划的法律意见书",
+      "first_seen_at": "2026-08-06T19:16:30+08:00",
+      "last_seen_at": "2026-08-06T19:16:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462344",
+        "title": "湖南启元律师事务所关于广东创世纪智能装备集团股份有限公司2026年员工持股计划的法律意见书",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462344.PDF",
+        "published_at": "2026-08-06T19:16:30+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "68894fbdbc784c9fb91df89c18f23df0",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "向不特定对象发行可转换公司债券募集资金使用的可行性分析报告（修订稿）",
+      "first_seen_at": "2026-08-06T19:40:20+08:00",
+      "last_seen_at": "2026-08-06T19:40:20+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462227",
+        "title": "向不特定对象发行可转换公司债券募集资金使用的可行性分析报告（修订稿）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462227.PDF",
+        "published_at": "2026-08-06T19:40:20+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "006dde5af2a1c016",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "68c9eee639a74064a94be6cb3810e2fb",
+      "stock_codes": [
+        "688692"
+      ],
+      "canonical_title": "达梦数据投资者关系活动记录表2026-008",
+      "first_seen_at": "2026-08-05T14:47:00+08:00",
+      "last_seen_at": "2026-08-06T16:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776499",
+        "title": "达梦数据投资者关系活动记录表2026-008",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080417180441497121341.docx",
+        "published_at": "2026-08-05T14:47:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 2,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "690364e3b84c4188ab4260de4d33ff4b",
+      "stock_codes": [
+        "003013"
+      ],
+      "canonical_title": "2026年8月6日投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T18:00:11+08:00",
+      "last_seen_at": "2026-08-06T18:00:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462007",
+        "title": "2026年8月6日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462007.PDF",
+        "published_at": "2026-08-06T18:00:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "69dd18f784ba423da78e1ffe4eff9393",
+      "stock_codes": [
+        "002568"
+      ],
+      "canonical_title": "2026年8月5日投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T20:43:34+08:00",
+      "last_seen_at": "2026-08-05T20:43:34+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225459040",
+        "title": "2026年8月5日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225459040.PDF",
+        "published_at": "2026-08-05T20:43:34+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "6ad1f60d32544921ba1656cfbf805a6e",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "向不特定对象发行可转换公司债券预案（修订稿）",
+      "first_seen_at": "2026-08-06T19:40:20+08:00",
+      "last_seen_at": "2026-08-06T19:40:20+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462229",
+        "title": "向不特定对象发行可转换公司债券预案（修订稿）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462229.PDF",
+        "published_at": "2026-08-06T19:40:20+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "39385f324a44a471",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "987515875a913717",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "6b909cb28f9445f3975268a111c20813",
+      "stock_codes": [
+        "600089"
+      ],
+      "canonical_title": "特变电工股份有限公司投资者关系活动记录表（2026年7月）",
+      "first_seen_at": "2026-08-05T09:04:00+08:00",
+      "last_seen_at": "2026-08-05T09:04:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776525",
+        "title": "特变电工股份有限公司投资者关系活动记录表（2026年7月）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080419570211502886446.docx",
+        "published_at": "2026-08-05T09:04:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "6cb4d45396a44058b2adf559dcf910fa",
+      "stock_codes": [
+        "301121"
+      ],
+      "canonical_title": "国金证券股份有限公司关于重庆市紫建电子股份有限公司部分首次公开发行前已发行股份上市流通的核查意见",
+      "first_seen_at": "2026-08-06T19:38:30+08:00",
+      "last_seen_at": "2026-08-06T19:38:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461939",
+        "title": "国金证券股份有限公司关于重庆市紫建电子股份有限公司部分首次公开发行前已发行股份上市流通的核查意见",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461939.PDF",
+        "published_at": "2026-08-06T19:38:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "b516ec259bacdcdf",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "d4138ee269912d18",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "6f1714b5f4fd447a99c5dc270889d8eb",
+      "stock_codes": [
+        "300768"
+      ],
+      "canonical_title": "300768迪普科技投资者关系管理信息20260806",
+      "first_seen_at": "2026-08-06T18:22:11+08:00",
+      "last_seen_at": "2026-08-06T18:22:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462179",
+        "title": "300768迪普科技投资者关系管理信息20260806",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462179.PDF",
+        "published_at": "2026-08-06T18:22:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "7086824aa60a4c28a210dc072eee9f71",
+      "stock_codes": [
+        "002182"
+      ],
+      "canonical_title": "2026年8月4日投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T17:02:08+08:00",
+      "last_seen_at": "2026-08-05T17:02:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225459253",
+        "title": "2026年8月4日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225459253.PDF",
+        "published_at": "2026-08-05T17:02:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "72f2d349d0a24a74abb7dd470616291b",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "关于调整2026年限制性股票激励计划相关事项的公告",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462063",
+        "title": "关于调整2026年限制性股票激励计划相关事项的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462063.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 2,
+      "evidence": [
+        {
+          "evidence_id": "1ce2f107ac0b3245",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "84162b2e3b59d12e",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "7612eee7abec49a888d359471747cf38",
+      "stock_codes": [
+        "605376"
+      ],
+      "canonical_title": "江苏博迁新材料股份有限公司投资者关系活动记录表（2026年7月）",
+      "first_seen_at": "2026-08-05T15:26:00+08:00",
+      "last_seen_at": "2026-08-05T15:26:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776485",
+        "title": "江苏博迁新材料股份有限公司投资者关系活动记录表（2026年7月）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080416410151841036966.pdf",
+        "published_at": "2026-08-05T15:26:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "767b9c1e4e3e419b9161716f5f278715",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "募集说明书（修订稿）（豁免版）",
+      "first_seen_at": "2026-08-06T19:22:30+08:00",
+      "last_seen_at": "2026-08-06T19:22:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461569",
+        "title": "募集说明书（修订稿）（豁免版）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461569.PDF",
+        "published_at": "2026-08-06T19:22:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "109c8d75a81c8f87",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "74f4336db8f4f291",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "78f932dab30c417ca7939f0163947971",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "关于调整向不特定对象发行可转换公司债券方案及相关文件修订情况说明的公告",
+      "first_seen_at": "2026-08-06T19:40:20+08:00",
+      "last_seen_at": "2026-08-06T19:40:20+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462226",
+        "title": "关于调整向不特定对象发行可转换公司债券方案及相关文件修订情况说明的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462226.PDF",
+        "published_at": "2026-08-06T19:40:20+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "793aaab934b145a38ad28df83bcd6569",
+      "stock_codes": [
+        "300705"
+      ],
+      "canonical_title": "300705九典制药投资者关系管理信息20260805",
+      "first_seen_at": "2026-08-05T18:48:08+08:00",
+      "last_seen_at": "2026-08-05T18:48:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460333",
+        "title": "300705九典制药投资者关系管理信息20260805",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225460333.PDF",
+        "published_at": "2026-08-05T18:48:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "7993e351df90499baefa81f130e05f26",
+      "stock_codes": [
+        "301275"
+      ],
+      "canonical_title": "关于为全资子公司提供担保的进展公告",
+      "first_seen_at": "2026-08-06T20:02:30+08:00",
+      "last_seen_at": "2026-08-06T20:02:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462571",
+        "title": "关于为全资子公司提供担保的进展公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462571.PDF",
+        "published_at": "2026-08-06T20:02:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "1daef16699c2a5f1",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "7b8fe38c5e7ba91f",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "7bd2c7e742f2444e9a983362eaf6e589",
+      "stock_codes": [
+        "002906"
+      ],
+      "canonical_title": "002906华阳集团投资者关系管理信息20260805",
+      "first_seen_at": "2026-08-06T17:48:11+08:00",
+      "last_seen_at": "2026-08-06T17:48:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461917",
+        "title": "002906华阳集团投资者关系管理信息20260805",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461917.PDF",
+        "published_at": "2026-08-06T17:48:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "7bd4e287462542bcb43c390d85ccbfc8",
+      "stock_codes": [
+        "688609"
+      ],
+      "canonical_title": "广东九联科技股份有限公司投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T19:06:14+08:00",
+      "last_seen_at": "2026-08-06T19:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1775066",
+        "title": "广东九联科技股份有限公司投资者关系活动记录表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202607/20260730183505971483673.pdf",
+        "published_at": "2026-08-06T19:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "7e3b130898b044748f5e3b21935911d9",
+      "stock_codes": [
+        "300750"
+      ],
+      "canonical_title": "H股公告（截至2026年7月31日止股份发行人的证券变动月报表）",
+      "first_seen_at": "2026-08-06T19:40:30+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462006",
+        "title": "H股公告（截至2026年7月31日止股份发行人的证券变动月报表）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462006.PDF",
+        "published_at": "2026-08-06T19:40:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "83be2abbf3b94844bf24ab6f2406dee6",
+      "stock_codes": [
+        "301613"
+      ],
+      "canonical_title": "关于收到中国证券监督管理委员会《关于同意重庆新铝时代科技股份有限公司发行股份购买资产并募集配套资金注册的批复》的公告",
+      "first_seen_at": "2026-08-06T19:48:11+08:00",
+      "last_seen_at": "2026-08-06T19:48:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462545",
+        "title": "关于收到中国证券监督管理委员会《关于同意重庆新铝时代科技股份有限公司发行股份购买资产并募集配套资金注册的批复》的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462545.PDF",
+        "published_at": "2026-08-06T19:48:11+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "56a2e2ad4c1b9cb4",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "fe1cda1f5425e577",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": "本公司及董事会全"
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "84580e23d4c04823ac812980cdff4264",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "2026年限制性股票激励计划（草案）",
+      "first_seen_at": "2026-08-06T19:16:30+08:00",
+      "last_seen_at": "2026-08-06T19:16:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462346",
+        "title": "2026年限制性股票激励计划（草案）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462346.PDF",
+        "published_at": "2026-08-06T19:16:30+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "8496b936eca1477c977d606fbd84f557",
+      "stock_codes": [
+        "300144"
+      ],
+      "canonical_title": "关于实际控制人的一致行动人内部转让股份计划完成的公告",
+      "first_seen_at": "2026-08-06T19:48:27+08:00",
+      "last_seen_at": "2026-08-06T19:48:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462528",
+        "title": "关于实际控制人的一致行动人内部转让股份计划完成的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462528.PDF",
+        "published_at": "2026-08-06T19:48:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "9f3cf5c4c202df97",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "ce7379866e3a27c5",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "88a614a975be4c358cc706b87a4787a3",
+      "stock_codes": [
+        "301237"
+      ],
+      "canonical_title": "301237和顺科技投资者关系管理信息20260805",
+      "first_seen_at": "2026-08-05T21:26:08+08:00",
+      "last_seen_at": "2026-08-05T21:26:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460744",
+        "title": "301237和顺科技投资者关系管理信息20260805",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225460744.PDF",
+        "published_at": "2026-08-05T21:26:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "89dd41f23e8043adb6f742ed2e1c91f0",
+      "stock_codes": [
+        "300396"
+      ],
+      "canonical_title": "300396ST迪瑞投资者关系管理信息20260806",
+      "first_seen_at": "2026-08-06T17:28:11+08:00",
+      "last_seen_at": "2026-08-06T17:28:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461752",
+        "title": "300396ST迪瑞投资者关系管理信息20260806",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461752.PDF",
+        "published_at": "2026-08-06T17:28:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "8b7302a60317465aa01265fbee18ff96",
+      "stock_codes": [
+        "688785"
+      ],
+      "canonical_title": "深圳市恒运昌真空技术股份有限公司投资者关系活动记录表（2026-016）",
+      "first_seen_at": "2026-08-05T16:27:00+08:00",
+      "last_seen_at": "2026-08-05T16:27:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776800",
+        "title": "深圳市恒运昌真空技术股份有限公司投资者关系活动记录表（2026-016）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080515420101540990815.pdf",
+        "published_at": "2026-08-05T16:27:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "8ec1da35813641eca8abb8d066fe2a96",
+      "stock_codes": [
+        "603456"
+      ],
+      "canonical_title": "浙江九洲药业股份有限公司投资者关系活动记录表 20260804",
+      "first_seen_at": "2026-08-05T09:34:00+08:00",
+      "last_seen_at": "2026-08-05T09:34:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776467",
+        "title": "浙江九洲药业股份有限公司投资者关系活动记录表 20260804",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080415560111307485353.docx",
+        "published_at": "2026-08-05T09:34:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "974fef8151444d9e8a2becf73f715791",
+      "stock_codes": [
+        "600163"
+      ],
+      "canonical_title": "【2026年6-7月】投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T19:27:14+08:00",
+      "last_seen_at": "2026-08-06T19:27:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1777340",
+        "title": "【2026年6-7月】投资者关系活动记录表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080618150551466867622.pdf",
+        "published_at": "2026-08-06T19:27:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "97a36e76980546fdb7a3d8133a5c9b9f",
+      "stock_codes": [
+        "300131"
+      ],
+      "canonical_title": "2026年8月5日投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T19:00:08+08:00",
+      "last_seen_at": "2026-08-05T19:00:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460362",
+        "title": "2026年8月5日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225460362.PDF",
+        "published_at": "2026-08-05T19:00:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "97e1ea9c3b404514a3498f8cbe0637e3",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "关于控股股东部分质押股份办理延期购回手续的公告",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462062",
+        "title": "关于控股股东部分质押股份办理延期购回手续的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462062.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "960d365bbab3ff0d",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "f48896c2de906a66",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "998113ba50d946099317a58c4ea64c20",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "上市保荐书",
+      "first_seen_at": "2026-08-06T19:22:27+08:00",
+      "last_seen_at": "2026-08-06T19:22:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461567",
+        "title": "上市保荐书",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461567.PDF",
+        "published_at": "2026-08-06T19:22:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "4ea4dc5eae4873fd",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "56f011a383d4a138",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "9cf7ccae20874be8aa7c30c4cd8fec66",
+      "stock_codes": [
+        "002312"
+      ],
+      "canonical_title": "002312川发龙蟒投资者关系管理信息20260804",
+      "first_seen_at": "2026-08-04T19:54:12+08:00",
+      "last_seen_at": "2026-08-04T19:54:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458524",
+        "title": "002312川发龙蟒投资者关系管理信息20260804",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-04/1225458524.PDF",
+        "published_at": "2026-08-04T19:54:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a123a90362a14d9080f6357037d4eb40",
+      "stock_codes": [
+        "300894"
+      ],
+      "canonical_title": "2026年第三次临时股东会决议公告",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462003",
+        "title": "2026年第三次临时股东会决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462003.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a159e57b60f44cfa9006694c1df642f3",
+      "stock_codes": [
+        "603341"
+      ],
+      "canonical_title": "上海龙旗科技股份有限公司投资者关系活动记录表（编号：2026-008)",
+      "first_seen_at": "2026-08-05T14:46:00+08:00",
+      "last_seen_at": "2026-08-05T14:46:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776120",
+        "title": "上海龙旗科技股份有限公司投资者关系活动记录表（编号：2026-008)",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608031827057769878028.pdf",
+        "published_at": "2026-08-05T14:46:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a24f122f0968426dabd206f6976125f4",
+      "stock_codes": [
+        "688683"
+      ],
+      "canonical_title": "广东莱尔新材料科技股份有限公司投资者关系活动记录表（2026-005）",
+      "first_seen_at": "2026-08-06T10:06:14+08:00",
+      "last_seen_at": "2026-08-06T10:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776942",
+        "title": "广东莱尔新材料科技股份有限公司投资者关系活动记录表（2026-005）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608060920017180353493.docx",
+        "published_at": "2026-08-06T10:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a4a6a3a3ebd34c179f8db77d15ae40cb",
+      "stock_codes": [
+        "300894"
+      ],
+      "canonical_title": "第四届董事会第十次会议决议公告",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462002",
+        "title": "第四届董事会第十次会议决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462002.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a617df080db04361b5f8d39a103385dd",
+      "stock_codes": [
+        "688220"
+      ],
+      "canonical_title": "2026年7月30日至8月4日投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T15:33:00+08:00",
+      "last_seen_at": "2026-08-05T15:33:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776507",
+        "title": "2026年7月30日至8月4日投资者关系活动记录表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080417540281490388759.pdf",
+        "published_at": "2026-08-05T15:33:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a7255b2f7988457abe1aa4f5b1a56eed",
+      "stock_codes": [
+        "300408"
+      ],
+      "canonical_title": "H股公告-翌日披露报表",
+      "first_seen_at": "2026-08-06T19:30:27+08:00",
+      "last_seen_at": "2026-08-06T19:30:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461868",
+        "title": "H股公告-翌日披露报表",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461868.PDF",
+        "published_at": "2026-08-06T19:30:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a7f58010188c455d8e085c946b217510",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "创世纪：上市公司股权激励计划自查表（2026）",
+      "first_seen_at": "2026-08-06T19:16:27+08:00",
+      "last_seen_at": "2026-08-06T19:16:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462348",
+        "title": "创世纪：上市公司股权激励计划自查表（2026）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462348.PDF",
+        "published_at": "2026-08-06T19:16:27+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "a8fd483b07594656800ac54f8046ea6a",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "关于向特定对象发行股票申请文件的审核问询函回复及募集说明书等申请文件更新的提示性公告",
+      "first_seen_at": "2026-08-06T19:22:30+08:00",
+      "last_seen_at": "2026-08-06T19:22:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461571",
+        "title": "关于向特定对象发行股票申请文件的审核问询函回复及募集说明书等申请文件更新的提示性公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461571.PDF",
+        "published_at": "2026-08-06T19:22:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "8c4635b8ada1d180",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "cc8991812875790c",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "aa89ec2902e0473483b0774f74a870e5",
+      "stock_codes": [
+        "300568"
+      ],
+      "canonical_title": "北京市金杜（深圳）律师事务所关于深圳市星源材质科技股份有限公司2026年第四次临时股东会之法律意见书",
+      "first_seen_at": "2026-08-06T19:24:29+08:00",
+      "last_seen_at": "2026-08-06T19:24:29+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461866",
+        "title": "北京市金杜（深圳）律师事务所关于深圳市星源材质科技股份有限公司2026年第四次临时股东会之法律意见书",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461866.PDF",
+        "published_at": "2026-08-06T19:24:29+08:00",
+        "parse_status": "empty_text"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "ac947e78b6564f439be0902d9112f97a",
+      "stock_codes": [
+        "300100"
+      ],
+      "canonical_title": "第七届董事会第三十次会议决议公告",
+      "first_seen_at": "2026-08-06T19:48:30+08:00",
+      "last_seen_at": "2026-08-06T19:48:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462531",
+        "title": "第七届董事会第三十次会议决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462531.PDF",
+        "published_at": "2026-08-06T19:48:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "aaefe777d88be8b8",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "ff8009c19ed0e9d4",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "af48cc3517c7445ead9b826402181bd4",
+      "stock_codes": [
+        "300689"
+      ],
+      "canonical_title": "深圳市澄天伟业科技股份有限公司最近一年的财务报告及其审计报告以及最近一期的财务报告",
+      "first_seen_at": "2026-08-06T19:40:27+08:00",
+      "last_seen_at": "2026-08-06T19:40:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462296",
+        "title": "深圳市澄天伟业科技股份有限公司最近一年的财务报告及其审计报告以及最近一期的财务报告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462296.PDF",
+        "published_at": "2026-08-06T19:40:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "2cbac3840dc6e636",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "be742472c4c1ec62",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "b3316c88a43f4367a465eff3e646e721",
+      "stock_codes": [
+        "300209"
+      ],
+      "canonical_title": "行云科技股份有限公司投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T17:02:08+08:00",
+      "last_seen_at": "2026-08-06T17:26:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225459255",
+        "title": "行云科技股份有限公司投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225459255.PDF",
+        "published_at": "2026-08-05T17:02:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 2,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "b3ce2ba1427a469aa20b25ad21aa0b5f",
+      "stock_codes": [
+        "603459"
+      ],
+      "canonical_title": "江西红板科技股份有限公司投资者关系活动记录表0806",
+      "first_seen_at": "2026-08-06T18:06:14+08:00",
+      "last_seen_at": "2026-08-06T18:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1777290",
+        "title": "江西红板科技股份有限公司投资者关系活动记录表0806",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608061622000533054084.docx",
+        "published_at": "2026-08-06T18:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "b6e9f2753fb84ca79c70bb25db046758",
+      "stock_codes": [
+        "688231"
+      ],
+      "canonical_title": "投资者关系活动记录表(2026年7月)",
+      "first_seen_at": "2026-08-05T09:34:00+08:00",
+      "last_seen_at": "2026-08-05T09:34:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776106",
+        "title": "投资者关系活动记录表(2026年7月)",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080317280291671181061.pdf",
+        "published_at": "2026-08-05T09:34:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "b7effb87ac544e78a890a1cdcf1c22f7",
+      "stock_codes": [
+        "300894"
+      ],
+      "canonical_title": "关于向下修正“火星转债”转股价格的公告",
+      "first_seen_at": "2026-08-06T19:40:30+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462001",
+        "title": "关于向下修正“火星转债”转股价格的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462001.PDF",
+        "published_at": "2026-08-06T19:40:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "236f46d85357701e",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "bec8b93721d82048",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "bb17cd01d0d0460d84f551891efa13a8",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "第六届董事会第七次会议决议公告",
+      "first_seen_at": "2026-08-06T19:40:20+08:00",
+      "last_seen_at": "2026-08-06T19:40:20+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462231",
+        "title": "第六届董事会第七次会议决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462231.PDF",
+        "published_at": "2026-08-06T19:40:20+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "2d060441ce7f63e1",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "6b5c68ae63aa5155",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "bee6dc7fe01b43b09732ea0b7e97d44b",
+      "stock_codes": [
+        "688218"
+      ],
+      "canonical_title": "江苏北人688218-投资者关系活动表",
+      "first_seen_at": "2026-08-05T14:46:00+08:00",
+      "last_seen_at": "2026-08-05T14:46:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776111",
+        "title": "江苏北人688218-投资者关系活动表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080317500341301644511.doc",
+        "published_at": "2026-08-05T14:46:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "c439f1e23e854bd2b7c072b8d1dbfcee",
+      "stock_codes": [
+        "600066"
+      ],
+      "canonical_title": "宇通客车股份有限公司投资者关系活动记录表（2026年7月）",
+      "first_seen_at": "2026-08-04T17:38:00+08:00",
+      "last_seen_at": "2026-08-04T17:38:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776486",
+        "title": "宇通客车股份有限公司投资者关系活动记录表（2026年7月）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608041644049689965660.pdf",
+        "published_at": "2026-08-04T17:38:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "c6fde68ff59d49819851ae34a2987251",
+      "stock_codes": [
+        "300582"
+      ],
+      "canonical_title": "关于与关联方共同投资设立合资公司暨关联交易的进展公告",
+      "first_seen_at": "2026-08-06T19:40:22+08:00",
+      "last_seen_at": "2026-08-06T19:40:22+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462232",
+        "title": "关于与关联方共同投资设立合资公司暨关联交易的进展公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462232.PDF",
+        "published_at": "2026-08-06T19:40:22+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "1b7f46f22b7a25ee",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "3cc48dd4313b9506",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "c7b671fad80c49489cd20f1e0e74a12c",
+      "stock_codes": [
+        "603228"
+      ],
+      "canonical_title": "景旺电子：投资者关系活动记录表（202607）",
+      "first_seen_at": "2026-08-06T10:06:14+08:00",
+      "last_seen_at": "2026-08-06T10:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776445",
+        "title": "景旺电子：投资者关系活动记录表（202607）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608041506045237266107.pdf",
+        "published_at": "2026-08-06T10:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "c8eb073fd23d41618c300c44bdcd4cdd",
+      "stock_codes": [
+        "688313"
+      ],
+      "canonical_title": "仕佳光子：投资者关系活动记录表2026-004",
+      "first_seen_at": "2026-08-05T15:35:00+08:00",
+      "last_seen_at": "2026-08-06T09:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776112",
+        "title": "仕佳光子：投资者关系活动记录表2026-004",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080317550021252701792.docx",
+        "published_at": "2026-08-05T15:35:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 3,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "cacad46b004849d1afc62ce41e78ee66",
+      "stock_codes": [
+        "688266"
+      ],
+      "canonical_title": "泽璟制药投资者关系活动记录表（2026年8月3日-8月5日）",
+      "first_seen_at": "2026-08-06T18:06:14+08:00",
+      "last_seen_at": "2026-08-06T18:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1777310",
+        "title": "泽璟制药投资者关系活动记录表（2026年8月3日-8月5日）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080617110181420573303.docx",
+        "published_at": "2026-08-06T18:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "cb4b98d7a64d40f19f0becb1be2166f5",
+      "stock_codes": [
+        "300100"
+      ],
+      "canonical_title": "关于股份回购方案的公告",
+      "first_seen_at": "2026-08-06T19:48:11+08:00",
+      "last_seen_at": "2026-08-06T19:48:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462530",
+        "title": "关于股份回购方案的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462530.PDF",
+        "published_at": "2026-08-06T19:48:11+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 2,
+      "evidence": [
+        {
+          "evidence_id": "17bc03a47e40562e",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": "回购"
+        },
+        {
+          "evidence_id": "973629d264135a3d",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "cc4cc23cd5ff4d69a169ceac52696c36",
+      "stock_codes": [
+        "301565"
+      ],
+      "canonical_title": "中仑新材料股份有限公司投资者关系活动记录表（向不特定对象发行可转换公司债券网上路演）",
+      "first_seen_at": "2026-08-05T14:48:12+08:00",
+      "last_seen_at": "2026-08-05T14:48:12+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225458782",
+        "title": "中仑新材料股份有限公司投资者关系活动记录表（向不特定对象发行可转换公司债券网上路演）",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225458782.PDF",
+        "published_at": "2026-08-05T14:48:12+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "cc75d0ebfd3b49e1900d62920ae18519",
+      "stock_codes": [
+        "002516"
+      ],
+      "canonical_title": "002516旷达科技投资者关系管理信息20260806",
+      "first_seen_at": "2026-08-06T10:26:08+08:00",
+      "last_seen_at": "2026-08-06T10:26:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460935",
+        "title": "002516旷达科技投资者关系管理信息20260806",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225460935.PDF",
+        "published_at": "2026-08-06T10:26:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "cdf6dfacd5e14f02863f876af6055e2d",
+      "stock_codes": [
+        "688726"
+      ],
+      "canonical_title": "投资者关系活动记录表（2026年7月31日-8月5日）",
+      "first_seen_at": "2026-08-06T09:06:14+08:00",
+      "last_seen_at": "2026-08-06T09:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776851",
+        "title": "投资者关系活动记录表（2026年7月31日-8月5日）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608051814008293407318.pdf",
+        "published_at": "2026-08-06T09:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "cf230dcf0a194527808ba28bcb1ba103",
+      "stock_codes": [
+        "600459"
+      ],
+      "canonical_title": "贵研铂业投资者关系活动记录表（2026年6月1日-6月30日）",
+      "first_seen_at": "2026-08-05T14:33:00+08:00",
+      "last_seen_at": "2026-08-05T14:33:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776295",
+        "title": "贵研铂业投资者关系活动记录表（2026年6月1日-6月30日）",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/2026080410390371713803411.pdf",
+        "published_at": "2026-08-05T14:33:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "d01deb062d6441d8b638cf3f51d78030",
+      "stock_codes": [
+        "300083"
+      ],
+      "canonical_title": "董事会薪酬与考核委员会关于2026年员工持股计划相关事项的核查意见",
+      "first_seen_at": "2026-08-06T19:16:27+08:00",
+      "last_seen_at": "2026-08-06T19:16:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462343",
+        "title": "董事会薪酬与考核委员会关于2026年员工持股计划相关事项的核查意见",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462343.PDF",
+        "published_at": "2026-08-06T19:16:27+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "d0c4071ecdb74ce8999034be13da4dd5",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "补充法律意见书（一）",
+      "first_seen_at": "2026-08-06T19:22:11+08:00",
+      "last_seen_at": "2026-08-06T19:22:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461570",
+        "title": "补充法律意见书（一）",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461570.PDF",
+        "published_at": "2026-08-06T19:22:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "d1a3fd8a88af4cc988f9210f3c694fee",
+      "stock_codes": [
+        "600926"
+      ],
+      "canonical_title": "杭州银行股份有限公司投资者关系活动记录表2026-06",
+      "first_seen_at": "2026-08-06T17:06:14+08:00",
+      "last_seen_at": "2026-08-06T17:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1777268",
+        "title": "杭州银行股份有限公司投资者关系活动记录表2026-06",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608061542021475728666.pdf",
+        "published_at": "2026-08-06T17:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "d49e8f9b5c864555806515f01cc1bf42",
+      "stock_codes": [
+        "300852"
+      ],
+      "canonical_title": "证券发行保荐书",
+      "first_seen_at": "2026-08-06T19:22:27+08:00",
+      "last_seen_at": "2026-08-06T19:22:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461568",
+        "title": "证券发行保荐书",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461568.PDF",
+        "published_at": "2026-08-06T19:22:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "360ab63c6552c10c",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "a51fc8157647d795",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "d5a63794584d49a8a46ec08f86188f36",
+      "stock_codes": [
+        "300423"
+      ],
+      "canonical_title": "关于终止重大资产重组投资者说明会的投资者活动记录表",
+      "first_seen_at": "2026-08-06T17:42:11+08:00",
+      "last_seen_at": "2026-08-06T17:42:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461883",
+        "title": "关于终止重大资产重组投资者说明会的投资者活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461883.PDF",
+        "published_at": "2026-08-06T17:42:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "d7cdd94663c34c1bbb1bb74559f70f13",
+      "stock_codes": [
+        "601168"
+      ],
+      "canonical_title": "20260803银华基金、东方财富证券调研记录表",
+      "first_seen_at": "2026-08-05T09:09:00+08:00",
+      "last_seen_at": "2026-08-05T09:09:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776516",
+        "title": "20260803银华基金、东方财富证券调研记录表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608041850048536967902.pdf",
+        "published_at": "2026-08-05T09:09:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "da03a97594bb48be866e729744546303",
+      "stock_codes": [
+        "300506"
+      ],
+      "canonical_title": "关于对外投资购买股权暨签署《股份转让协议》的公告",
+      "first_seen_at": "2026-08-06T19:30:27+08:00",
+      "last_seen_at": "2026-08-06T19:30:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462467",
+        "title": "关于对外投资购买股权暨签署《股份转让协议》的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462467.PDF",
+        "published_at": "2026-08-06T19:30:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "b6cb6805386287ad",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "c5e53c4afb810507",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "dc2018c10f5f4f4d94b18b68d991a4db",
+      "stock_codes": [
+        "000725"
+      ],
+      "canonical_title": "039-2026年8月5日投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T10:24:09+08:00",
+      "last_seen_at": "2026-08-06T10:24:09+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460934",
+        "title": "039-2026年8月5日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225460934.PDF",
+        "published_at": "2026-08-06T10:24:09+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "ed6909d25b4b4170b23a8e0779719829",
+      "stock_codes": [
+        "300568"
+      ],
+      "canonical_title": "2026年第四次临时股东会决议公告",
+      "first_seen_at": "2026-08-06T19:24:11+08:00",
+      "last_seen_at": "2026-08-06T19:24:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461865",
+        "title": "2026年第四次临时股东会决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461865.PDF",
+        "published_at": "2026-08-06T19:24:11+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "bcc0f4649540e635",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "eda8fe673f8a49789d4c7dd5b374077d",
+      "stock_codes": [
+        "300281"
+      ],
+      "canonical_title": "2026年8月6日投资者关系活动记录表",
+      "first_seen_at": "2026-08-06T17:24:11+08:00",
+      "last_seen_at": "2026-08-06T17:24:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461697",
+        "title": "2026年8月6日投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461697.PDF",
+        "published_at": "2026-08-06T17:24:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "f5509c8796f64ed2a19e8baf87f00190",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "关于向不特定对象发行可转换公司债券摊薄即期回报与填补措施及相关主体承诺（修订稿）的公告",
+      "first_seen_at": "2026-08-06T19:40:20+08:00",
+      "last_seen_at": "2026-08-06T19:40:20+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462230",
+        "title": "关于向不特定对象发行可转换公司债券摊薄即期回报与填补措施及相关主体承诺（修订稿）的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462230.PDF",
+        "published_at": "2026-08-06T19:40:20+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "0e5a992569be820f",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "80a2fb1c2c20bb7f",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "f5e4879cb1974839bcd7d1d0093bfe36",
+      "stock_codes": [
+        "688586"
+      ],
+      "canonical_title": "江航装备2026年7月投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T09:34:00+08:00",
+      "last_seen_at": "2026-08-05T09:34:00+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1775530",
+        "title": "江航装备2026年7月投资者关系活动记录表",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202607/2026073117100331213906696.pdf",
+        "published_at": "2026-08-05T09:34:00+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "f699dc8c04fc4d7da0fe628902b0e993",
+      "stock_codes": [
+        "688516"
+      ],
+      "canonical_title": "投资者关系活动记录表688516无锡奥特维科技股份有限公司-20260804",
+      "first_seen_at": "2026-08-06T19:06:14+08:00",
+      "last_seen_at": "2026-08-06T19:06:14+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "ssepub:1776452",
+        "title": "投资者关系活动记录表688516无锡奥特维科技股份有限公司-20260804",
+        "source_url": "https://sns.sseinfo.com/ajax/feeds.do",
+        "document_url": "https://sns.sseinfo.com/resources/images/upload/202608/202608041508041828425952.doc",
+        "published_at": "2026-08-06T19:06:14+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "f8115ba8259944c6b8616d905f60706d",
+      "stock_codes": [
+        "300408"
+      ],
+      "canonical_title": "关于部分行使超额配股权、稳定价格行动及稳定价格期间结束的公告",
+      "first_seen_at": "2026-08-06T19:30:27+08:00",
+      "last_seen_at": "2026-08-06T19:30:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461867",
+        "title": "关于部分行使超额配股权、稳定价格行动及稳定价格期间结束的公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461867.PDF",
+        "published_at": "2026-08-06T19:30:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "3c189b74010790df",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": "股股"
+        }
+      ],
+      "label": null
+    },
+    {
+      "event_id": "fa06962626e8412abc7f1a39933e1efa",
+      "stock_codes": [
+        "001359"
+      ],
+      "canonical_title": "投资者关系活动记录表",
+      "first_seen_at": "2026-08-05T18:06:08+08:00",
+      "last_seen_at": "2026-08-05T18:06:08+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225460061",
+        "title": "投资者关系活动记录表",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-05/1225460061.PDF",
+        "published_at": "2026-08-05T18:06:08+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "fae71d02e88d49a9af93c8526f711225",
+      "stock_codes": [
+        "002787"
+      ],
+      "canonical_title": "002787华源控股投资者关系管理信息20260806",
+      "first_seen_at": "2026-08-06T17:12:11+08:00",
+      "last_seen_at": "2026-08-06T17:12:11+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225461538",
+        "title": "002787华源控股投资者关系管理信息20260806",
+        "source_url": "https://www.cninfo.com.cn/new/disclosure",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225461538.PDF",
+        "published_at": "2026-08-06T17:12:11+08:00",
+        "parse_status": "metadata_only"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "fdfaa7a86bd649cda362133c0ffcacb8",
+      "stock_codes": [
+        "300748"
+      ],
+      "canonical_title": "H股公告-证券变动月报表",
+      "first_seen_at": "2026-08-06T19:40:30+08:00",
+      "last_seen_at": "2026-08-06T19:40:30+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462164",
+        "title": "H股公告-证券变动月报表",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462164.PDF",
+        "published_at": "2026-08-06T19:40:30+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [],
+      "label": null
+    },
+    {
+      "event_id": "ffd6bce3d46a419a96e3bf11206b4d8c",
+      "stock_codes": [
+        "300506"
+      ],
+      "canonical_title": "第五届董事会第十三次会议决议公告",
+      "first_seen_at": "2026-08-06T19:30:27+08:00",
+      "last_seen_at": "2026-08-06T19:30:27+08:00",
+      "historical_similar_event_id": null,
+      "representative": {
+        "document_id": "cninfo:1225462468",
+        "title": "第五届董事会第十三次会议决议公告",
+        "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+        "document_url": "https://static.cninfo.com.cn/finalpage/2026-08-06/1225462468.PDF",
+        "published_at": "2026-08-06T19:30:27+08:00",
+        "parse_status": "parsed"
+      },
+      "document_count": 1,
+      "evidence": [
+        {
+          "evidence_id": "8feefa75d5073d24",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        },
+        {
+          "evidence_id": "fcf7c454f90e8baf",
+          "source_url": "https://www.cninfo.com.cn/new/hisAnnouncement/query",
+          "excerpt": ""
+        }
+      ],
+      "label": null
+    }
+  ],
+  "must_hit": []
+}

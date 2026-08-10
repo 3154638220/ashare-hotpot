@@ -68,6 +68,38 @@ def test_parse_legacy_article_and_beijing_stock() -> None:
     assert {stock.code for stock in article.stocks} == {"688001", "920047"}
 
 
+def test_parse_article_skips_newsroom_byline_stock_link() -> None:
+    html = """
+    <html><body>
+      <div class="news-content-parsed">
+        <p><span><a class="link-wrapper link-blue"
+          href="https://stockpage.10jqka.com.cn/300033">同花顺（300033）</a></span>
+          金融研究中心08月05日讯，有投资者向
+          <span><a class="link-wrapper link-blue"
+          href="https://stockpage.10jqka.com.cn/000858">五粮液（000858）</a></span>
+          提问， 大国浓香，和美五粮的广告语公司是否考虑过修改。
+        </p>
+      </div>
+    </body></html>
+    """
+    article = parse_article_detail(_candidate(), html)
+    assert [(stock.code, stock.name) for stock in article.stocks] == [("000858", "五粮液")]
+
+
+def test_parse_article_keeps_real_tonghuashun_mention() -> None:
+    html = """
+    <html><body>
+      <div class="news-content-parsed">
+        <p>某公司产品与<span><a class="link-wrapper link-blue"
+          href="https://stockpage.10jqka.com.cn/300033">同花顺（300033）</a></span>
+          达成合作，业务进展顺利。</p>
+      </div>
+    </body></html>
+    """
+    article = parse_article_detail(_candidate(), html)
+    assert [stock.code for stock in article.stocks] == ["300033"]
+
+
 def test_parse_article_excludes_brokerage_as_rating_source() -> None:
     candidate = ArticleCandidate(
         seq="rating",

@@ -1,0 +1,26 @@
+MISS 3 (LLM must_hit 未上榜；其中 parse_status 非 parsed 的不进入召回分母):
+MISS 89b3fd55 | engine=unsupported_event_type/neutral M=0 C=0.0 | 兆易创新投资者关系活动记录表（2026-002）
+   rationale: 业绩预告大幅增长，归母净利润同比增1099%，属业绩上修，重大利好。
+MISS abf3fb64 | engine=buyback_or_increase/positive M=4 C=0.45 | 晶华微关于实际控制人及其控制的企业增持公司股份计划的公告
+   rationale: 实际控制人增持计划，属于回购增持，正向，重大性4，确定性0.45，但计划阶段，确定性不足，故非必达。
+MISS b677f4ec | engine=None/None M=None C=None | 中国铝业2025年年度权益分派实施公告
+   rationale: 年度权益分派实施，股东回报，正向。
+   [parse_status=metadata_only -> 无正文证据，按 plan §6 不进入必达召回分母]
+
+unparsed must_hit excluded from denominator (M2 附件队列缺口):
+  8d4ba0c3 | metadata_only | 2026年半年度募集资金存放、管理与实际使用情况的专项报告
+  a73bb0fe | metadata_only | 北京福元医药股份有限公司关于利塞膦酸钠片获得药品注册证书的公告
+  b677f4ec | metadata_only | 中国铝业2025年年度权益分派实施公告
+
+error 0178a219 | type_error | engine=buyback_or_increase/positive M=1 C=0.9 | 关于注销回购股份并减少注册资本暨通知债权人的公告
+   rationale: 回购股份注销属行政管理，非股东回报，引擎误判为回购增持。
+error 5a44de6f | direction_error | engine=earnings_upgrade/negative M=0 C=1.0 | 2026年半年度报告摘要
+   rationale: 半年度报告净利润下滑，负面事件，非正向。
+error 94afd085 | type_error | engine=financing_completion/positive M=0 C=1.0 | 关于发行境外上市股份（H股）获得中国证监会备案的公告
+   rationale: H股发行获备案，非融资完成，仅审批阶段，中性。
+error b809d6d2 | direction_error | engine=earnings_upgrade/positive M=1 C=1.0 | 2026年半年度报告摘要
+   rationale: 半年度报告摘要，无业绩数据，无法判断正向，中性。
+error bb596196 | direction_error | engine=earnings_upgrade/positive M=2 C=1.0 | 2026年半年度报告
+   rationale: 半年度报告显示净利润为负，虽同比减亏但非正向业绩，方向判断错误。
+error d478faa5 | direction_error | engine=earnings_upgrade/negative M=0 C=1.0 | 晶华微2026年半年度报告
+   rationale: 半年度报告显示归母净利润为负，虽减亏但非正向业绩事件，方向判断错误。

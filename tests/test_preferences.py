@@ -30,3 +30,17 @@ def test_ui_preferences_are_typed_clamped_and_persistent(tmp_path) -> None:
     restored.reset_table_layouts()
     assert restored.header_state("ths").isEmpty()
     assert restored.sort("ths") == (0, 0)
+
+
+def test_legacy_ths_last_source_maps_to_news(tmp_path) -> None:
+    prefs = UiPreferences(tmp_path / "settings.ini")
+    prefs.settings.setValue("view/last_source", "ths")
+    prefs.sync()
+
+    restored = UiPreferences(tmp_path / "settings.ini")
+    assert restored.last_source == "news"
+
+    restored.last_source = "interaction"
+    assert restored.last_source == "interaction"
+    restored.last_source = "unknown"
+    assert restored.last_source == "interaction"

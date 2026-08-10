@@ -1,0 +1,44 @@
+MISS 0725a5c7 | engine=major_contract/positive M=1 C=0.9 | 五矿资本股份有限公司关于公司拟签订重大合同暨关联交易的公告
+   rationale: 拟签订21亿元永续债权投资重大合同，关联交易，尚需股东会审议，重大性高，确定性较高。
+MISS 19e19266 | engine=None/None M=None C=None | 创力集团关于向特定对象发行股票申请获得中国证券监督管理委员会同意注册批复的公告
+   rationale: 定增获证监会注册批复，属于融资完成，有明确正向机制，重大性2，确定性1。
+MISS 220d3d3e | engine=asset_disposal/positive M=0 C=0.45 | 临2026-027：中青旅关于公开挂牌出售资产的进展公告
+   rationale: 公开挂牌出售资产进展，资产处置有明确进展，正向机制。
+MISS 2cc1a7e8 | engine=None/None M=None C=None | 关于发行可转换公司债券及支付现金购买资产事项获得中国证监会同意注册批复的公告
+   rationale: 发行可转债购买资产获证监会注册批复，并购重组实质进展，重大利好。
+MISS 34df1e7d | engine=equity_incentive/negative M=0 C=0.45 | 康辰药业关于向2026年限制性股票激励计划激励对象首次授予限制性股票及调整授予价格的公告
+   rationale: 股权激励授予，有量化考核目标，正向机制，但引擎方向误判为负面。
+MISS 361bafc0 | engine=approval/negative M=0 C=1.0 | 恒瑞医药关于获得药品注册批准的公告
+   rationale: 药品注册批准属获批认证，正向事件，引擎方向误判为负面。
+MISS 4dc6092f | engine=None/None M=None C=None | 关于投资天津滨海新区46万千瓦风电项目的公告
+   rationale: 投资风电项目，产能投产类，重大性2，确定性1，正向。
+MISS 657fc553 | engine=None/None M=None C=None | 关于公司产品中选国家组织药品集中带量采购的公告
+   rationale: 产品中选国家集采属获批认证，明确正向机制，重大性高。
+MISS 65f827a2 | engine=unsupported_event_type/neutral M=0 C=0.0 | 002533金杯电工投资者关系管理信息20260731
+   rationale: 中标大唐集团框架采购属重大合同，引擎未识别类型。
+MISS 8d58cf3b | engine=None/None M=None C=None | 2026-046：关于收到业绩承诺补偿款的公告
+   rationale: 收到业绩承诺补偿款，属于补贴赔偿类，正向现金流入，重大性高。
+MISS 94afd085 | engine=unsupported_event_type/neutral M=0 C=0.0 | 关于发行境外上市股份（H股）获得中国证监会备案的公告
+   rationale: H股发行获证监会备案，融资完成，明确正向。
+MISS 9aa2a8ff | engine=None/None M=None C=None | 关于持股5%以上股东权益变动触及1%整数倍暨增持计划进展公告
+   rationale: 增持计划进展，股东增持属回购增持类，正向。
+MISS ad1263c8 | engine=unsupported_event_type/neutral M=0 C=0.0 | 东方证券股份有限公司关于发行股份及支付现金购买资产暨关联交易事项获得上海市国资委批复的公告
+   rationale: 发行股份购买资产获国资委批复，并购重组实质进展，正向。
+MISS b677f4ec | engine=None/None M=None C=None | 中国铝业2025年年度权益分派实施公告
+   rationale: 年度权益分派实施，现金分红属股东回报，正向机制明确。
+MISS c8d5da38 | engine=None/None M=None C=None | 关于江苏金海运科技有限公司业绩承诺诉讼的进展暨执行结案的公告
+   rationale: 业绩承诺诉讼执行结案，风险解除，正向机制明确。
+MISS e1b529a7 | engine=None/None M=None C=None | 关于公司及子公司近期获得资质情况的自愿披露公告
+   rationale: 自愿披露获得资质，属于获批认证，正向机制明确。
+MISS e517fdbe | engine=capacity_launch/positive M=1 C=0.45 | 关于硫磺渣综合利用8万吨/年保险粉升级改造项目投产的公告
+   rationale: 产能投产属十六类事件，明确正向，重大性1，确定性0.45，但已投产实质进展明确，可算必达。
+MISS f050cd55 | engine=mna/positive M=4 C=0.9 | 东睦股份关于设立孙公司并购买土地投资建设新科技项目的公告
+   rationale: 设立孙公司投资新项目，属产能投产类，重大性高，确定性高。
+MISS f3fc7a68 | engine=unsupported_event_type/neutral M=0 C=0.0 | 关于2023年、2025年限制性股票激励计划部分已授予但尚未解除限售的限制性股票回购注销完成的公告 (1)
+   rationale: 回购注销完成，属股东回报，正向，重大性高。
+
+direction errors:
+  34df1e7d | engine=equity_incentive/negative M=0 C=0.45 | 康辰药业关于向2026年限制性股票激励计划激励对象首次授予限制性股票及调整授予价格的公告
+  361bafc0 | engine=approval/negative M=0 C=1.0 | 恒瑞医药关于获得药品注册批准的公告
+  b4351203 | engine=earnings_upgrade/negative M=0 C=1.0 | 西安炬光科技股份有限公司2026年半年度报告摘要
+  ba7da0f7 | engine=earnings_upgrade/positive M=1 C=1.0 | 八一钢铁2026年半年度报告

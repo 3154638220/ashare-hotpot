@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="en"><head><meta name="catalogs" content="01009005000"> <meta name="publishedtype" content="1"> <meta name="filetype" content="0"> <meta name="pagetype" content="2"> <meta name="templateId" content="32cdf56e9d0b4369af12f31cfc7b30ed"> <meta content="text/html; charset=utf-8" http-equiv="Content-Type"> <title>
+            å½å®¶è½æºå±âææ°æä»¶
+        </title> <meta name="description" content=" "> <link href="http://www.nea.gov.cn/2015nyj/xinban/topbase.css?v1" rel="stylesheet"> <script type="text/javascript" src="http://www.nea.gov.cn/2015nyj/xinban/js/nyjcb_jQuery.js"></script> <script type="text/javascript" src="http://www.nea.gov.cn/2015nyj/xinban/js/nyjcb_vue.min.js"></script> <script type="text/javascript" src="http://www.nea.gov.cn/2015nyj/xinban/js/nyjcb_dw_es5_2023.js"></script> <style>
+        .sj {
+            float: right;
+            color: #595757;
+            display: inline;
+            float: right;
+            font-family: å®ä½;
+            font-size: 15px;
+            line-height: 30px;
+            width: 100px;
+        }
+
+        ul.list li:nth-child(5n) {
+            padding-bottom: 30px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 30px;
+        }
+        
+        ul.list li {
+            min-height: 40px;
+            height:auto;
+            overflow: hidden;
+        }
+
+    </style></head> <body><script src="http://www.nea.gov.cn/2015nyj/xinban/2024topnav.js" type="text/javascript"></script> <div class="nav"><ul><li style="width:400px">æ¨å½åæå¨çä½ç½®:
+                <a href="http://www.nea.gov.cn/index.htm" target="_blank" data="datasource:b4ae3efbfd3f4ffcb1bb211fa7bdb92d" datatype="ds" preview="ds_">é¦é¡µ</a>&gt;<span>ææ°æä»¶</span></li></ul></div> <div class="content"><div class="box01"><ul id="showData0" class="list" data="datasource:40d365c13659452aa06cdb7268d6192e" datatype="ds" preview="ds_"></ul> <div id="page_navigation" class="wPaginate8" style="text-align: center;"></div></div></div> <script src="http://www.nea.gov.cn/2015nyj/xinban/bottom.js" type="text/javascript"></script> <script>
+
+        window.onload = function () {
+            new Xhwpage({
+                parentNode: '#showData0',
+                btn: '.wPaginate8',
+                type: 'page',
+                template: ['<li v-for=\'(item,index) in datasource.datasource\' :key=\'index\'>',
+                    '                            <a :href="item.publishUrl" target="_blank" v-if="item.contentType != \'Link\' " v-html="item.showTitle"></a>',
+                    '                            <span v-else v-html="item.showTitle"></span>',
+                    '                            <span class="sj">',
+                    '                                {{item.publishTime|year}}-{{item.publishTime|month}}-{{item.publishTime|day}}',
+                    '                            </span>',
+                    '                        </li>'].join(""),
+
+                pageSize: 25,
+                showPagerSize: 5,
+                afterMounted: function () {
+                    //   console.log('afterMounted');
+                },
+                afterUpdated: function () {
+                    //   console.log('afterUpdated');
+                },
+            })
+        }
+    </script><script src="//imgs.news.cn/webdig/xinhua_webdig.js" language="javascript" type="text/javascript" async></script></body></html>

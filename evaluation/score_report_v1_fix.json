@@ -1,0 +1,77 @@
+{
+  "short_term": {
+    "event_cluster_count": 300,
+    "board_row_count": 46,
+    "precision_at_10": 1.0,
+    "top20_irrelevant_ratio": 0.0,
+    "top20_duplicate_ratio": 0.0,
+    "must_hit_recall": 0.5,
+    "gates": [
+      {
+        "name": "event_cluster_set_size",
+        "value": 300.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "300 >= 300"
+      },
+      {
+        "name": "precision_at_10",
+        "value": 1.0,
+        "required": 0.8,
+        "passed": true,
+        "detail": "1.000 >= 0.8"
+      },
+      {
+        "name": "top20_irrelevant",
+        "value": 0.0,
+        "required": 0.1,
+        "passed": true,
+        "detail": "0.000 <= 0.1"
+      },
+      {
+        "name": "top20_duplicate",
+        "value": 0.0,
+        "required": 0.05,
+        "passed": true,
+        "detail": "0.000 <= 0.05"
+      },
+      {
+        "name": "must_hit_recall",
+        "value": 0.5,
+        "required": 0.95,
+        "passed": false,
+        "detail": "0.500 >= 0.95"
+      }
+    ]
+  },
+  "institution": {
+    "record_count": 100,
+    "labeled_entity_count": 1438,
+    "entity_precision": 0.8831710709318498,
+    "labeled_group_count": 1438,
+    "group_precision": 0.9965229485396384,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 100.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "100 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.8831710709318498,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.883 >= 0.9"
+      },
+      {
+        "name": "group_precision",
+        "value": 0.9965229485396384,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.997 >= 0.9"
+      }
+    ]
+  }
+}

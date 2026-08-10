@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover - development fallback
     def similarity_ratio(left: str, right: str) -> float:
         return SequenceMatcher(None, left, right).ratio() * 100
 
-from .models import NewsEvent, ParsedArticle, StockMention
+from .models import InteractionRecord, NewsEvent, ParsedArticle, StockMention
 
 
 LEADING_SOURCE_PATTERN = re.compile(r"^(?:[【\[][^】\]]{1,30}[】\]]|快讯[：:]?|消息[：:]?)")
@@ -22,6 +22,44 @@ TITLE_NOISE_PATTERN = re.compile(r"[\s\u3000，,。.!！?？:：;；'\"“”‘
 def normalize_title(title: str) -> str:
     value = LEADING_SOURCE_PATTERN.sub("", title.strip())
     return TITLE_NOISE_PATTERN.sub("", value).lower()
+
+
+def normalize_question(question: str) -> str:
+    """Normalize an investor question for exact-match deduplication."""
+
+    value = re.sub(r"[\s\u3000]+", "", question or "")
+    value = re.sub(r"[，。！？、；：,.!?;:（）()【】\[\]]+", "", value)
+    return value.lower()
+
+
+def dedupe_interactions(records: list[InteractionRecord]) -> list[InteractionRecord]:
+    """Deduplicate interaction records by platform Q&A id and by identical
+    normalized questions for the same stock within 24 hours.
+
+    口径（v2）：统计时间定义为回复时间，因此 24 小时窗口按回复时间判定；
+    未回复的记录不参与去重（它们不会进入榜单）。The first occurrence of a
+    duplicated question (earliest reply time) is kept so the count is stable
+    across refreshes.
+    """
+
+    by_id: dict[str, InteractionRecord] = {}
+    for record in records:
+        by_id.setdefault(record.record_id, record)
+
+    replied = [record for record in by_id.values() if record.reply_time is not None]
+    unique: list[InteractionRecord] = []
+    seen_questions: dict[tuple[str, str], InteractionRecord] = {}
+    for record in sorted(replied, key=lambda item: item.reply_time or item.question_time):
+        key = (record.code, normalize_question(record.question))
+        previous = seen_questions.get(key)
+        previous_time = previous.reply_time or previous.question_time if previous else None
+        record_time = record.reply_time or record.question_time
+        if previous_time is not None and abs(record_time - previous_time) <= timedelta(hours=24):
+            continue
+        seen_questions[key] = record
+        unique.append(record)
+    unique.sort(key=lambda item: item.reply_time or item.question_time, reverse=True)
+    return unique
 
 
 def _stock_map(articles: list[ParsedArticle]) -> dict[str, StockMention]:
@@ -95,4 +133,3 @@ class Deduplicator:
             event.event_id = _event_id(event.articles)
         events.sort(key=lambda item: item.published_at, reverse=True)
         return events
-

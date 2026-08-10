@@ -1,0 +1,159 @@
+{
+  "short_term": {
+    "event_cluster_count": 600,
+    "board_row_count": 43,
+    "precision_at_10": 1.0,
+    "top20_irrelevant_ratio": 0.0,
+    "top20_duplicate_ratio": 0.0,
+    "must_hit_recall": 0.8823529411764706,
+    "must_hit_count": 17,
+    "unparsed_must_hit_count": 3,
+    "error_ledger": {
+      "counts": {
+        "type_error": 2,
+        "direction_error": 4,
+        "materiality_error": 0,
+        "duplicate_clustering": 0
+      },
+      "total_events": 600,
+      "samples": [
+        {
+          "event_id": "0178a2195f224c11bb52a69635cb477e",
+          "error_type": "type_error",
+          "canonical_title": "关于注销回购股份并减少注册资本暨通知债权人的公告"
+        },
+        {
+          "event_id": "5a44de6fecc147bd8cb598afd9da5edb",
+          "error_type": "direction_error",
+          "canonical_title": "2026年半年度报告摘要"
+        },
+        {
+          "event_id": "94afd085bfee4cd6a7a9364cf06ef260",
+          "error_type": "type_error",
+          "canonical_title": "关于发行境外上市股份（H股）获得中国证监会备案的公告"
+        },
+        {
+          "event_id": "b809d6d2635a4e059e15db483a030aaa",
+          "error_type": "direction_error",
+          "canonical_title": "2026年半年度报告摘要"
+        },
+        {
+          "event_id": "bb596196b6a6408a9fa161e8088105ce",
+          "error_type": "direction_error",
+          "canonical_title": "2026年半年度报告"
+        },
+        {
+          "event_id": "d478faa5407940b28a80a596aaa9ae7a",
+          "error_type": "direction_error",
+          "canonical_title": "晶华微2026年半年度报告"
+        }
+      ]
+    },
+    "gates": [
+      {
+        "name": "event_cluster_set_size",
+        "value": 600.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "600 >= 300"
+      },
+      {
+        "name": "precision_at_10",
+        "value": 1.0,
+        "required": 0.9,
+        "passed": true,
+        "detail": "1.000 >= 0.9"
+      },
+      {
+        "name": "top20_irrelevant",
+        "value": 0.0,
+        "required": 0.05,
+        "passed": true,
+        "detail": "0.000 <= 0.05"
+      },
+      {
+        "name": "top20_duplicate",
+        "value": 0.0,
+        "required": 0.0,
+        "passed": true,
+        "detail": "0.000 <= 0.0"
+      },
+      {
+        "name": "must_hit_recall",
+        "value": 0.8823529411764706,
+        "required": 0.85,
+        "passed": true,
+        "detail": "0.882 >= 0.85"
+      }
+    ]
+  },
+  "institution": {
+    "record_count": 200,
+    "labeled_entity_count": 1803,
+    "entity_precision": 0.7775929007210205,
+    "labeled_group_count": 1803,
+    "group_precision": 0.9955629506378258,
+    "named_institution_count": 2059,
+    "named_institution_recall": 0.662457503642545,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 200.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "200 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.7775929007210205,
+        "required": 0.92,
+        "passed": false,
+        "detail": "0.778 >= 0.92"
+      },
+      {
+        "name": "group_precision",
+        "value": 0.9955629506378258,
+        "required": 0.95,
+        "passed": true,
+        "detail": "0.996 >= 0.95"
+      },
+      {
+        "name": "named_institution_recall",
+        "value": 0.662457503642545,
+        "required": 0.92,
+        "passed": false,
+        "detail": "0.662 >= 0.92"
+      }
+    ]
+  },
+  "discovery": {
+    "sample_count": 386,
+    "should_discover_count": 386,
+    "candidate_recall": 1.0,
+    "fixed_case_count": 5,
+    "fixed_case_misses": [],
+    "gates": [
+      {
+        "name": "discovery_set_size",
+        "value": 386.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "386 >= 300"
+      },
+      {
+        "name": "candidate_recall",
+        "value": 1.0,
+        "required": 0.95,
+        "passed": true,
+        "detail": "1.000 >= 0.95"
+      },
+      {
+        "name": "fixed_case_zero_miss",
+        "value": 0.0,
+        "required": 0.0,
+        "passed": true,
+        "detail": "零遗漏"
+      }
+    ]
+  }
+}

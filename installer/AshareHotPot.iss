@@ -1,6 +1,6 @@
 #define MyAppName "A股热度"
 #define MyAppEnglishName "AshareHotPot"
-#define MyAppVersion "0.2.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "AshareHotPot"
 #define MyAppExeName "AshareHotPot.exe"
 
@@ -25,7 +25,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 VersionInfoVersion={#MyAppVersion}
 VersionInfoProductName={#MyAppName}
 VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription=A股新闻与官方人气热度桌面工具
+VersionInfoDescription=A股新闻、官方问答与机构调研研究信号桌面工具
 VersionInfoProductVersion={#MyAppVersion}
 SetupLogging=yes
 SetupIconFile=..\src\ashare_hotpot\assets\icons\app.ico

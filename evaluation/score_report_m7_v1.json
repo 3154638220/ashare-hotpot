@@ -1,0 +1,62 @@
+{
+  "institution": {
+    "record_count": 100,
+    "labeled_entity_count": 869,
+    "entity_precision": 0.9079401611047181,
+    "labeled_group_count": 869,
+    "group_precision": 1.0,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 100.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "100 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.9079401611047181,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.908 >= 0.9"
+      },
+      {
+        "name": "group_precision",
+        "value": 1.0,
+        "required": 0.9,
+        "passed": true,
+        "detail": "1.000 >= 0.9"
+      }
+    ]
+  },
+  "discovery": {
+    "sample_count": 352,
+    "should_discover_count": 352,
+    "candidate_recall": 1.0,
+    "fixed_case_count": 5,
+    "fixed_case_misses": [],
+    "gates": [
+      {
+        "name": "discovery_set_size",
+        "value": 352.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "352 >= 300"
+      },
+      {
+        "name": "candidate_recall",
+        "value": 1.0,
+        "required": 0.95,
+        "passed": true,
+        "detail": "1.000 >= 0.95"
+      },
+      {
+        "name": "fixed_case_zero_miss",
+        "value": 0.0,
+        "required": 0.0,
+        "passed": true,
+        "detail": "零遗漏"
+      }
+    ]
+  }
+}

@@ -8,6 +8,18 @@ from PySide6.QtCore import QByteArray, QSettings
 class UiPreferences:
     """Small, typed wrapper around the app-local Qt settings file."""
 
+    VALID_SOURCES = {
+        "news",
+        "interaction",
+        "pop",
+        "surge",
+        "confirm",
+        "catalyst",
+        "z20",
+        "persist60",
+        "persist120",
+    }
+
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path = path
@@ -49,11 +61,13 @@ class UiPreferences:
     @property
     def last_source(self) -> str:
         value = str(self.settings.value("view/last_source", "ths"))
-        return value if value in {"ths", "pop", "surge"} else "ths"
+        if value == "ths":  # legacy key from the single news-board era
+            value = "news"
+        return value if value in self.VALID_SOURCES else "news"
 
     @last_source.setter
     def last_source(self, value: str) -> None:
-        if value in {"ths", "pop", "surge"}:
+        if value in self.VALID_SOURCES:
             self.settings.setValue("view/last_source", value)
 
     @property
@@ -63,6 +77,16 @@ class UiPreferences:
     @detail_visible.setter
     def detail_visible(self, value: bool) -> None:
         self.settings.setValue("view/detail_visible", value)
+
+    @property
+    def persist_window(self) -> str:
+        value = str(self.settings.value("view/persist_window", "persist120"))
+        return value if value in {"persist60", "persist120"} else "persist120"
+
+    @persist_window.setter
+    def persist_window(self, value: str) -> None:
+        if value in {"persist60", "persist120"}:
+            self.settings.setValue("view/persist_window", value)
 
     @property
     def density(self) -> str:
@@ -97,6 +121,38 @@ class UiPreferences:
     @retention_days.setter
     def retention_days(self, value: int) -> None:
         self.settings.setValue("data/retention_days", max(1, min(30, value)))
+
+    @property
+    def ai_enabled(self) -> bool:
+        return self._bool("ai/enabled", False)
+
+    @ai_enabled.setter
+    def ai_enabled(self, value: bool) -> None:
+        self.settings.setValue("ai/enabled", value)
+
+    @property
+    def ai_base_url(self) -> str:
+        return str(self.settings.value("ai/base_url", "") or "")
+
+    @ai_base_url.setter
+    def ai_base_url(self, value: str) -> None:
+        self.settings.setValue("ai/base_url", value)
+
+    @property
+    def ai_model(self) -> str:
+        return str(self.settings.value("ai/model", "") or "")
+
+    @ai_model.setter
+    def ai_model(self, value: str) -> None:
+        self.settings.setValue("ai/model", value)
+
+    @property
+    def ai_timeout_seconds(self) -> float:
+        return max(10.0, min(300.0, float(self.settings.value("ai/timeout_seconds", 30.0))))
+
+    @ai_timeout_seconds.setter
+    def ai_timeout_seconds(self, value: float) -> None:
+        self.settings.setValue("ai/timeout_seconds", max(10.0, min(300.0, value)))
 
     def reset_table_layouts(self) -> None:
         self.settings.remove("table")

@@ -19,6 +19,8 @@ def article(
     *,
     minutes_ago: int = 0,
     industry_tags: tuple[str, ...] = (),
+    source_name: str = "测试来源",
+    channel_name: str = "公司资讯",
 ) -> ParsedArticle:
     return ParsedArticle(
         seq=seq,
@@ -27,8 +29,8 @@ def article(
         summary="",
         published_at=BASE_TIME - timedelta(minutes=minutes_ago),
         channel_key="companynews",
-        channel_name="公司资讯",
-        source_name="测试来源",
+        channel_name=channel_name,
+        source_name=source_name,
         stocks=stocks,
         industry_tags=industry_tags,
     )
@@ -78,7 +80,7 @@ def test_deduplicate_near_titles_and_rank_once_per_event() -> None:
             minutes_ago=60,
             industry_tags=("证券", "白酒"),
         ),
-        article("4", "贵州茅台发布年度新品", (stock_b,), minutes_ago=90),
+        article("4", "贵州茅台发布年度新品", (stock_b,), minutes_ago=90, channel_name="个股公告"),
     ]
     events = Deduplicator(similarity_threshold=80).group(articles)
     assert len(events) == 3
@@ -94,6 +96,8 @@ def test_deduplicate_near_titles_and_rank_once_per_event() -> None:
     assert by_code["600519"].raw_article_count == 2
     assert by_code["000783"].industry_tags == ("白酒", "证券")
     assert by_code["600519"].industry_tags == ("白酒", "证券")
+    assert by_code["000783"].channels == ("公司资讯",)
+    assert by_code["600519"].channels == ("个股公告", "公司资讯")
 
 
 def test_no_merge_without_shared_stock_or_outside_six_hours() -> None:

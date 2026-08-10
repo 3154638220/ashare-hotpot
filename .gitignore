@@ -3,7 +3,14 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
-/.pytest_tmp_*/
+
+# Project-local test basetemps and one-off verification artifacts.
+/.pytest_*/
+/.pytest-*/
+/.acceptance_probe/
+/%TEMP%/
+/tmp????????/
+/build_*/
 .coverage
 htmlcov/
 .venv/

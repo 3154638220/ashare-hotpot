@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from ashare_hotpot.config import SHANGHAI_TZ
 from ashare_hotpot.models import (
+    NewsEvent,
     OfficialPopularitySnapshot,
     ParsedArticle,
     PopularityRankRow,
@@ -97,6 +98,39 @@ def test_storage_article_and_snapshot_roundtrip(tmp_path) -> None:
     assert storage.load_latest_snapshot() is None
     assert storage.get_cached_article(article.url) is None
     assert storage.get_popularity_state() is None
+
+
+def test_legacy_snapshot_restores_channels() -> None:
+    now = datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ)
+    stock = StockMention("000001", "平安银行")
+    article = ParsedArticle(
+        seq="article-1",
+        url="https://example.test/article-1",
+        title="平安银行测试新闻",
+        summary="",
+        published_at=now,
+        channel_key="companynews",
+        channel_name="公司资讯",
+        source_name="测试来源",
+        stocks=(stock,),
+    )
+    snapshot = Snapshot(
+        snapshot_id=None,
+        window_start=now - timedelta(hours=24),
+        window_end=now,
+        created_at=now,
+        partial=False,
+        coverages=[],
+        rankings=[RankingRow(1, stock.code, stock.name, 1, 1, now, ("event-1",))],
+        events=[NewsEvent("event-1", article.title, now, (stock,), [article])],
+        stats={"events": 1},
+    )
+    legacy_payload = snapshot.to_dict()
+    legacy_payload["rankings"][0].pop("channels")
+
+    restored = Snapshot.from_dict(legacy_payload)
+
+    assert restored.rankings[0].channels == ("公司资讯",)
 
 
 def test_storage_clear_all_removes_stock_industries(tmp_path) -> None:

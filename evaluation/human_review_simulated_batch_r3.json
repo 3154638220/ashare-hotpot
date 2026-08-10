@@ -1,0 +1,167 @@
+{
+  "note": "模拟人工纠正（LLM 误标 research 的产业公司/银行改 other）——非真实人工抽检，仅演示工具与口径",
+  "count": 104,
+  "named_overrides": {
+    "activity:03aab53733e67793": {
+      "上海环懿": "other"
+    },
+    "activity:05be2258162310d1": {
+      "中信期货有限公司": "other",
+      "中国建设银行股份有限公司": "other",
+      "广州汽车集团股份有限公司": "other",
+      "富瑞金融集团香港有限公司": "other",
+      "北京创优合华科技发展有限公司": "other",
+      "玄卜投资(上海)有限公司": "other",
+      "世纪金源投资集团有限公司": "other",
+      "深圳达实智能股份有限公司": "other",
+      "中航信托股份有限公司": "other",
+      "交通银行": "other",
+      "中国工商银行股份有限公司": "other",
+      "创兴投资控股有限公司": "other",
+      "建设银行": "other",
+      "工商银行": "other",
+      "邮储银行": "other",
+      "远东宏信有限公司": "other"
+    },
+    "activity:0a2fc89d3aea86ca": {
+      "西部利得": "other"
+    },
+    "activity:159b20a681df5ca9": {
+      "DeShaw": "other",
+      "Eastjade Asset Management": "other",
+      "FENGHE ASIA": "other",
+      "GIC 狮城产业投资咨询": "other",
+      "JAIN GLOBAL": "other",
+      "Oppenheimer&Co.Inc.": "other",
+      "北京三棱时代科技有限公司": "other",
+      "北京鑫碳科技有限公司": "other",
+      "北京银行金运支行": "other",
+      "杭州信益科技有限公司": "other",
+      "建信养老金公司": "other",
+      "交通银行股份有限公司北京海淀支行": "other",
+      "交通银行自贸区支行": "other",
+      "宁波圆合金融控股有限公司": "other",
+      "宁银理财有限责任公司": "other",
+      "农行北京经济开发区分行": "other",
+      "平安银行股份有限公司": "other",
+      "上海彤源投资发展有限公司": "other",
+      "永赢基金管理公司": "other",
+      "招商银行股份有限公司北京分行": "other",
+      "招商银行股份有限公司": "other",
+      "中国工商银行股份有限公司": "other",
+      "中国工商银行股份有限公司经开区支行": "other",
+      "中国建设银行北京市分行": "other",
+      "中国农业银行股份有限公司": "other",
+      "中国农业银行股份有限公司北京市分行": "other"
+    },
+    "activity:16739c5a378cdccc": {
+      "杭银理财": "other"
+    },
+    "activity:24b4d4712d836951": {
+      "长江自营": "other"
+    },
+    "activity:2df89bb186561bfb": {
+      "玄卜投资（上海）有限公司": "other"
+    },
+    "activity:2ee3dc7b5c382b1d": {
+      "上海国际信托": "other",
+      "华能贵诚信托": "other",
+      "磐厚动量": "other",
+      "华泰柏瑞": "other",
+      "东海自营": "other"
+    },
+    "activity:3551e334f2123cba": {
+      "中银国际": "other",
+      "国海交运": "other",
+      "东亚前海": "other"
+    },
+    "activity:3c26545edd5add9d": {
+      "Canada Pension Plan": "other",
+      "Cathay Financial": "other",
+      "Dymon Asia": "other",
+      "Grand Alliance": "other",
+      "Greenwoods": "other",
+      "Harding Loevner": "other",
+      "Pinpoint": "other",
+      "Ubs Asset": "other",
+      "Vision Point": "other"
+    },
+    "activity:43b93d2eac7d83a2": {
+      "建银国际": "other"
+    },
+    "activity:5482f2cbfb13e1dc": {
+      "汇丰前海": "other",
+      "工银安盛": "other",
+      "方正自营": "other",
+      "国华兴益": "other",
+      "华宝信托": "other",
+      "Marshall Wace": "other",
+      "Pinpoint": "other"
+    },
+    "activity:54ed74471318d44f": {
+      "吉林省信托有限责任公司": "other"
+    },
+    "activity:57edcf551e944e8a": {
+      "建信养老": "other"
+    },
+    "activity:629f75b6c32b9204": {
+      "开源自营": "other",
+      "雲富投資": "other"
+    },
+    "activity:643affc31a023969": {
+      "建信养老金管理有限责任公司": "other",
+      "润晖投资咨询（北京）有限公司": "other",
+      "上海汇正财经顾问有限公司": "other",
+      "中哲物产集团有限公司": "other"
+    },
+    "activity:9dc9fba5eafdd607": {
+      "中睿合银": "other"
+    },
+    "activity:a0692fce412d21e8": {
+      "平安银行股份有限公司": "other",
+      "玄卜投资(上海)有限公司": "other",
+      "汇华理财有限公司": "other",
+      "才华资本(香港)控股有限公司": "other",
+      "浙江省发展资产经营有限公司": "other"
+    },
+    "activity:a11aaa3ba61fecc1": {
+      "中银基金（香港）": "other"
+    },
+    "activity:b8eb8ecdc7ab8399": {
+      "上海合远": "other",
+      "汇丰晋信": "other"
+    },
+    "activity:bfa4e3ef656f4877": {
+      "麦格理集团": "other"
+    },
+    "activity:c0335fbdcd82988c": {
+      "Vision Point": "other",
+      "Allianz": "other",
+      "Fullerton": "other",
+      "Schonfeld": "other",
+      "Tiger Pacific": "other",
+      "Dymon": "other",
+      "Optimas": "other"
+    },
+    "activity:c1ff9dfbc2999b99": {
+      "建信养老": "other"
+    },
+    "activity:c6e965320899c237": {
+      "杭银理财": "other"
+    },
+    "activity:cd44fb443849fa9b": {
+      "华能贵诚信托": "other"
+    },
+    "activity:d56f72c1e1d90c53": {
+      "润德盈喜": "other"
+    },
+    "activity:dc27fa502633f1e5": {
+      "国君海通": "other"
+    },
+    "activity:ea361c58b1920e6c": {
+      "Greenwoods Asset Management": "other",
+      "Jain Global": "other"
+    }
+  },
+  "participant_ok": {}
+}

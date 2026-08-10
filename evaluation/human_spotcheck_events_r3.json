@@ -1,0 +1,2178 @@
+{
+  "purpose": "发布前人工抽检素材（plan v2：事件冻结集人工抽检 >= 120 个事件，覆盖全部模型-规则分歧与高风险样本；以 LLM 全量与人工抽检的较低结果决定发布）。",
+  "sample_size": 120,
+  "items": [
+    {
+      "event_id": "8c5cfd7d82e4493daa0d776296d33cf8",
+      "stock_codes": [
+        "603822"
+      ],
+      "canonical_title": "独立董事候选人声明与承诺（冀星）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "独立董事候选人声明，非事件。"
+    },
+    {
+      "event_id": "361bafc0f56e4bf8a4de68714478a03c",
+      "stock_codes": [
+        "600276"
+      ],
+      "canonical_title": "恒瑞医药关于获得药品注册批准的公告",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": true,
+      "error_types": [],
+      "engine": {
+        "event_type": "approval",
+        "direction": "positive",
+        "materiality_level": 1,
+        "certainty": 1.0
+      },
+      "llm_rationale": "药品注册批准，获批认证，正向明确。"
+    },
+    {
+      "event_id": "6c4ef566d2434252a078d326e7021b19",
+      "stock_codes": [
+        "688167"
+      ],
+      "canonical_title": "西安炬光科技股份有限公司关于召开2026年第四次临时股东会的通知",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "股东会通知，例行事项，非事件。"
+    },
+    {
+      "event_id": "5428ac254fec44b69c0b5e9a0d2edf72",
+      "stock_codes": [
+        "605056"
+      ],
+      "canonical_title": "咸亨国际：投资者关系记录表（2026年7月15日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系记录表，非事件披露。"
+    },
+    {
+      "event_id": "db3e36297e654c169f623776138cca8e",
+      "stock_codes": [
+        "300283"
+      ],
+      "canonical_title": "中德证券有限责任公司关于温州宏丰电工合金股份有限公司2026年度向特定对象发行A股股票之发行保荐书",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "发行保荐书，属于定增预案相关文件，非完成事件。"
+    },
+    {
+      "event_id": "7abbb5ea3ff84bb38b2d30fdd964423f",
+      "stock_codes": [
+        "603912"
+      ],
+      "canonical_title": "中信建投证券股份有限公司关于南京佳力图机房环境技术股份有限公司使用部分闲置非公开发行股票募集资金临时补充流动资金的核查意见",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "保荐机构核查意见，例行程序。"
+    },
+    {
+      "event_id": "1164efb57d184313bec51a91e19af5be",
+      "stock_codes": [
+        "300285"
+      ],
+      "canonical_title": "300285国瓷材料投资者关系管理信息20260805",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无新事件披露。"
+    },
+    {
+      "event_id": "c72777fc2b6f42f1a0c450e9ff90bd70",
+      "stock_codes": [
+        "002703"
+      ],
+      "canonical_title": "前次募集资金使用情况鉴证的报告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "募集资金使用鉴证报告，例行披露。"
+    },
+    {
+      "event_id": "94afd085bfee4cd6a7a9364cf06ef260",
+      "stock_codes": [
+        "301606"
+      ],
+      "canonical_title": "关于发行境外上市股份（H股）获得中国证监会备案的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [
+        "type_error"
+      ],
+      "engine": {
+        "event_type": "financing_completion",
+        "direction": "positive",
+        "materiality_level": 0,
+        "certainty": 1.0
+      },
+      "llm_rationale": "H股发行获备案，非融资完成，仅审批阶段，中性。"
+    },
+    {
+      "event_id": "b0dabeb2c5cd4b929148053fe4d17fe9",
+      "stock_codes": [
+        "002739"
+      ],
+      "canonical_title": "第七届董事会第十五次会议决议公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会决议公告，例行程序，非事件。"
+    },
+    {
+      "event_id": "b93c98111d064c8dba654f9c650bc260",
+      "stock_codes": [
+        "301591"
+      ],
+      "canonical_title": "南京肯特复合材料股份有限公司2026年限制性股票激励计划（草案）之法律意见书",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "equity_incentive",
+        "direction": "positive",
+        "materiality_level": 1,
+        "certainty": 0.45
+      },
+      "llm_rationale": "股权激励法律意见书，无量化目标，中性。"
+    },
+    {
+      "event_id": "df396205f8da4194a09f8766550092f1",
+      "stock_codes": [
+        "688276"
+      ],
+      "canonical_title": "百克生物投资者关系活动记录表 （20260724）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "ba4d1db07e57410d933c4172d0bbd51f",
+      "stock_codes": [
+        "002015"
+      ],
+      "canonical_title": "关于使用部分闲置募集资金进行现金管理及以协定存款方式存放募集资金的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "闲置募集资金现金管理，中性。"
+    },
+    {
+      "event_id": "d176cd6945e0415b945e99ef8593bddc",
+      "stock_codes": [
+        "002115"
+      ],
+      "canonical_title": "2026年7月31日投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "67f4fdaa9d9348b48cf84a8e9d07c662",
+      "stock_codes": [
+        "688799"
+      ],
+      "canonical_title": "华纳药厂投资者关系活动记录表（2026年7月14日、7月16日）",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "66b4b78ddfb742ddac226641f4a21018",
+      "stock_codes": [
+        "603339"
+      ],
+      "canonical_title": "四方科技集团股份有限公司2026年员工持股计划（草案）（修订）",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "员工持股计划草案修订，无量化考核目标，非必达。"
+    },
+    {
+      "event_id": "7ee35a3742ca4baf96a165df746f2e1c",
+      "stock_codes": [
+        "603773"
+      ],
+      "canonical_title": "江西沃格光电集团股份有限公司股票交易风险提示公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股票交易风险提示，中性。"
+    },
+    {
+      "event_id": "4e0ff91b8a6947f89876fff2f648623d",
+      "stock_codes": [
+        "300446"
+      ],
+      "canonical_title": "关于董事会换届选举的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会换届选举，例行披露。"
+    },
+    {
+      "event_id": "1764788aeed7403990b9beb088f53f7d",
+      "stock_codes": [
+        "600433"
+      ],
+      "canonical_title": "冠豪高新关于对诚通财务有限责任公司风险评估报告的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "风险评估报告，例行披露。"
+    },
+    {
+      "event_id": "52801ebfc8c3480abc91dfb9c5655628",
+      "stock_codes": [
+        "601991"
+      ],
+      "canonical_title": "大唐发电2026年第二次临时股东会之法律意见书",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "法律意见书，非事件。"
+    },
+    {
+      "event_id": "33411e704f2a45a8bc80c842568b4533",
+      "stock_codes": [
+        "601607"
+      ],
+      "canonical_title": "2026年7月上海医药投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非重大事件。"
+    },
+    {
+      "event_id": "3f16424e580d45579e9ed9055f4ea395",
+      "stock_codes": [
+        "603776"
+      ],
+      "canonical_title": "永安行科技股份有限公司2025年度向特定对象发行A股股票募集说明书（注册稿）",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "定增募集说明书注册稿，非融资完成，无量化用途。"
+    },
+    {
+      "event_id": "1a1faff58d46496a8995eff49fa9b039",
+      "stock_codes": [
+        "688208"
+      ],
+      "canonical_title": "道通科技2026年7月22日-23日投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质新事件。"
+    },
+    {
+      "event_id": "a7a1f15e661c4a878e6319a0a2d7e403",
+      "stock_codes": [
+        "301320"
+      ],
+      "canonical_title": "关于募投项目终止及变更部分募集资金投向并向全资子公司增资以实施新募投项目的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "募投项目变更，中性，无正文。"
+    },
+    {
+      "event_id": "145fa987986641e29c0f0c9ca9027006",
+      "stock_codes": [
+        "002572"
+      ],
+      "canonical_title": "2026年8月6日投资者关系活动记录表",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "投资者关系活动记录，无正文，无事件。"
+    },
+    {
+      "event_id": "b501b5e88d58462382f8e77e37490433",
+      "stock_codes": [
+        "301320"
+      ],
+      "canonical_title": "关于使用自筹资金支付募投项目款项并以募集资金等额置换的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "募集资金置换，例行资金管理，中性。"
+    },
+    {
+      "event_id": "c348c34872ab498aa1a71288b9288b8a",
+      "stock_codes": [
+        "688595"
+      ],
+      "canonical_title": "20260718【2026-004】芯海科技投资者关系活动记录表（2026年7月16日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "21a8d662b1a845bf94a3c6dae99c1265",
+      "stock_codes": [
+        "688433"
+      ],
+      "canonical_title": "天健会计师事务所（特殊普通合伙）关于湖南华曙高科技股份有限公司向特定对象发行股票的财务报告及审计报告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "财务报告及审计报告，无实质事件。"
+    },
+    {
+      "event_id": "317703222ef8450eb368904e5736ba95",
+      "stock_codes": [
+        "688022"
+      ],
+      "canonical_title": "2026年第二次临时股东会决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "临时股东会决议，例行程序。"
+    },
+    {
+      "event_id": "211507888013430e94a12b8b4233a0dd",
+      "stock_codes": [
+        "605336"
+      ],
+      "canonical_title": "浙江帅丰电器股份有限公司董事会关于本次交易中是否存在直接或间接有偿聘请其他第三方机构或个人的说明",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "关于有偿聘请第三方的说明，无实质内容。"
+    },
+    {
+      "event_id": "5d44abbfb0bd4c7fad9e4d03b79e0493",
+      "stock_codes": [
+        "688167"
+      ],
+      "canonical_title": "西安炬光科技股份有限公司关于完成工商变更登记并换发营业执照的公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "工商变更登记，例行事项，非事件。"
+    },
+    {
+      "event_id": "02535b2eebc742da915d7fcb90fe6284",
+      "stock_codes": [
+        "605589"
+      ],
+      "canonical_title": "圣泉集团关于向下修正“圣泉转债”转股价格的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "向下修正转股价，中性。"
+    },
+    {
+      "event_id": "c300846664b74d9987a796f66800391b",
+      "stock_codes": [
+        "002641"
+      ],
+      "canonical_title": "关于董事会完成换届选举及聘任高级管理人员、内部审计部负责人和证券事务代表的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "董事会换届选举，例行披露，中性。"
+    },
+    {
+      "event_id": "e21880732e204a09b3105ed0b2952f81",
+      "stock_codes": [
+        "601238"
+      ],
+      "canonical_title": "广汽集团2026年1-6月投资者关系活动记录",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "28a7ed5bcd594b3d908f5bf0db91ca21",
+      "stock_codes": [
+        "688508"
+      ],
+      "canonical_title": "董事会薪酬与考核委员会关于公司2026年限制性股票激励计划激励对象名单的公示情况说明及核查意见",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "equity_incentive",
+        "direction": "positive",
+        "materiality_level": 0,
+        "certainty": 0.45
+      },
+      "llm_rationale": "股权激励名单公示核查意见，程序性文件。"
+    },
+    {
+      "event_id": "b694d845dec94f87b45aa4f492408de3",
+      "stock_codes": [
+        "002506"
+      ],
+      "canonical_title": "关于募投项目结项并将节余募集资金永久补流及注销募集资金专户的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "募投项目结项及补流，例行事项，中性。"
+    },
+    {
+      "event_id": "b677f4eca2b948499ee0f6acd45c1f63",
+      "stock_codes": [
+        "601600"
+      ],
+      "canonical_title": "中国铝业2025年年度权益分派实施公告",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "年度权益分派实施，股东回报，正向。"
+    },
+    {
+      "event_id": "884bac85223545a7ab2d0884aae1f4d2",
+      "stock_codes": [
+        "300645"
+      ],
+      "canonical_title": "关于使用部分闲置自有资金购买理财产品的进展公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "使用闲置资金购买理财，例行披露，中性。"
+    },
+    {
+      "event_id": "86db6516806541769966972542f0c6d3",
+      "stock_codes": [
+        "688668"
+      ],
+      "canonical_title": "第三届董事会第二十八次会议决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会决议公告，例行事项，中性。"
+    },
+    {
+      "event_id": "7a73151858394e25839d419a828faf76",
+      "stock_codes": [
+        "001258"
+      ],
+      "canonical_title": "国浩律师（乌鲁木齐）事务所关于新疆立新能源股份有限公司2026年第二次临时股东会见证之法律意见书",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "法律意见书，无正文，非事件。"
+    },
+    {
+      "event_id": "ff64a862ab96416b8b3b79c438ad6b4e",
+      "stock_codes": [
+        "000831"
+      ],
+      "canonical_title": "关于会计政策变更的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "会计政策变更公告，例行披露。"
+    },
+    {
+      "event_id": "6da35c80ab1745e6854fd5db0ee6cef0",
+      "stock_codes": [
+        "600362"
+      ],
+      "canonical_title": "江西铜业股份有限公司2026年第二次临时股东会、2026年第一次A股类别股东会、2026年第一次H股类别股东会决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股东会决议公告，例行披露，中性。"
+    },
+    {
+      "event_id": "8a787cbda516471893a26840687c526c",
+      "stock_codes": [
+        "688167"
+      ],
+      "canonical_title": "西安炬光科技股份有限公司董事会审计委员会关于公司 2026 年度向特定对象发行A 股股票相关事项的书面审核意见",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会审计委员会书面审核意见，例行程序，中性。"
+    },
+    {
+      "event_id": "bb17cd01d0d0460d84f551891efa13a8",
+      "stock_codes": [
+        "300389"
+      ],
+      "canonical_title": "第六届董事会第七次会议决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会决议公告，例行披露，无实质内容。"
+    },
+    {
+      "event_id": "bb596196b6a6408a9fa161e8088105ce",
+      "stock_codes": [
+        "603001"
+      ],
+      "canonical_title": "2026年半年度报告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": true,
+      "error_types": [
+        "direction_error"
+      ],
+      "engine": {
+        "event_type": "earnings_upgrade",
+        "direction": "positive",
+        "materiality_level": 2,
+        "certainty": 1.0
+      },
+      "llm_rationale": "半年度报告显示净利润为负，虽同比减亏但非正向业绩，方向判断错误。"
+    },
+    {
+      "event_id": "f453d8d976e34777930a3a53c1417348",
+      "stock_codes": [
+        "600196"
+      ],
+      "canonical_title": "复星医药关于股东部分股份解除质押的公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "无正文，仅元数据，非事件。"
+    },
+    {
+      "event_id": "dbbb12adf2ef45df9c3b6cc3c5eb00c9",
+      "stock_codes": [
+        "300791"
+      ],
+      "canonical_title": "关于调整仙乐转债转股价格的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "调整可转债转股价格，常规事项。"
+    },
+    {
+      "event_id": "b466971a003a468f829c08ffb6747816",
+      "stock_codes": [
+        "000008"
+      ],
+      "canonical_title": "第十五届董事会第二十一次会议决议公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "董事会决议公告，无实质内容，且无正文，非事件。"
+    },
+    {
+      "event_id": "e0ee9074216d4a0bb1a3c28fec3abb7c",
+      "stock_codes": [
+        "688618"
+      ],
+      "canonical_title": "深圳市三旺通信股份有限公司投资者关系活动记录表（2026年7月14日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "b4003ee54a5c4d309b9a0f3915fdb5f2",
+      "stock_codes": [
+        "002831"
+      ],
+      "canonical_title": "关于召开2026年第二次临时股东会的通知",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "召开临时股东会通知，例行程序，非事件。"
+    },
+    {
+      "event_id": "7a34c29b289d4f3887897068b4bc7b22",
+      "stock_codes": [
+        "002925"
+      ],
+      "canonical_title": "关于第五届董事会任期届满换届选举的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "董事会换届选举公告，例行治理。"
+    },
+    {
+      "event_id": "501da1dda40b470198a56fd045f93990",
+      "stock_codes": [
+        "301131"
+      ],
+      "canonical_title": "关于控股子公司完成工商变更登记的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "控股子公司完成工商变更登记，例行行政事项。"
+    },
+    {
+      "event_id": "2af094cbe2bb44329c9edf87b12e13aa",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "董事会薪酬与考核委员会关于2026年限制性股票激励计划激励对象名单(授予日)的核查意见",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "equity_incentive",
+        "direction": "negative",
+        "materiality_level": 0,
+        "certainty": 0.45
+      },
+      "llm_rationale": "股权激励核查意见，程序性文件。"
+    },
+    {
+      "event_id": "d495444f132540f2a5a600c1603764f9",
+      "stock_codes": [
+        "300446"
+      ],
+      "canonical_title": "关于召开2026年第二次临时股东会的通知",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "召开临时股东会通知，例行程序性事件，无实质利好。"
+    },
+    {
+      "event_id": "b809d6d2635a4e059e15db483a030aaa",
+      "stock_codes": [
+        "688082"
+      ],
+      "canonical_title": "2026年半年度报告摘要",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": true,
+      "error_types": [
+        "direction_error"
+      ],
+      "engine": {
+        "event_type": "earnings_upgrade",
+        "direction": "positive",
+        "materiality_level": 1,
+        "certainty": 1.0
+      },
+      "llm_rationale": "半年度报告摘要，无业绩数据，无法判断正向，中性。"
+    },
+    {
+      "event_id": "4dc6092f6d5844feb53488246f62c616",
+      "stock_codes": [
+        "000537"
+      ],
+      "canonical_title": "关于投资天津滨海新区46万千瓦风电项目的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "投资风电项目，但未落地，非产能投产。"
+    },
+    {
+      "event_id": "690364e3b84c4188ab4260de4d33ff4b",
+      "stock_codes": [
+        "003013"
+      ],
+      "canonical_title": "2026年8月6日投资者关系活动记录表",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "5a44de6fecc147bd8cb598afd9da5edb",
+      "stock_codes": [
+        "001203"
+      ],
+      "canonical_title": "2026年半年度报告摘要",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [
+        "direction_error"
+      ],
+      "engine": {
+        "event_type": "earnings_upgrade",
+        "direction": "negative",
+        "materiality_level": 0,
+        "certainty": 1.0
+      },
+      "llm_rationale": "半年度报告净利润下滑，负面事件，非正向。"
+    },
+    {
+      "event_id": "fce680f32f3b40eaaca69de412348b15",
+      "stock_codes": [
+        "301091"
+      ],
+      "canonical_title": "第二届董事会第二十八次临时会议决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "董事会决议公告，无正文，例行事项。"
+    },
+    {
+      "event_id": "4fb51af1ea3246ce95f811532206c096",
+      "stock_codes": [
+        "688210"
+      ],
+      "canonical_title": "深圳市泛海统联精密制造股份有限公司投资者关系活动记录汇总表（2026年7月8日-7月14日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件披露。"
+    },
+    {
+      "event_id": "8333ed45bfbe4d638ca84b736ccbf3c0",
+      "stock_codes": [
+        "688668"
+      ],
+      "canonical_title": "2026年第二次临时股东会决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股东会决议公告，例行程序，中性。"
+    },
+    {
+      "event_id": "17e175173c914318a24f6e799bc77adf",
+      "stock_codes": [
+        "688348"
+      ],
+      "canonical_title": "关于股东执行事务合伙人变更暨权益变动的提示性公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "股东执行事务合伙人变更，属公司治理例行事项，无明确正向机制。"
+    },
+    {
+      "event_id": "eaf7a874417c488284bb39a02ab19f7f",
+      "stock_codes": [
+        "605399"
+      ],
+      "canonical_title": "江西晨光新材料股份有限公司投资者问答汇总（6月份）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者问答汇总，无实质事件。"
+    },
+    {
+      "event_id": "2ed8c16bc8ba4e4e900c067d72cee87f",
+      "stock_codes": [
+        "300446"
+      ],
+      "canonical_title": "独立董事候选人声明与承诺（屈哲锋）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "独立董事候选人声明，非事件。"
+    },
+    {
+      "event_id": "4aa8406b774c43e2930292c4b2097c85",
+      "stock_codes": [
+        "688766"
+      ],
+      "canonical_title": "普冉半导体（上海）股份有限公司2026年限制性股票激励计划实施考核管理办法",
+      "label_llm": "positive_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "equity_incentive",
+        "direction": "positive",
+        "materiality_level": 0,
+        "certainty": 0.45
+      },
+      "llm_rationale": "股权激励计划，但无量化考核目标，重大性不足。"
+    },
+    {
+      "event_id": "c4923a76f4724221b8fcb799569e761e",
+      "stock_codes": [
+        "301345"
+      ],
+      "canonical_title": "301345涛涛车业投资者关系管理信息20260807",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非重大事件披露。"
+    },
+    {
+      "event_id": "8c0321ac90f44c33abbbac3aad8cef10",
+      "stock_codes": [
+        "603800"
+      ],
+      "canonical_title": "2026-036：股票交易异常波动公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股票交易异常波动公告，例行披露，中性。"
+    },
+    {
+      "event_id": "7bd2c7e742f2444e9a983362eaf6e589",
+      "stock_codes": [
+        "002906"
+      ],
+      "canonical_title": "002906华阳集团投资者关系管理信息20260805",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "df71a2841a5c4735af0e1e5df3b0c1a4",
+      "stock_codes": [
+        "600877"
+      ],
+      "canonical_title": "中国国际金融股份有限公司关于中电科芯片技术股份有限公司2025年年度报告信息披露监管问询函之募投项目的核查意见",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "问询函核查意见，例行披露。"
+    },
+    {
+      "event_id": "cf230dcf0a194527808ba28bcb1ba103",
+      "stock_codes": [
+        "600459"
+      ],
+      "canonical_title": "贵研铂业投资者关系活动记录表（2026年6月1日-6月30日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "63b76f6b1e7640dd8ad11c6c3ea9b5cd",
+      "stock_codes": [
+        "002703"
+      ],
+      "canonical_title": "关于本次向特定对象发行股票不存在直接或通过利益相关方向参与认购的投资者提供财务资助或补偿的公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "定增合规性声明，非事件。"
+    },
+    {
+      "event_id": "9aa2a8ff7a6848da859d42f261c2d2f0",
+      "stock_codes": [
+        "000009"
+      ],
+      "canonical_title": "关于持股5%以上股东权益变动触及1%整数倍暨增持计划进展公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "增持计划进展，但无正文，仅元数据，中性。"
+    },
+    {
+      "event_id": "89b3fd55de2347a0b569572b5e0102d4",
+      "stock_codes": [
+        "603986"
+      ],
+      "canonical_title": "兆易创新投资者关系活动记录表（2026-002）",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "业绩预告大幅增长，归母净利润同比增1099%，属业绩上修，重大利好。"
+    },
+    {
+      "event_id": "ed6909d25b4b4170b23a8e0779719829",
+      "stock_codes": [
+        "300568"
+      ],
+      "canonical_title": "2026年第四次临时股东会决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "临时股东会决议公告，例行披露，中性。"
+    },
+    {
+      "event_id": "d21323272fce49e881afd4e4a2f7c98a",
+      "stock_codes": [
+        "688484"
+      ],
+      "canonical_title": "关于不向下修正“南芯转债”转股价格的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "不向下修正转股价，中性。"
+    },
+    {
+      "event_id": "92914c46041c4ee892823aa03a9203b0",
+      "stock_codes": [
+        "600433"
+      ],
+      "canonical_title": "冠豪高新2026年半年度报告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "半年度报告，无正文，无法判断业绩方向，中性。"
+    },
+    {
+      "event_id": "abf3fb64e00a469caa45042ec0fd4000",
+      "stock_codes": [
+        "688130"
+      ],
+      "canonical_title": "晶华微关于实际控制人及其控制的企业增持公司股份计划的公告",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "buyback_or_increase",
+        "direction": "positive",
+        "materiality_level": 4,
+        "certainty": 0.45
+      },
+      "llm_rationale": "实际控制人增持计划，属于回购增持，正向，重大性4，确定性0.45，但计划阶段，确定性不足，故非必达。"
+    },
+    {
+      "event_id": "e2b1e85e048c4f9bbd855c0d86e9e568",
+      "stock_codes": [
+        "688247"
+      ],
+      "canonical_title": "投资者关系活动记录表（“我是股东”走进沪市上市公司活动）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "ea205aaddf63444084ee5880c30b82e0",
+      "stock_codes": [
+        "688433"
+      ],
+      "canonical_title": "西部证券股份有限公司关于湖南华曙高科技股份有限公司向特定对象发行股票之上市保荐书",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "上市保荐书，非事件。"
+    },
+    {
+      "event_id": "a1a4bba325984a428625b69fdaf1572c",
+      "stock_codes": [
+        "600004"
+      ],
+      "canonical_title": "2026-005投资者关系活动记录表（2026年7月21日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非重大事件。"
+    },
+    {
+      "event_id": "3632ebf4456748ddb88d6566f0bf16e6",
+      "stock_codes": [
+        "301591"
+      ],
+      "canonical_title": "南京肯特复合材料股份有限公司关于召开2026年第一次临时股东会的通知",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "召开临时股东会通知，例行披露。"
+    },
+    {
+      "event_id": "617ef6b0208649379f8a72ae27074fb3",
+      "stock_codes": [
+        "688291"
+      ],
+      "canonical_title": "投资者关系活动记录表（2026年7月21日）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "126820627a44465eb0aabe4e6436f36f",
+      "stock_codes": [
+        "605228"
+      ],
+      "canonical_title": "神通科技2026年半年度业绩说明会投资者关系活动记录表",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "业绩说明会记录，无新事件。"
+    },
+    {
+      "event_id": "40e796e59b924871a193008fb12bf9ca",
+      "stock_codes": [
+        "300887"
+      ],
+      "canonical_title": "关于部分限制性股票回购注销完成的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "限制性股票回购注销，行政管理事项，非股东回报。"
+    },
+    {
+      "event_id": "671772f34dd843308164db8b9bf48a54",
+      "stock_codes": [
+        "301626"
+      ],
+      "canonical_title": "投资者关系活动记录表（可转债发行网上路演2026年7月31日）",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "cfd11908e157469483ca854f2efb0073",
+      "stock_codes": [
+        "688062"
+      ],
+      "canonical_title": "迈威生物投资者关系活动记录表（2026年07月01）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "01bf0113dedd4154bd19d51f3e453da6",
+      "stock_codes": [
+        "688836"
+      ],
+      "canonical_title": "中信证券股份有限公司关于宇树科技股份有限公司首次公开发行股票并在科创板上市参与战略配售的投资者的专项核查报告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "IPO战略配售核查报告，非公司事件。"
+    },
+    {
+      "event_id": "bd84ec02481445129ac3027aa52e02c0",
+      "stock_codes": [
+        "001313"
+      ],
+      "canonical_title": "关于控股股东部分股份质押的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "控股股东股份质押，例行披露，中性。"
+    },
+    {
+      "event_id": "2268755583dd4c50a09b2415ccc201ef",
+      "stock_codes": [
+        "600166"
+      ],
+      "canonical_title": "北汽福田汽车股份有限公司2026年7月7日-9日投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "5a2fad39a5134a9ab7157db569b5e347",
+      "stock_codes": [
+        "688627"
+      ],
+      "canonical_title": "关于向特定对象发行股票申请获得中国证监会同意注册批复的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "定增注册批复，非融资完成，中性。"
+    },
+    {
+      "event_id": "72664dad94c642229668ec51e1055dd8",
+      "stock_codes": [
+        "688290"
+      ],
+      "canonical_title": "国浩律师（杭州）事务所关于景业智能2026年第二次临时股东会的法律意见书",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "法律意见书，非事件。"
+    },
+    {
+      "event_id": "d891101e46e449c6b12525729ac31671",
+      "stock_codes": [
+        "600500"
+      ],
+      "canonical_title": "中化国际2026年半年度报告摘要",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "半年度报告摘要，无正文，无法判断具体内容。"
+    },
+    {
+      "event_id": "231e608edbbd4caaa8064f7d5c5f51ef",
+      "stock_codes": [
+        "603091"
+      ],
+      "canonical_title": "众鑫股份投资者关系活动记录表2026.07.18",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "8643934c006641369e2917488fc5ffaa",
+      "stock_codes": [
+        "002636"
+      ],
+      "canonical_title": "股票交易异常波动公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股票交易异常波动公告，例行披露，中性。"
+    },
+    {
+      "event_id": "16d0c04e208d44cbbfec7447faf32c8c",
+      "stock_codes": [
+        "300832"
+      ],
+      "canonical_title": "第五届董事会第十次会议决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会决议公告，例行事项。"
+    },
+    {
+      "event_id": "d12592c71fe84c608a0b6a82065cc7bf",
+      "stock_codes": [
+        "300773"
+      ],
+      "canonical_title": "第三期限制性股票激励计划（草案）摘要",
+      "label_llm": "positive_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "equity_incentive",
+        "direction": "positive",
+        "materiality_level": 1,
+        "certainty": 0.45
+      },
+      "llm_rationale": "股权激励草案，但未披露量化考核目标，重大性不足。"
+    },
+    {
+      "event_id": "ed46be7af7944c2492104a3921373600",
+      "stock_codes": [
+        "688305"
+      ],
+      "canonical_title": "2026年8月投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，回顾性讨论，非新事件。"
+    },
+    {
+      "event_id": "0178a2195f224c11bb52a69635cb477e",
+      "stock_codes": [
+        "688022"
+      ],
+      "canonical_title": "关于注销回购股份并减少注册资本暨通知债权人的公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": true,
+      "error_types": [
+        "type_error"
+      ],
+      "engine": {
+        "event_type": "buyback_or_increase",
+        "direction": "positive",
+        "materiality_level": 1,
+        "certainty": 0.9
+      },
+      "llm_rationale": "回购股份注销属行政管理，非股东回报，引擎误判为回购增持。"
+    },
+    {
+      "event_id": "9ad6a0d7c70045949a18322ec9e19444",
+      "stock_codes": [
+        "688052"
+      ],
+      "canonical_title": "北京市嘉源律师事务所关于苏州纳芯微电子股份有限公司2026年第三次临时股东会的法律意见书",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "法律意见书，非事件。"
+    },
+    {
+      "event_id": "a6881dbb539245db9b5cad2296fe83c5",
+      "stock_codes": [
+        "300927"
+      ],
+      "canonical_title": "关于南通江天化学股份有限公司2026年第一次临时股东会的法律意见书",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "法律意见书，非事件。"
+    },
+    {
+      "event_id": "734ddeefcb6a43518d0294f3e8c7de8a",
+      "stock_codes": [
+        "300862"
+      ],
+      "canonical_title": "安徽蓝盾光电子股份有限公司董事会关于本次交易符合《创业板上市公司持续监管办法（试行）》第十八条、第二十一条以及《深圳证券交易所上市公司重大资产重组审核规则》第八条规定的说明",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": true,
+      "error_types": [],
+      "engine": {
+        "event_type": "mna",
+        "direction": "positive",
+        "materiality_level": 4,
+        "certainty": 1.0
+      },
+      "llm_rationale": "重大资产重组预案，拟购买资产，正向机制，重大性高。"
+    },
+    {
+      "event_id": "66ca323750c1480e9d5631bef40e63fe",
+      "stock_codes": [
+        "688068"
+      ],
+      "canonical_title": "北京热景生物技术股份有限公司关于股份回购实施结果暨股份变动的公告",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": true,
+      "error_types": [],
+      "engine": {
+        "event_type": "buyback_or_increase",
+        "direction": "positive",
+        "materiality_level": 2,
+        "certainty": 1.0
+      },
+      "llm_rationale": "回购实施完成，明确正向，重大性2，确定性1。"
+    },
+    {
+      "event_id": "d478faa5407940b28a80a596aaa9ae7a",
+      "stock_codes": [
+        "688130"
+      ],
+      "canonical_title": "晶华微2026年半年度报告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [
+        "direction_error"
+      ],
+      "engine": {
+        "event_type": "earnings_upgrade",
+        "direction": "negative",
+        "materiality_level": 0,
+        "certainty": 1.0
+      },
+      "llm_rationale": "半年度报告显示归母净利润为负，虽减亏但非正向业绩事件，方向判断错误。"
+    },
+    {
+      "event_id": "48ef5388958744b292361d6177c1a777",
+      "stock_codes": [
+        "301091"
+      ],
+      "canonical_title": "关于召开2026年第五次临时股东会的通知",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "召开股东会通知，例行披露。"
+    },
+    {
+      "event_id": "1b252140ed384b65b015fff0a0e80672",
+      "stock_codes": [
+        "002152"
+      ],
+      "canonical_title": "2026年8月5日投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质新事件。"
+    },
+    {
+      "event_id": "002665ce1ed44818837597146b119639",
+      "stock_codes": [
+        "002925"
+      ],
+      "canonical_title": "独立董事候选人声明与承诺（谢鑫）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "独立董事候选人声明，无实质公司事件。"
+    },
+    {
+      "event_id": "4125090c28b84ffcb64065fd748bc3e8",
+      "stock_codes": [
+        "300964"
+      ],
+      "canonical_title": "第四届董事会第四次会议决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "董事会决议公告，例行披露。"
+    },
+    {
+      "event_id": "3ad26f3c400840b98ef6689e2eb672d8",
+      "stock_codes": [
+        "688765"
+      ],
+      "canonical_title": "投资者关系活动记录表（2026年7月）",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "6110c615101d4b5ca4a7a40cdeea67bf",
+      "stock_codes": [
+        "301091"
+      ],
+      "canonical_title": "关于董事会换届选举的公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "董事会换届选举，例行事项，非事件。"
+    },
+    {
+      "event_id": "aa2ae7387f8649f59fded7b9f2e8edd4",
+      "stock_codes": [
+        "688136"
+      ],
+      "canonical_title": "关于变更持续督导保荐代表人的公告",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "变更保荐代表人，非事件。"
+    },
+    {
+      "event_id": "192f33b8997a404397f4c86d32a086c8",
+      "stock_codes": [
+        "002276"
+      ],
+      "canonical_title": "002276万马股份投资者关系管理信息20260807",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系管理信息，无实质新事件。"
+    },
+    {
+      "event_id": "5c4d645a954044cc8afc0c96e9248e5c",
+      "stock_codes": [
+        "688507"
+      ],
+      "canonical_title": "索辰科技投资者关系活动记录表_2026年7月21日",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，非事件。"
+    },
+    {
+      "event_id": "dcc27180d618492e99265637c7853dfd",
+      "stock_codes": [
+        "002101"
+      ],
+      "canonical_title": "002101广东鸿图投资者关系管理信息20260803",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    },
+    {
+      "event_id": "bf2b5a7e86734fbf8ac9ed4c0a5093bb",
+      "stock_codes": [
+        "300246"
+      ],
+      "canonical_title": "关于为控股子公司提供担保的进展公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "为控股子公司提供担保，例行披露，中性。"
+    },
+    {
+      "event_id": "7b26201f8f004e2993c8590d2a9b93cb",
+      "stock_codes": [
+        "002037"
+      ],
+      "canonical_title": "2026年第一次临时股东会决议公告",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股东会决议公告，例行披露。"
+    },
+    {
+      "event_id": "5638f6066d1a467fb73e87e50f332906",
+      "stock_codes": [
+        "002218"
+      ],
+      "canonical_title": "董事会战略委员会工作细则",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": null,
+        "direction": null,
+        "materiality_level": null,
+        "certainty": null
+      },
+      "llm_rationale": "董事会工作细则，例行制度文件，非事件。"
+    },
+    {
+      "event_id": "ad7fc70a3bd447bd8a5a19dd48975f34",
+      "stock_codes": [
+        "600186"
+      ],
+      "canonical_title": "莲花控股股份有限公司2026年第一次临时股东会会议资料",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "股东会会议资料，例行文件，非事件。"
+    },
+    {
+      "event_id": "0ab2a16aa6714a1bacc818a84ca1d2e1",
+      "stock_codes": [
+        "600467"
+      ],
+      "canonical_title": "好当家2026年半年度报告摘要",
+      "label_llm": "positive_signal",
+      "must_hit_llm": true,
+      "on_board": true,
+      "error_types": [],
+      "engine": {
+        "event_type": "earnings_upgrade",
+        "direction": "positive",
+        "materiality_level": 1,
+        "certainty": 1.0
+      },
+      "llm_rationale": "半年度报告净利润同比增长21.74%，业绩上修，正向。"
+    },
+    {
+      "event_id": "1e41e8315a334bbabe459072c2b4ca60",
+      "stock_codes": [
+        "002999"
+      ],
+      "canonical_title": "关于公司高级管理人员股份减持计划时间届满的公告（刘勇峰）",
+      "label_llm": "neutral",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "高管减持计划届满，中性。"
+    },
+    {
+      "event_id": "eda8fe673f8a49789d4c7dd5b374077d",
+      "stock_codes": [
+        "300281"
+      ],
+      "canonical_title": "2026年8月6日投资者关系活动记录表",
+      "label_llm": "not_signal",
+      "must_hit_llm": false,
+      "on_board": false,
+      "error_types": [],
+      "engine": {
+        "event_type": "unsupported_event_type",
+        "direction": "neutral",
+        "materiality_level": 0,
+        "certainty": 0.0
+      },
+      "llm_rationale": "投资者关系活动记录，无实质事件。"
+    }
+  ]
+}

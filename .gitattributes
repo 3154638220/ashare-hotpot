@@ -1,0 +1,9 @@
+# Captured upstream fixtures preserve source bytes, including original whitespace.
+tests/fixtures/policy_*.html -whitespace
+tests/fixtures/*.pdf binary
+
+# Generated evaluation ledgers preserve evidence excerpts verbatim.
+evaluation/**/gap_analysis*.txt -whitespace
+
+# This plan uses Markdown hard line breaks intentionally.
+plan.md whitespace=-trailing-space

@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import threading
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
 from ashare_hotpot.config import AppSettings, SHANGHAI_TZ, SourceConfig
-from ashare_hotpot.models import ArticleCandidate, ParsedArticle, PopularityRankRow, StockMention
+from ashare_hotpot.models import (
+    ArticleCandidate,
+    ParsedArticle,
+    PopularityRankRow,
+    SourceDocument,
+    StockMention,
+)
+from ashare_hotpot.research_sync import ResearchSyncResult
 from ashare_hotpot.service import RefreshService
 from ashare_hotpot.sources import PageResult, RefreshCancelled
 from ashare_hotpot.storage import Storage
@@ -95,10 +103,21 @@ def test_refresh_pipeline_and_cache(monkeypatch, tmp_path) -> None:
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
         max_pages_per_source=3,
         detail_workers=1,
     )
     storage = Storage(settings.database_path)
+    research_purges: list[datetime] = []
+    original_research_purge = storage.purge_research_retention
+
+    def record_research_purge(timestamp: datetime) -> None:
+        research_purges.append(timestamp)
+        original_research_purge(timestamp)
+
+    monkeypatch.setattr(storage, "purge_research_retention", record_research_purge)
     progress: list[tuple[int, str]] = []
     snapshot = RefreshService(settings, storage).refresh(now=NOW, progress=lambda n, s: progress.append((n, s)))
 
@@ -121,6 +140,237 @@ def test_refresh_pipeline_and_cache(monkeypatch, tmp_path) -> None:
     assert second.rankings[0].industry_tags == ("金融",)
     assert FakeClient.detail_calls == 1
     assert FakeClient.industry_calls == 1
+    assert research_purges == [NOW, NOW]
+
+
+def test_refresh_runs_research_board_stage_and_writes_stats(
+    monkeypatch, tmp_path
+) -> None:
+    import ashare_hotpot.service as service_module
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
+        max_pages_per_source=3,
+        detail_workers=1,
+    )
+    storage = Storage(settings.database_path)
+    now = datetime(2026, 8, 6, 18, 0, tzinfo=SHANGHAI_TZ)
+    weekdays = [
+        now.date() - timedelta(days=offset)
+        for offset in range(0, 90)
+        if (now.date() - timedelta(days=offset)).weekday() < 5
+    ]
+    storage.replace_trading_days(now.year, weekdays, source="sse", updated_at=now)
+    fixture = (
+        Path(__file__).parent / "fixtures" / "research_activity_record.txt"
+    ).read_text(encoding="utf-8")
+    storage.upsert_source_document(
+        SourceDocument(
+            document_id="doc-wired",
+            provider_key="cninfo",
+            provider_name="巨潮资讯",
+            kind="research_activity",
+            source_url="https://example.test/list",
+            document_url=None,
+            title="XX科技投资者关系活动记录表",
+            published_at=now,
+            stock_codes=("300999",),
+            body_text=fixture,
+            content_hash="hash-wired",
+            parse_status="parsed",
+            parse_error=None,
+        ),
+        now,
+    )
+
+    snapshot = RefreshService(settings, storage).refresh(now=now, progress=None)
+
+    # 研究榜阶段在刷新内运行：解析文档、持久化活动并写入统计。
+    assert snapshot.stats["research_documents_scanned"] == 1
+    assert snapshot.stats["research_activities"] == 1
+    assert snapshot.stats["research_participants"] == 6
+    assert snapshot.stats["research_z20_stocks"] == 1
+    # 日历不足 120 交易日 → 冷启动暂定。
+    assert snapshot.stats["research_z20_provisional"] == 1
+    assert snapshot.stats["research_persistence_60"] == 1
+    assert snapshot.stats["research_board_errors"] == 0
+
+
+def test_refresh_runs_policy_sync_and_writes_stats(monkeypatch, tmp_path) -> None:
+    """v2 里程碑 2：政策观察来源接入 RefreshService——可解析源入政策文档，
+    失败关闭源记录失败并进入快照覆盖；统计与质量文本可见。"""
+
+    import ashare_hotpot.service as service_module
+
+    fixtures = Path(__file__).parent / "fixtures"
+    state_council_html = (
+        fixtures / "policy_state_council_page1.html"
+    ).read_text(encoding="utf-8")
+    nmpa_waf_html = (fixtures / "policy_nmpa_page1.html").read_text(
+        encoding="utf-8"
+    )
+
+    class PolicyRefreshClient(FakeClient):
+        def __init__(self, settings, cancel_event) -> None:
+            super().__init__(settings, cancel_event)
+            all_policy = AppSettings().policy_sources
+            self.policy_prefixes = {
+                next(
+                    s for s in all_policy if s.key == "state_council"
+                ).list_url: state_council_html,
+                next(s for s in all_policy if s.key == "nmpa").list_url: (
+                    nmpa_waf_html
+                ),
+            }
+
+        def get_text(self, url: str, *, accept: str = "", headers=None) -> str:
+            for prefix, text in self.policy_prefixes.items():
+                if url.startswith(prefix):
+                    return text
+            return super().get_text(url)
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", PolicyRefreshClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(
+        service_module, "fetch_official_popularity", fake_popularity_fetch
+    )
+    all_policy = AppSettings().policy_sources
+    policy_configs = (
+        next(s for s in all_policy if s.key == "state_council"),
+        next(s for s in all_policy if s.key == "nmpa"),
+    )
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        research_sources=(),
+        policy_sources=policy_configs,
+        max_pages_per_source=3,
+        detail_workers=1,
+    )
+    storage = Storage(settings.database_path)
+
+    snapshot = RefreshService(settings, storage).refresh(now=NOW, progress=None)
+
+    assert snapshot.stats["policy_sources_total"] == 2
+    assert snapshot.stats["policy_documents_added"] >= 5  # 国务院列表页
+    assert snapshot.stats["policy_failure_sources"] == 1  # 药监局 WAF 失败关闭
+    assert len(snapshot.policy_coverages) == 2
+    by_key = {
+        cov.source_key: cov for cov in snapshot.policy_coverages
+    }
+    assert by_key["state_council"].error is None
+    assert by_key["nmpa"].error is not None
+    # 政策文档绝不进入信号管线（policy_documents 独立存储）。
+    assert len(storage.get_policy_documents()) >= 5
+    # 质量文本展示政策源状态。
+    from ashare_hotpot.research_views import build_discovery_quality
+
+    quality = build_discovery_quality(settings, storage)
+    assert "政策源：" in quality
+    assert "国务院" in quality
+
+
+@pytest.mark.parametrize("official_calendar_available", [True, False])
+def test_refresh_populates_calendar_before_publishing_institution_metrics(
+    monkeypatch, tmp_path, official_calendar_available
+) -> None:
+    import ashare_hotpot.service as service_module
+
+    class FakeCalendarSource:
+        def __init__(self, _client) -> None:
+            pass
+
+        def fetch_holidays(self):
+            if not official_calendar_available:
+                raise RuntimeError("休市安排暂时不可用")
+            return NOW.year, (NOW.date().replace(month=1, day=1),)
+
+    class NoopResearchSyncService:
+        def __init__(self, _settings, _storage) -> None:
+            pass
+
+        def sync_once(self, **_kwargs) -> ResearchSyncResult:
+            return ResearchSyncResult(
+                pages_consumed=0,
+                pdfs_consumed=0,
+                documents_added=0,
+                documents_skipped=0,
+                discoveries_added=0,
+                pdf_failures=0,
+                budget_exhausted=False,
+                coverages=(),
+            )
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "SseCalendarSource", FakeCalendarSource)
+    monkeypatch.setattr(
+        service_module, "ResearchSyncService", NoopResearchSyncService
+    )
+    monkeypatch.setattr(
+        service_module, "fetch_official_popularity", fake_popularity_fetch
+    )
+    metric_now = datetime(2026, 8, 6, 18, 0, tzinfo=SHANGHAI_TZ)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(
+            SourceConfig(
+                "test_research",
+                "测试调研",
+                "https://example.test/research",
+                kind="research_activity",
+            ),
+        ),
+        detail_workers=1,
+    )
+    storage = Storage(settings.database_path)
+    fixture = (
+        Path(__file__).parent / "fixtures" / "research_activity_record.txt"
+    ).read_text(encoding="utf-8")
+    storage.upsert_source_document(
+        SourceDocument(
+            document_id="doc-calendar-wired",
+            provider_key="cninfo",
+            provider_name="巨潮资讯",
+            kind="research_activity",
+            source_url="https://example.test/list",
+            document_url=None,
+            title="XX科技投资者关系活动记录表",
+            published_at=metric_now,
+            stock_codes=("300999",),
+            body_text=fixture,
+            content_hash="hash-calendar-wired",
+            parse_status="parsed",
+            parse_error=None,
+        ),
+        metric_now,
+    )
+
+    snapshot = RefreshService(settings, storage).refresh(now=metric_now)
+
+    assert snapshot.stats["research_calendar_days"] >= 120
+    assert snapshot.stats["research_calendar_fallback"] == int(
+        not official_calendar_available
+    )
+    assert snapshot.stats["research_calendar_errors"] == int(
+        not official_calendar_available
+    )
+    assert snapshot.stats["research_z20_stocks"] == 1
+    assert snapshot.stats["research_persistence_60"] == 1
+    assert snapshot.stats["research_persistence_120"] == 1
+    assert "300999" in storage.get_latest_institution_metric_snapshots("z20")
+    expected_source = "sse" if official_calendar_available else "fallback"
+    assert storage.get_trading_day_source(NOW.year) == expected_source
 
 
 def test_refresh_uses_configured_window_hours(monkeypatch, tmp_path) -> None:
@@ -132,6 +382,9 @@ def test_refresh_uses_configured_window_hours(monkeypatch, tmp_path) -> None:
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
         window_hours=2,
         max_pages_per_source=3,
         detail_workers=1,
@@ -152,6 +405,9 @@ def test_cancelled_refresh_does_not_create_snapshot(monkeypatch, tmp_path) -> No
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
     )
     storage = Storage(settings.database_path)
     cancel = threading.Event()
@@ -195,6 +451,9 @@ def test_refresh_reapplies_brokerage_filter_to_cached_articles(monkeypatch, tmp_
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
         max_pages_per_source=2,
         detail_workers=1,
     )
@@ -235,6 +494,9 @@ def test_popularity_10min_cache_only_fetches_once(monkeypatch, tmp_path) -> None
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
         max_pages_per_source=2,
         detail_workers=1,
     )
@@ -273,6 +535,9 @@ def test_popularity_failure_falls_back_to_last_success(monkeypatch, tmp_path, fa
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
         max_pages_per_source=2,
         detail_workers=1,
     )
@@ -308,6 +573,9 @@ def test_popularity_failure_without_history_is_unavailable(monkeypatch, tmp_path
     settings = AppSettings(
         app_root=tmp_path,
         sources=(SourceConfig("test", "测试栏目", "https://example.test/"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
         max_pages_per_source=2,
         detail_workers=1,
     )

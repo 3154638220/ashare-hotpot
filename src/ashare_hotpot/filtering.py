@@ -136,3 +136,35 @@ def template_filter_reason(title: str, summary: str = "") -> str | None:
         if pattern.search(haystack):
             return reason
     return None
+
+
+# 明显的垃圾/纯走势类提问。纯走势/庄家/盘口问题只有在不包含经营、
+# 财务、治理或重大事项语义时才被过滤，避免误伤基本面讨论。
+JUNK_QUESTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("纯走势/庄家/盘口", re.compile(r"(?:庄家|主力|游资|盘口|拉升|打压|出货|吸筹|洗盘|砸盘|诱多|诱空|挂单|买卖盘|K线|分时)")),
+    ("垃圾内容", re.compile(r"(?:涨停|跌停|翻倍|暴涨|暴跌|梭哈|满仓干|加仓干|稳赚|内幕|荐股|加群|私聊|V信|微信号|扣扣|红包)")),
+    ("无意义重复", re.compile(r"(.)\1{9,}")),
+)
+
+FUNDAMENTAL_SEMANTICS_PATTERN = re.compile(
+    r"(?:业绩|利润|营收|收入|成本|毛利率|净利率|分红|派息|回购|减持|增持|订单|合同|中标|产能|产量|"
+    r"产品|研发|专利|客户|供应商|股东|股权|重组|收购|并购|出售|投资|扩产|诉讼|仲裁|处罚|风险|"
+    r"管理层|董事会|监事会|治理|募集资金|募投|担保|质押|解禁|分红方案|业绩预告|业绩快报|经营|"
+    r"现金流|负债|存货|应收账款|商誉|减值|税率|补贴|政策|中标|合作|签约|投产|量产|交付)"
+)
+
+
+def interaction_noise_reason(question: str) -> str | None:
+    """Return the filter reason for empty/junk/pure price-action questions."""
+
+    text = (question or "").strip()
+    if not text:
+        return "空内容"
+    if len(text) < 4:
+        return "空内容"
+    for reason, pattern in JUNK_QUESTION_PATTERNS:
+        if pattern.search(text):
+            if reason == "纯走势/庄家/盘口" and FUNDAMENTAL_SEMANTICS_PATTERN.search(text):
+                continue
+            return reason
+    return None

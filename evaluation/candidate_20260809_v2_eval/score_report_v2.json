@@ -1,0 +1,188 @@
+{
+  "short_term": {
+    "event_cluster_count": 600,
+    "board_row_count": 47,
+    "precision_at_10": 1.0,
+    "top20_irrelevant_ratio": 0.0,
+    "top20_duplicate_ratio": 0.0,
+    "must_hit_recall": 0.4411764705882353,
+    "must_hit_count": 34,
+    "error_ledger": {
+      "counts": {
+        "type_error": 7,
+        "direction_error": 4,
+        "materiality_error": 1,
+        "duplicate_clustering": 0
+      },
+      "total_events": 600,
+      "samples": [
+        {
+          "event_id": "0e9ee6fea3164c3fbfb2f6af65501861",
+          "error_type": "type_error",
+          "canonical_title": "集友股份关于收到上海证券交易所对公司重大资产购买暨关联交易报告书草案的问询函的公告"
+        },
+        {
+          "event_id": "34df1e7d8c4842c1bf76b924df76e608",
+          "error_type": "direction_error",
+          "canonical_title": "康辰药业关于向2026年限制性股票激励计划激励对象首次授予限制性股票及调整授予价格的公告"
+        },
+        {
+          "event_id": "361bafc0f56e4bf8a4de68714478a03c",
+          "error_type": "direction_error",
+          "canonical_title": "恒瑞医药关于获得药品注册批准的公告"
+        },
+        {
+          "event_id": "5a44de6fecc147bd8cb598afd9da5edb",
+          "error_type": "type_error",
+          "canonical_title": "2026年半年度报告摘要"
+        },
+        {
+          "event_id": "65f827a2ce13451fa9f78758f0927a7f",
+          "error_type": "type_error",
+          "canonical_title": "002533金杯电工投资者关系管理信息20260731"
+        },
+        {
+          "event_id": "72f2d349d0a24a74abb7dd470616291b",
+          "error_type": "materiality_error",
+          "canonical_title": "关于调整2026年限制性股票激励计划相关事项的公告"
+        },
+        {
+          "event_id": "9c861caf8c9e44e7b597367fa9890b2b",
+          "error_type": "type_error",
+          "canonical_title": "天合光能股份有限公司2026年半年度报告摘要"
+        },
+        {
+          "event_id": "b0d591608f424d7a944a8acf360eec06",
+          "error_type": "type_error",
+          "canonical_title": "西安炬光科技股份有限公司关于2026年度向特定对象发行A股股票不存在直接或通过利益相关方向参与认购的投资者提供财务资助或补偿的公告"
+        },
+        {
+          "event_id": "b259694d40d14c59ab8730474d7cdd47",
+          "error_type": "type_error",
+          "canonical_title": "安迪苏：2026年半年度业绩快报线上投资者沟通会会议记录"
+        },
+        {
+          "event_id": "b435120380064519b673b11597cd94a6",
+          "error_type": "direction_error",
+          "canonical_title": "西安炬光科技股份有限公司2026年半年度报告摘要"
+        },
+        {
+          "event_id": "ba7da0f74c094bdb8c628439edfe82b0",
+          "error_type": "type_error",
+          "canonical_title": "八一钢铁2026年半年度报告"
+        },
+        {
+          "event_id": "ba7da0f74c094bdb8c628439edfe82b0",
+          "error_type": "direction_error",
+          "canonical_title": "八一钢铁2026年半年度报告"
+        }
+      ]
+    },
+    "gates": [
+      {
+        "name": "event_cluster_set_size",
+        "value": 600.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "600 >= 300"
+      },
+      {
+        "name": "precision_at_10",
+        "value": 1.0,
+        "required": 0.8,
+        "passed": true,
+        "detail": "1.000 >= 0.8"
+      },
+      {
+        "name": "top20_irrelevant",
+        "value": 0.0,
+        "required": 0.1,
+        "passed": true,
+        "detail": "0.000 <= 0.1"
+      },
+      {
+        "name": "top20_duplicate",
+        "value": 0.0,
+        "required": 0.05,
+        "passed": true,
+        "detail": "0.000 <= 0.05"
+      },
+      {
+        "name": "must_hit_recall",
+        "value": 0.4411764705882353,
+        "required": 0.95,
+        "passed": false,
+        "detail": "0.441 >= 0.95"
+      }
+    ]
+  },
+  "institution": {
+    "record_count": 200,
+    "labeled_entity_count": 1803,
+    "entity_precision": 0.7798114254021076,
+    "labeled_group_count": 1803,
+    "group_precision": 0.9944536882972823,
+    "named_institution_count": 2069,
+    "named_institution_recall": 0.6611889801836636,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 200.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "200 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.7798114254021076,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.780 >= 0.9"
+      },
+      {
+        "name": "group_precision",
+        "value": 0.9944536882972823,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.994 >= 0.9"
+      },
+      {
+        "name": "named_institution_recall",
+        "value": 0.6611889801836636,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.661 >= 0.9"
+      }
+    ]
+  },
+  "discovery": {
+    "sample_count": 386,
+    "should_discover_count": 386,
+    "candidate_recall": 1.0,
+    "fixed_case_count": 5,
+    "fixed_case_misses": [],
+    "gates": [
+      {
+        "name": "discovery_set_size",
+        "value": 386.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "386 >= 300"
+      },
+      {
+        "name": "candidate_recall",
+        "value": 1.0,
+        "required": 0.95,
+        "passed": true,
+        "detail": "1.000 >= 0.95"
+      },
+      {
+        "name": "fixed_case_zero_miss",
+        "value": 0.0,
+        "required": 0.0,
+        "passed": true,
+        "detail": "零遗漏"
+      }
+    ]
+  }
+}

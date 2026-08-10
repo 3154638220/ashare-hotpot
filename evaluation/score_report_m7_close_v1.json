@@ -1,0 +1,116 @@
+{
+  "short_term": {
+    "event_cluster_count": 300,
+    "board_row_count": 27,
+    "precision_at_10": 1.0,
+    "top20_irrelevant_ratio": 0.0,
+    "top20_duplicate_ratio": 0.1,
+    "must_hit_recall": 0.75,
+    "gates": [
+      {
+        "name": "event_cluster_set_size",
+        "value": 300.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "300 >= 300"
+      },
+      {
+        "name": "precision_at_10",
+        "value": 1.0,
+        "required": 0.8,
+        "passed": true,
+        "detail": "1.000 >= 0.8"
+      },
+      {
+        "name": "top20_irrelevant",
+        "value": 0.0,
+        "required": 0.1,
+        "passed": true,
+        "detail": "0.000 <= 0.1"
+      },
+      {
+        "name": "top20_duplicate",
+        "value": 0.1,
+        "required": 0.05,
+        "passed": false,
+        "detail": "0.100 <= 0.05"
+      },
+      {
+        "name": "must_hit_recall",
+        "value": 0.75,
+        "required": 0.95,
+        "passed": false,
+        "detail": "0.750 >= 0.95"
+      }
+    ]
+  },
+  "institution": {
+    "record_count": 100,
+    "labeled_entity_count": 891,
+    "entity_precision": 0.8395061728395061,
+    "labeled_group_count": 891,
+    "group_precision": 0.9921436588103255,
+    "named_institution_count": 1136,
+    "named_institution_recall": 0.6443661971830986,
+    "gates": [
+      {
+        "name": "institution_record_set_size",
+        "value": 100.0,
+        "required": 100.0,
+        "passed": true,
+        "detail": "100 >= 100"
+      },
+      {
+        "name": "entity_precision",
+        "value": 0.8395061728395061,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.840 >= 0.9"
+      },
+      {
+        "name": "group_precision",
+        "value": 0.9921436588103255,
+        "required": 0.9,
+        "passed": true,
+        "detail": "0.992 >= 0.9"
+      },
+      {
+        "name": "named_institution_recall",
+        "value": 0.6443661971830986,
+        "required": 0.9,
+        "passed": false,
+        "detail": "0.644 >= 0.9"
+      }
+    ]
+  },
+  "discovery": {
+    "sample_count": 387,
+    "should_discover_count": 387,
+    "candidate_recall": 1.0,
+    "fixed_case_count": 5,
+    "fixed_case_misses": [],
+    "gates": [
+      {
+        "name": "discovery_set_size",
+        "value": 387.0,
+        "required": 300.0,
+        "passed": true,
+        "detail": "387 >= 300"
+      },
+      {
+        "name": "candidate_recall",
+        "value": 1.0,
+        "required": 0.95,
+        "passed": true,
+        "detail": "1.000 >= 0.95"
+      },
+      {
+        "name": "fixed_case_zero_miss",
+        "value": 0.0,
+        "required": 0.0,
+        "passed": true,
+        "detail": "零遗漏"
+      }
+    ]
+  }
+}

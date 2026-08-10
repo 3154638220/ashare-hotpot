@@ -36,6 +36,7 @@ QToolBar#commandBar {{
 }}
 QToolBar#commandBar::separator {{ width: 1px; background: {COLOR_BORDER}; margin: 8px 6px; }}
 QLabel#brandTitle {{ font-size: 15px; font-weight: 700; padding-right: 8px; }}
+QLabel#researchGroupLabel {{ color: {COLOR_MUTED}; font-size: 12px; font-weight: 700; padding: 0 6px; }}
 QLabel#viewTitle {{ font-size: 17px; font-weight: 700; }}
 QLabel#mutedLabel, QLabel#viewSubtitle, QLabel#toolLabel, QLabel#detailMeta {{ color: {COLOR_MUTED}; }}
 QLabel#viewSubtitle, QLabel#detailMeta {{ font-size: 12px; }}
@@ -66,6 +67,10 @@ QFrame#kpiChip {{ background: {COLOR_SURFACE_RAISED}; border: 1px solid {COLOR_B
 QLabel#kpiLabel {{ color: {COLOR_MUTED}; font-size: 11px; }}
 QLabel#kpiValue {{ color: {COLOR_TEXT}; font-weight: 700; }}
 QFrame#qualityPanel {{ background: #121B25; border: 1px solid {COLOR_BORDER}; border-radius: 6px; }}
+QFrame#researchBanner {{ background: #2A2518; border: 1px solid #655228; border-radius: 6px; }}
+QLabel#researchBannerText {{ color: {COLOR_WARNING}; font-weight: 700; }}
+QLabel#researchSectionTitle {{ color: {COLOR_TEXT}; font-size: 13px; font-weight: 700; padding: 6px 2px 2px 2px; }}
+QLabel#researchExcerpt {{ color: {COLOR_MUTED}; font-size: 12px; }}
 QFrame#errorBanner {{ background: #2A171B; border: 1px solid #71313B; border-radius: 6px; }}
 QLabel#errorText {{ color: #FFB3BA; }}
 QPushButton, QToolButton {{
@@ -98,7 +103,7 @@ QLineEdit, QSpinBox, QComboBox {{
 }}
 QLineEdit:hover, QSpinBox:hover, QComboBox:hover {{ border-color: #4A607B; }}
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{ border-color: {COLOR_LINK}; }}
-QLineEdit#searchInput {{ padding-left: 10px; }}
+QLineEdit#searchInput {{ padding-left: 0; }}
 QComboBox QAbstractItemView {{
     background: {COLOR_SURFACE_RAISED};
     border: 1px solid #35455A;

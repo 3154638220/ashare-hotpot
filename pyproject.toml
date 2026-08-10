@@ -4,14 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ashare-hotpot"
-version = "0.2.0"
-description = "基于同花顺新闻与东方财富官方人气榜的 A 股热度 Windows 桌面工具"
+version = "1.1.0"
+description = "A 股基本面消息、官方问答互动与东方财富人气榜的 Windows 桌面工具"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "beautifulsoup4>=4.12,<5",
   "httpx>=0.27,<1",
+  "olefile>=0.47,<1",
   "PySide6>=6.7,<6.9",
+  "pypdf>=4,<6",
   "rapidfuzz>=3.9,<4",
 ]
 

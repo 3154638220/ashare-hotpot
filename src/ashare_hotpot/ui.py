@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QObject, QRect, QSortFilterProxyModel, Qt, QThread, QUrl, Signal
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QPainter
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -36,7 +36,18 @@ from PySide6.QtWidgets import (
 )
 
 from .config import APP_NAME, APP_VERSION, AppSettings
-from .models import NewsEvent, PopularityRankRow, RankingRow, Snapshot
+from .models import (
+    DiscoveryViewRow,
+    InstitutionZ20ViewRow,
+    InteractionRankingRow,
+    InteractionRecord,
+    NewsEvent,
+    PersistenceViewRow,
+    PopularityRankRow,
+    RankingRow,
+    ShortTermViewRow,
+    Snapshot,
+)
 from .service import RefreshService
 from .storage import Storage
 from .theme import (
@@ -290,6 +301,18 @@ def format_change(value: int | None) -> str:
     return "0"
 
 
+def format_ratio(value: float | None, *, digits: int = 1) -> str:
+    if value is None:
+        return "—"
+    return f"{value * 100:.{digits}f}%"
+
+
+def format_score(value: float | None, *, digits: int = 1) -> str:
+    if value is None:
+        return "—"
+    return f"{value:.{digits}f}"
+
+
 class MetricCard(QFrame):
     """A compact snapshot metric shown in the overview row."""
 
@@ -368,7 +391,8 @@ class HeatBarDelegate(QStyledItemDelegate):
 
 
 class RankingTableModel(QAbstractTableModel):
-    NEWS_HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效提及", "原始篇数", "最近提及")
+    NEWS_HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效事件", "原始篇数", "最近事件")
+    INTERACTION_HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效提问", "已回复", "回复率", "最近回复")
     POP_HEADERS = ("排名", "股票名称", "代码", "现价", "涨跌幅")
     SURGE_HEADERS = ("排名", "股票名称", "代码", "较昨日变动", "现价", "涨跌幅")
     STOCK_NAME_COLUMN = 1
@@ -386,9 +410,16 @@ class RankingTableModel(QAbstractTableModel):
             return self.POP_HEADERS
         if self.source_key == "surge":
             return self.SURGE_HEADERS
+        if self.source_key == "interaction":
+            return self.INTERACTION_HEADERS
         return self.NEWS_HEADERS
 
-    def set_rows(self, rows: list[RankingRow] | list[PopularityRankRow], *, source_key: str = "ths") -> None:
+    def set_rows(
+        self,
+        rows: list[RankingRow] | list[PopularityRankRow] | list[InteractionRankingRow],
+        *,
+        source_key: str = "news",
+    ) -> None:
         self.beginResetModel()
         self.rows = list(rows)
         self.source_key = source_key
@@ -446,6 +477,27 @@ class RankingTableModel(QAbstractTableModel):
                     format_price(row.current_price),
                     format_percent(row.change_percent),
                 )
+        elif isinstance(row, InteractionRankingRow):
+            raw_values = (
+                row.rank,
+                row.name,
+                row.code,
+                row.industry_tags or ("未标注",),
+                row.question_count,
+                row.replied_count,
+                row.reply_rate,
+                row.latest_reply.timestamp(),
+            )
+            display_values = (
+                str(row.rank),
+                row.name,
+                row.code,
+                "、".join(row.industry_tags) if row.industry_tags else "未标注",
+                str(row.question_count),
+                str(row.replied_count),
+                f"{row.reply_rate * 100:.1f}%" if row.question_count else "—",
+                format_datetime(row.latest_reply),
+            )
         else:
             raw_values = (
                 row.rank,
@@ -470,10 +522,7 @@ class RankingTableModel(QAbstractTableModel):
         if role == Qt.UserRole:
             return raw_values[index.column()]
         if role == Qt.TextAlignmentRole:
-            if isinstance(row, PopularityRankRow):
-                centered = {0, 2}
-            else:
-                centered = {0, 2}
+            centered = {0, 2}
             if index.column() in centered:
                 return int(Qt.AlignCenter)
             if index.column() == self.STOCK_NAME_COLUMN:
@@ -505,6 +554,7 @@ class IndustryFilterButton(QToolButton):
     """An Excel-like multi-select menu for the industry filter."""
 
     selection_changed = Signal(object)
+    BUTTON_WIDTH = 128
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -515,7 +565,7 @@ class IndustryFilterButton(QToolButton):
         self.setText("全部行业")
         self.setToolTip("按股票所属行业筛选榜单；可多选")
         self.setPopupMode(QToolButton.InstantPopup)
-        self.setFixedWidth(156)
+        self.setFixedWidth(self.BUTTON_WIDTH)
 
         menu = QMenu(self)
         menu.setObjectName("industryFilterMenu")
@@ -628,11 +678,67 @@ class IndustryFilterButton(QToolButton):
 
     def _update_button_text(self) -> None:
         if not self._selected_tags:
-            self.setText("全部行业")
+            self._set_display_text("全部行业")
         elif len(self._selected_tags) == 1:
-            self.setText(next(iter(self._selected_tags)))
+            self._set_display_text(next(iter(self._selected_tags)))
         else:
-            self.setText(f"已选 {len(self._selected_tags)} 个行业")
+            self._set_display_text(f"已选 {len(self._selected_tags)} 项")
+
+    def _set_display_text(self, value: str) -> None:
+        """Keep filter labels within the compact button, including long tags."""
+        usable_width = self.BUTTON_WIDTH - 36  # button padding and menu arrow
+        self.setText(QFontMetrics(self.font()).elidedText(value, Qt.ElideRight, usable_width))
+
+
+class ChannelFilterButton(IndustryFilterButton):
+    """An Excel-like multi-select menu for the news-channel filter."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setText("全部来源")
+        self.setToolTip("按新闻来源频道筛选榜单；可多选")
+
+    def _update_button_text(self) -> None:
+        if not self._selected_tags:
+            self._set_display_text("全部来源")
+        elif len(self._selected_tags) == 1:
+            self._set_display_text(next(iter(self._selected_tags)))
+        else:
+            self._set_display_text(f"已选 {len(self._selected_tags)} 项")
+
+
+class ContentTypeFilterButton(IndustryFilterButton):
+    """Multi-select menu for the message content-type filter (新闻/公告)."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setText("全部类型")
+        self.setToolTip("按内容类型筛选消息榜；可多选")
+
+    def _update_button_text(self) -> None:
+        if not self._selected_tags:
+            self._set_display_text("全部类型")
+        elif len(self._selected_tags) == 1:
+            self._set_display_text(next(iter(self._selected_tags)))
+        else:
+            self._set_display_text(f"已选 {len(self._selected_tags)} 项")
+
+
+class PlatformFilterButton(IndustryFilterButton):
+    """Multi-select menu for the interaction platform filter."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setText("全部平台")
+        self.setToolTip("按官方问答平台筛选互动榜；可多选")
+
+    def _update_button_text(self) -> None:
+        if not self._selected_tags:
+            self._set_display_text("全部平台")
+        elif len(self._selected_tags) == 1:
+            self._set_display_text(next(iter(self._selected_tags)))
+        else:
+            self._set_display_text(f"已选 {len(self._selected_tags)} 项")
 
 
 class RankingProxyModel(QSortFilterProxyModel):
@@ -642,6 +748,9 @@ class RankingProxyModel(QSortFilterProxyModel):
         super().__init__(parent)
         self._query = ""
         self._industry_tags: set[str] = set()
+        self._channels: set[str] = set()
+        self._content_types: set[str] = set()
+        self._platforms: set[str] = set()
         self.setSortRole(Qt.UserRole)
         self.setDynamicSortFilter(True)
 
@@ -653,6 +762,18 @@ class RankingProxyModel(QSortFilterProxyModel):
         self._industry_tags = {value.strip() for value in values if value.strip()}
         self.invalidateFilter()
 
+    def set_channels(self, values: set[str]) -> None:
+        self._channels = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
+    def set_content_types(self, values: set[str]) -> None:
+        self._content_types = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
+    def set_platforms(self, values: set[str]) -> None:
+        self._platforms = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
     def maximum_filtered_heat(self) -> int:
         model = self.sourceModel()
         if not isinstance(model, RankingTableModel):
@@ -660,22 +781,526 @@ class RankingProxyModel(QSortFilterProxyModel):
         return max((self._heat(row) for row in model.rows if self._matches(row)), default=1)
 
     @staticmethod
-    def _heat(row: RankingRow | PopularityRankRow) -> int:
-        if isinstance(row, PopularityRankRow):
-            return 0
-        return row.event_count
+    def _heat(row: RankingRow | PopularityRankRow | InteractionRankingRow) -> int:
+        if isinstance(row, RankingRow):
+            return row.event_count
+        if isinstance(row, InteractionRankingRow):
+            return row.question_count
+        return 0
 
-    def _matches(self, row: RankingRow | PopularityRankRow) -> bool:
+    def _matches(self, row: RankingRow | PopularityRankRow | InteractionRankingRow) -> bool:
         if self._query and self._query not in row.name.lower() and self._query not in row.code.lower():
             return False
-        if not self._industry_tags:
-            return True
-        industry_tags = getattr(row, "industry_tags", ()) or (self.UNCATEGORIZED_LABEL,)
-        return bool(set(industry_tags).intersection(self._industry_tags))
+        if self._industry_tags:
+            industry_tags = getattr(row, "industry_tags", ()) or (self.UNCATEGORIZED_LABEL,)
+            if not set(industry_tags).intersection(self._industry_tags):
+                return False
+        if self._channels:
+            row_channels = set(getattr(row, "channels", ()) or ())
+            if not row_channels.intersection(self._channels):
+                return False
+        if self._content_types:
+            row_types = set(getattr(row, "content_types", ()) or ())
+            if not row_types.intersection(self._content_types):
+                return False
+        if self._platforms:
+            row_platforms = set(getattr(row, "platforms", ()) or ())
+            if not row_platforms.intersection(self._platforms):
+                return False
+        return True
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:  # noqa: N802
         model = self.sourceModel()
         if isinstance(model, RankingTableModel):
+            row = model.row_at(source_row)
+            return bool(row and self._matches(row))
+        return True
+
+
+RESEARCH_HEADERS: dict[str, tuple[str, ...]] = {
+    "confirm": (
+        "排名",
+        "股票名称",
+        "代码",
+        "事件类型",
+        "正向机制",
+        "重大性",
+        "关键相对量",
+        "确定性",
+        "主要反证/落地风险",
+        "事件时间",
+        "质量状态",
+    ),
+    "catalyst": (
+        "排名",
+        "股票名称",
+        "代码",
+        "事件类型",
+        "正向机制",
+        "重大性",
+        "关键相对量",
+        "确定性",
+        "主要反证/落地风险",
+        "事件时间",
+        "质量状态",
+    ),
+    "z20": (
+        "排名",
+        "股票名称",
+        "代码",
+        "行业",
+        "z20",
+        "机构集团数",
+        "新增机构集团",
+        "分析师数",
+        "高深度占比",
+        "最近活动",
+        "覆盖状态",
+    ),
+    "persist60": (
+        "排名",
+        "股票名称",
+        "代码",
+        "窗口",
+        "持续关注分",
+        "活跃周数/比例",
+        "机构集团数",
+        "重复跟进比例",
+        "研究深度",
+        "单日集中度",
+        "主要关注主题",
+        "覆盖状态",
+    ),
+    "persist120": (
+        "排名",
+        "股票名称",
+        "代码",
+        "窗口",
+        "持续关注分",
+        "活跃周数/比例",
+        "机构集团数",
+        "重复跟进比例",
+        "研究深度",
+        "单日集中度",
+        "主要关注主题",
+        "覆盖状态",
+    ),
+    "discovery": (
+        "排名",
+        "股票名称",
+        "代码",
+        "发现类型",
+        "原始标题",
+        "触发原因",
+        "正文状态",
+        "发布时间",
+        "来源",
+        "质量状态",
+    ),
+}
+
+WINDOW_LABELS: dict[str, str] = {
+    "persistence_60": "60 日",
+    "persistence_120": "120 日",
+}
+
+QUALITY_LABELS: dict[str, str] = {
+    "ok": "正常",
+    "partial": "部分覆盖",
+    "cold_start": "冷启动",
+    "provisional": "暂定",
+    "error": "来源失败",
+}
+
+QUALITY_STATE_BY_LABEL: dict[str, str] = {
+    label: state for state, label in QUALITY_LABELS.items()
+}
+
+
+class TopicFilterButton(IndustryFilterButton):
+    """Multi-select menu for the research persistence topic filter."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setText("全部主题")
+        self.setToolTip("按主要关注主题筛选持续关注榜；可多选")
+
+    def _update_button_text(self) -> None:
+        if not self._selected_tags:
+            self._set_display_text("全部主题")
+        elif len(self._selected_tags) == 1:
+            self._set_display_text(next(iter(self._selected_tags)))
+        else:
+            self._set_display_text(f"已选 {len(self._selected_tags)} 项")
+
+
+class QualityFilterButton(IndustryFilterButton):
+    """Multi-select menu for the research coverage-quality filter."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setText("全部质量")
+        self.setToolTip("按覆盖/质量状态筛选研究榜；可多选")
+
+    def _update_button_text(self) -> None:
+        if not self._selected_tags:
+            self._set_display_text("全部质量")
+        elif len(self._selected_tags) == 1:
+            self._set_display_text(next(iter(self._selected_tags)))
+        else:
+            self._set_display_text(f"已选 {len(self._selected_tags)} 项")
+
+
+class ResearchTableModel(QAbstractTableModel):
+    """Shared table model for the four 1.1.0 research views.
+
+    Consumes the display rows built by ``ashare_hotpot.research_views`` so the
+    table, CSV export and clipboard copy always share one column contract.
+    """
+
+    STOCK_NAME_COLUMN = 1
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self.rows: list[
+            ShortTermViewRow
+            | InstitutionZ20ViewRow
+            | PersistenceViewRow
+            | DiscoveryViewRow
+        ] = []
+        self.source_key = "confirm"
+
+    @property
+    def headers(self) -> tuple[str, ...]:
+        return RESEARCH_HEADERS.get(self.source_key, RESEARCH_HEADERS["confirm"])
+
+    def set_rows(
+        self,
+        rows: list[
+            ShortTermViewRow
+            | InstitutionZ20ViewRow
+            | PersistenceViewRow
+            | DiscoveryViewRow
+        ],
+        *,
+        source_key: str = "confirm",
+    ) -> None:
+        self.beginResetModel()
+        self.rows = list(rows)
+        self.source_key = source_key
+        self.endResetModel()
+        self.headerDataChanged.emit(Qt.Horizontal, 0, max(0, len(self.headers) - 1))
+
+    def row_at(
+        self, row: int
+    ) -> (
+        ShortTermViewRow
+        | InstitutionZ20ViewRow
+        | PersistenceViewRow
+        | DiscoveryViewRow
+        | None
+    ):
+        return self.rows[row] if 0 <= row < len(self.rows) else None
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self.rows)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self.headers)
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):  # noqa: N802
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal and 0 <= section < len(self.headers):
+            return self.headers[section]
+        return None
+
+    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self.rows)):
+            return None
+        row = self.rows[index.row()]
+        column = index.column()
+        if role == Qt.DisplayRole:
+            return self._display(row, column)
+        if role == Qt.UserRole:
+            return self._raw(row, column)
+        if role == Qt.TextAlignmentRole:
+            if column in {0, 2}:
+                return int(Qt.AlignCenter)
+            if column == self.STOCK_NAME_COLUMN:
+                return int(Qt.AlignVCenter | Qt.AlignLeft)
+            return int(Qt.AlignVCenter | Qt.AlignRight)
+        if role == Qt.ForegroundRole:
+            if column == self.STOCK_NAME_COLUMN:
+                return QColor(COLOR_LINK)
+            if column == 0 and row.rank <= 3:
+                return QColor(COLOR_WARNING)
+            quality = self._quality_state(row)
+            if quality in {"partial", "provisional"} and self._quality_column(row) == column:
+                return QColor(COLOR_WARNING)
+            if quality in {"cold_start", "error"} and self._quality_column(row) == column:
+                return QColor(COLOR_HOT)
+        if role == Qt.FontRole and column == self.STOCK_NAME_COLUMN:
+            font = QFont()
+            font.setBold(True)
+            return font
+        return None
+
+    @staticmethod
+    def _quality_state(row) -> str:
+        return str(getattr(row, "quality_state", "") or getattr(row, "coverage_state", "") or "ok")
+
+    def _quality_column(self, row) -> int:
+        if isinstance(row, ShortTermViewRow):
+            return 10
+        if isinstance(row, InstitutionZ20ViewRow):
+            return 10
+        if isinstance(row, DiscoveryViewRow):
+            return 9
+        return 11
+
+    def _display(self, row, column: int) -> str:
+        if isinstance(row, ShortTermViewRow):
+            return self._short_term_display(row, column)
+        if isinstance(row, InstitutionZ20ViewRow):
+            return self._z20_display(row, column)
+        if isinstance(row, DiscoveryViewRow):
+            return self._discovery_display(row, column)
+        return self._persistence_display(row, column)
+
+    @staticmethod
+    def _short_term_display(row: ShortTermViewRow, column: int) -> str:
+        if column == 0:
+            return str(row.rank)
+        if column == 1:
+            return row.stock_name
+        if column == 2:
+            return row.stock_code
+        if column == 3:
+            return row.event_type
+        if column == 4:
+            return row.positive_mechanism or "—"
+        if column == 5:
+            return f"L{row.materiality_level}"
+        if column == 6:
+            return row.key_metric or "—"
+        if column == 7:
+            return f"{row.certainty * 100:.0f}%"
+        if column == 8:
+            if row.counter_evidence:
+                return row.counter_evidence
+            return "尚未落地" if row.board == "potential_catalyst" else "—"
+        if column == 9:
+            return format_datetime(row.event_time) if row.event_time else "—"
+        if column == 10:
+            return QUALITY_LABELS.get(row.quality_state, row.quality_state)
+        return ""
+
+    @staticmethod
+    def _z20_display(row: InstitutionZ20ViewRow, column: int) -> str:
+        if column == 0:
+            return str(row.rank)
+        if column == 1:
+            return row.stock_name
+        if column == 2:
+            return row.stock_code
+        if column == 3:
+            return row.industry or "未标注"
+        if column == 4:
+            return "—" if row.z20 is None else f"{row.z20:.2f}"
+        if column == 5:
+            return str(row.current_unique_groups)
+        if column == 6:
+            return str(row.new_groups)
+        if column == 7:
+            return str(row.analyst_count)
+        if column == 8:
+            return format_ratio(row.high_depth_ratio)
+        if column == 9:
+            return row.recent_activity.isoformat() if row.recent_activity else "—"
+        if column == 10:
+            return QUALITY_LABELS.get(row.coverage_state, row.coverage_state)
+        return ""
+
+    @staticmethod
+    def _persistence_display(row: PersistenceViewRow, column: int) -> str:
+        if column == 0:
+            return str(row.rank)
+        if column == 1:
+            return row.stock_name
+        if column == 2:
+            return row.stock_code
+        if column == 3:
+            return WINDOW_LABELS.get(row.window_kind, row.window_kind)
+        if column == 4:
+            return f"{row.persistence_score:.1f}"
+        if column == 5:
+            return f"{row.active_weeks}/{format_ratio(row.active_week_ratio)}"
+        if column == 6:
+            return str(row.unique_groups)
+        if column == 7:
+            return format_ratio(row.repeat_followup_ratio)
+        if column == 8:
+            return format_ratio(row.depth_score)
+        if column == 9:
+            return format_ratio(row.single_day_concentration)
+        if column == 10:
+            topics = sorted(row.topics.items(), key=lambda item: (-item[1], item[0]))[:4]
+            return " · ".join(f"{_topic_label(topic)} {count}" for topic, count in topics) or "—"
+        if column == 11:
+            return QUALITY_LABELS.get(row.coverage_state, row.coverage_state)
+        return ""
+
+    @staticmethod
+    def _discovery_display(row: DiscoveryViewRow, column: int) -> str:
+        if column == 0:
+            return str(row.rank)
+        if column == 1:
+            return row.stock_name
+        if column == 2:
+            return row.stock_code
+        if column == 3:
+            return row.discovery_type_label
+        if column == 4:
+            return row.title
+        if column == 5:
+            return row.trigger_reason
+        if column == 6:
+            return row.parse_status_label
+        if column == 7:
+            return format_datetime(row.published_at) if row.published_at else "—"
+        if column == 8:
+            return row.source_name
+        if column == 9:
+            return QUALITY_LABELS.get(row.quality_state, row.quality_state)
+        return ""
+
+    def _raw(self, row, column: int):
+        if isinstance(row, ShortTermViewRow):
+            return (
+                row.rank,
+                row.stock_name,
+                row.stock_code,
+                row.event_type,
+                row.positive_mechanism or "",
+                row.materiality_level,
+                row.key_metric or "",
+                row.certainty,
+                row.counter_evidence or ("尚未落地" if row.board == "potential_catalyst" else ""),
+                row.event_time.timestamp() if row.event_time else 0,
+                QUALITY_LABELS.get(row.quality_state, row.quality_state),
+            )[column]
+        if isinstance(row, InstitutionZ20ViewRow):
+            return (
+                row.rank,
+                row.stock_name,
+                row.stock_code,
+                row.industry or "未标注",
+                row.z20 if row.z20 is not None else -1e18,
+                row.current_unique_groups,
+                row.new_groups,
+                row.analyst_count,
+                row.high_depth_ratio,
+                _date_timestamp(row.recent_activity),
+                QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+            )[column]
+        if isinstance(row, DiscoveryViewRow):
+            return (
+                row.rank,
+                row.stock_name,
+                row.stock_code,
+                row.discovery_type,
+                row.title,
+                row.trigger_reason,
+                row.parse_status,
+                int(row.published_at.timestamp()) if row.published_at else 0,
+                row.source_name,
+                QUALITY_LABELS.get(row.quality_state, row.quality_state),
+            )[column]
+        topics = " ".join(f"{_topic_label(topic)}" for topic, _ in sorted(row.topics.items(), key=lambda item: (-item[1], item[0])))
+        return (
+            row.rank,
+            row.stock_name,
+            row.stock_code,
+            WINDOW_LABELS.get(row.window_kind, row.window_kind),
+            row.persistence_score,
+            row.active_week_ratio,
+            row.unique_groups,
+            row.repeat_followup_ratio,
+            row.depth_score,
+            row.single_day_concentration,
+            topics,
+            QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+        )[column]
+
+
+def _date_timestamp(value) -> int:
+    if value is None:
+        return 0
+    from datetime import datetime
+
+    return int(datetime(value.year, value.month, value.day).timestamp())
+
+
+def _topic_label(topic: str) -> str:
+    from .research_views import TOPIC_LABELS
+
+    return TOPIC_LABELS.get(topic, topic)
+
+
+class ResearchProxyModel(QSortFilterProxyModel):
+    """Filter/sort proxy for the shared research table model."""
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._query = ""
+        self._event_types: set[str] = set()
+        self._topics: set[str] = set()
+        self._industries: set[str] = set()
+        self._quality_states: set[str] = set()
+        self.setSortRole(Qt.UserRole)
+        self.setDynamicSortFilter(True)
+
+    def set_query(self, value: str) -> None:
+        self._query = value.strip().lower()
+        self.invalidateFilter()
+
+    def set_event_types(self, values: set[str]) -> None:
+        self._event_types = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
+    def set_topics(self, values: set[str]) -> None:
+        self._topics = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
+    def set_industries(self, values: set[str]) -> None:
+        self._industries = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
+    def set_quality_states(self, values: set[str]) -> None:
+        self._quality_states = {value.strip() for value in values if value.strip()}
+        self.invalidateFilter()
+
+    def _matches(self, row) -> bool:
+        if self._query and self._query not in row.stock_name.lower() and self._query not in row.stock_code.lower():
+            return False
+        if self._event_types and getattr(row, "event_type", "") not in self._event_types:
+            return False
+        if self._topics:
+            row_topics = set(getattr(row, "topics", {}) or {})
+            if not row_topics.intersection(self._topics):
+                return False
+        if self._industries:
+            industry = getattr(row, "industry", None) or "未标注"
+            if industry not in self._industries:
+                return False
+        if self._quality_states:
+            state = getattr(row, "quality_state", "") or getattr(row, "coverage_state", "") or ""
+            if state not in self._quality_states:
+                return False
+        return True
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:  # noqa: N802
+        model = self.sourceModel()
+        if isinstance(model, ResearchTableModel):
             row = model.row_at(source_row)
             return bool(row and self._matches(row))
         return True
@@ -710,8 +1335,8 @@ class ArticleDetailDialog(QDialog):
         layout.addWidget(heading_frame)
 
         self.article_tree = QTreeWidget()
-        self.article_tree.setColumnCount(3)
-        self.article_tree.setHeaderLabels(["文章标题", "原文链接", "发布时间"])
+        self.article_tree.setColumnCount(4)
+        self.article_tree.setHeaderLabels(["标题", "来源", "发布时间", "原文链接"])
         self.article_tree.setAlternatingRowColors(True)
         self.article_tree.setRootIsDecorated(False)
         self.article_tree.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -720,36 +1345,34 @@ class ArticleDetailDialog(QDialog):
             event = event_map.get(event_id)
             if not event:
                 continue
-            matching_articles = [
-                article
-                for article in event.articles
-                if row.code in {stock.code for stock in article.stocks}
-            ]
-            article = matching_articles[0] if matching_articles else None
-            if article is None and event.articles:
-                article = event.articles[0]
-            if article is None:
-                continue
-            item = QTreeWidgetItem(
-                [
-                    article.title,
-                    article.url,
-                    format_datetime(article.published_at, seconds=True),
-                ]
-            )
-            item.setData(1, Qt.UserRole, article.url)
-            item.setToolTip(0, article.url)
-            item.setToolTip(1, "单击打开原文")
-            link_font = item.font(1)
-            link_font.setUnderline(True)
-            item.setFont(1, link_font)
-            item.setForeground(1, QColor(COLOR_LINK))
-            self.article_tree.addTopLevelItem(item)
+            for article in event.articles:
+                if row.code not in {stock.code for stock in article.stocks}:
+                    continue
+                source = article.provider_name or article.channel_name
+                item = QTreeWidgetItem(
+                    [
+                        article.title,
+                        source,
+                        format_datetime(article.published_at, seconds=True),
+                        article.url,
+                    ]
+                )
+                item.setData(3, Qt.UserRole, article.url)
+                item.setToolTip(0, article.title)
+                item.setToolTip(1, f"数据源：{source}")
+                item.setToolTip(3, "单击打开原文")
+                link_font = item.font(3)
+                link_font.setUnderline(True)
+                item.setFont(3, link_font)
+                item.setForeground(3, QColor(COLOR_LINK))
+                self.article_tree.addTopLevelItem(item)
         self.article_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
         self.article_tree.header().setSectionResizeMode(1, QHeaderView.Interactive)
         self.article_tree.header().setSectionResizeMode(2, QHeaderView.Interactive)
-        self.article_tree.setColumnWidth(1, 320)
+        self.article_tree.header().setSectionResizeMode(3, QHeaderView.Interactive)
+        self.article_tree.setColumnWidth(1, 130)
         self.article_tree.setColumnWidth(2, 154)
+        self.article_tree.setColumnWidth(3, 300)
         self.article_tree.setTextElideMode(Qt.ElideMiddle)
         self.article_tree.itemClicked.connect(self._open_article)
         layout.addWidget(self.article_tree, 1)
@@ -763,8 +1386,8 @@ class ArticleDetailDialog(QDialog):
 
     @staticmethod
     def _open_article(item: QTreeWidgetItem, column: int) -> None:
-        url = item.data(1, Qt.UserRole)
-        if column == 1 and url:
+        url = item.data(3, Qt.UserRole)
+        if column == 3 and url:
             QDesktopServices.openUrl(QUrl(str(url)))
 
 
@@ -950,6 +1573,11 @@ class LegacyMainWindow(QMainWindow):
         heading.addWidget(self.industry_label)
         self.industry_filter = IndustryFilterButton()
         heading.addWidget(self.industry_filter)
+        self.channel_label = QLabel("来源")
+        self.channel_label.setObjectName("mutedLabel")
+        heading.addWidget(self.channel_label)
+        self.channel_filter = ChannelFilterButton()
+        heading.addWidget(self.channel_filter)
         search_label = QLabel("搜索")
         search_label.setObjectName("mutedLabel")
         heading.addWidget(search_label)
@@ -965,6 +1593,7 @@ class LegacyMainWindow(QMainWindow):
         self.proxy_model.setSourceModel(self.table_model)
         self.search_input.textChanged.connect(self.proxy_model.set_query)
         self.industry_filter.selection_changed.connect(self._set_industry_filter)
+        self.channel_filter.selection_changed.connect(self._set_channel_filter)
         self.proxy_model.rowsInserted.connect(self._update_result_count)
         self.proxy_model.rowsRemoved.connect(self._update_result_count)
         self.proxy_model.modelReset.connect(self._update_result_count)
@@ -1083,7 +1712,7 @@ class LegacyMainWindow(QMainWindow):
             self.pop_card.set_value("—", pop_detail, status="warning" if popularity.error else None)
         if self.selected_source in {"pop", "surge"} and not snapshot.popularity.available:
             self.selected_source = "ths"
-        self._render_selected_source(reset_industry=False)
+        self._render_selected_source(reset_filters=False)
         self.snapshot_changed.emit(snapshot)
 
     def _selected_rows(self) -> list[RankingRow] | list[PopularityRankRow]:
@@ -1106,7 +1735,7 @@ class LegacyMainWindow(QMainWindow):
             self.selected_source = source_key
         else:
             return
-        self._render_selected_source(reset_industry=True)
+        self._render_selected_source(reset_filters=True)
 
     def _update_rank_toggles(self) -> None:
         is_pop = self.selected_source in {"pop", "surge"}
@@ -1116,11 +1745,12 @@ class LegacyMainWindow(QMainWindow):
             self.rank_toggle_pop.setChecked(self.selected_source == "pop")
             self.rank_toggle_surge.setChecked(self.selected_source == "surge")
 
-    def _render_selected_source(self, *, reset_industry: bool) -> None:
+    def _render_selected_source(self, *, reset_filters: bool) -> None:
         if not self.snapshot:
             return
-        if reset_industry:
+        if reset_filters:
             self.industry_filter.set_selected_tags(set(), emit=False)
+            self.channel_filter.set_selected_tags(set(), emit=False)
         source_key = self.selected_source
         is_news = source_key == "ths"
         is_pop = source_key in {"pop", "surge"}
@@ -1130,11 +1760,13 @@ class LegacyMainWindow(QMainWindow):
         self._update_rank_toggles()
         self.industry_label.setVisible(is_news)
         self.industry_filter.setVisible(is_news)
+        self.channel_label.setVisible(is_news)
+        self.channel_filter.setVisible(is_news)
         self.table_model.set_rows(rows, source_key=source_key)
         self._configure_table_columns()
         self.table.sortByColumn(0, Qt.AscendingOrder)
         self.content_stack.setCurrentWidget(self.table)
-        self._set_industry_filter_options(rows)
+        self._set_filter_options(rows)
         if is_news:
             stats = self.snapshot.stats
             self.ranking_caption.setText("按去重后的有效新闻提及次数排序")
@@ -1189,7 +1821,7 @@ class LegacyMainWindow(QMainWindow):
             self.table.setColumnWidth(5, 92)
             self.table.setColumnWidth(6, 154)
 
-    def _set_industry_filter_options(self, rankings: list[RankingRow] | list[PopularityRankRow]) -> None:
+    def _set_filter_options(self, rankings: list[RankingRow] | list[PopularityRankRow]) -> None:
         tags = {
             tag
             for row in rankings
@@ -1197,9 +1829,20 @@ class LegacyMainWindow(QMainWindow):
         }
         self.industry_filter.set_options(tags)
         self.proxy_model.set_industry_tags(set(self.industry_filter.selected_tags))
+        channels = {
+            channel
+            for row in rankings
+            for channel in (getattr(row, "channels", None) or ())
+        }
+        self.channel_filter.set_options(channels)
+        self.proxy_model.set_channels(set(self.channel_filter.selected_tags))
 
     def _set_industry_filter(self, tags: set[str]) -> None:
         self.proxy_model.set_industry_tags(tags)
+        self._update_result_count()
+
+    def _set_channel_filter(self, channels: set[str]) -> None:
+        self.proxy_model.set_channels(channels)
         self._update_result_count()
 
     def _update_result_count(self, *_: object) -> None:
@@ -1235,6 +1878,7 @@ class LegacyMainWindow(QMainWindow):
         self.cancel_button.setEnabled(True)
         self.search_input.setEnabled(False)
         self.industry_filter.setEnabled(False)
+        self.channel_filter.setEnabled(False)
         self.window_hours_input.setEnabled(False)
         self.progress_bar.setValue(0)
         self.progress_bar.show()
@@ -1283,6 +1927,7 @@ class LegacyMainWindow(QMainWindow):
         self.cancel_button.setEnabled(False)
         self.search_input.setEnabled(True)
         self.industry_filter.setEnabled(True)
+        self.channel_filter.setEnabled(True)
         self.window_hours_input.setEnabled(True)
         self.progress_bar.hide()
         self._thread = None
@@ -1315,7 +1960,7 @@ class LegacyMainWindow(QMainWindow):
         self.storage.clear_all()
         self.snapshot = None
         self.table_model.set_rows([])
-        self._set_industry_filter_options([])
+        self._set_filter_options([])
         self.content_stack.setCurrentWidget(self.empty_state)
         self.window_label.setText("尚无本地快照 · 点击刷新数据开始采集")
         self.stats_label.setText("")
@@ -1326,6 +1971,8 @@ class LegacyMainWindow(QMainWindow):
         self.selected_source = "ths"
         self.industry_label.setVisible(True)
         self.industry_filter.setVisible(True)
+        self.channel_label.setVisible(True)
+        self.channel_filter.setVisible(True)
         self._update_rank_toggles()
         self._set_activity("本地数据已清除", active=False)
 

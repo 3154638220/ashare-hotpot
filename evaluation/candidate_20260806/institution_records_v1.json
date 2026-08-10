@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "institution_records",
+  "meta": {
+    "exported_at": "2026-08-06T20:19:55.397433+08:00",
+    "database": "hotpot.db",
+    "seed": 20260806,
+    "activity_count_total": 0,
+    "activity_count_sampled": 0,
+    "min_records": 100
+  },
+  "records": []
+}
