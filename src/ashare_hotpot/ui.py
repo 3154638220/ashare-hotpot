@@ -857,6 +857,12 @@ RESEARCH_HEADERS: dict[str, tuple[str, ...]] = {
         "最近活动",
         "覆盖状态",
     ),
+    "z20_v2": (
+        "排名", "股票名称", "代码", "行业", "标准化升温值（描述性）",
+        "绝对增量", "当前集团数", "100 日未见集团", "活跃日期数",
+        "单日集中度", "单日集中", "最近活动", "指标版本", "来源 cohort",
+        "日期质量", "排除组织数", "暂定原因", "覆盖状态",
+    ),
     "persist60": (
         "排名",
         "股票名称",
@@ -884,6 +890,12 @@ RESEARCH_HEADERS: dict[str, tuple[str, ...]] = {
         "单日集中度",
         "主要关注主题",
         "覆盖状态",
+    ),
+    "persistence_v2": (
+        "排名", "股票名称", "代码", "窗口", "持续关注规则指数",
+        "活跃周数/比例", "机构集团数", "重复跟进比例", "研究深度",
+        "单日集中度", "主要关注主题", "指标版本", "来源 cohort",
+        "日期质量", "排除组织数", "暂定原因", "覆盖状态",
     ),
     "discovery": (
         "排名",
@@ -972,6 +984,18 @@ class ResearchTableModel(QAbstractTableModel):
 
     @property
     def headers(self) -> tuple[str, ...]:
+        if self.source_key == "z20" and any(
+            isinstance(row, InstitutionZ20ViewRow)
+            and row.metric_version == "warming_v2"
+            for row in self.rows
+        ):
+            return RESEARCH_HEADERS["z20_v2"]
+        if self.source_key in {"persist60", "persist120"} and any(
+            isinstance(row, PersistenceViewRow)
+            and row.metric_version == "persistence_rules_v2"
+            for row in self.rows
+        ):
+            return RESEARCH_HEADERS["persistence_v2"]
         return RESEARCH_HEADERS.get(self.source_key, RESEARCH_HEADERS["confirm"])
 
     def set_rows(
@@ -1052,10 +1076,10 @@ class ResearchTableModel(QAbstractTableModel):
         if isinstance(row, ShortTermViewRow):
             return 10
         if isinstance(row, InstitutionZ20ViewRow):
-            return 10
+            return 17 if row.metric_version == "warming_v2" else 10
         if isinstance(row, DiscoveryViewRow):
             return 9
-        return 11
+        return 16 if getattr(row, "metric_version", "") == "persistence_rules_v2" else 11
 
     def _display(self, row, column: int) -> str:
         if isinstance(row, ShortTermViewRow):
@@ -1096,6 +1120,28 @@ class ResearchTableModel(QAbstractTableModel):
 
     @staticmethod
     def _z20_display(row: InstitutionZ20ViewRow, column: int) -> str:
+        if row.metric_version == "warming_v2":
+            values = (
+                str(row.rank),
+                row.stock_name,
+                row.stock_code,
+                row.industry or "未标注",
+                "—" if row.z20 is None else f"{row.z20:.2f}",
+                "—" if row.absolute_change is None else f"{row.absolute_change:+.2f}",
+                str(row.current_unique_groups),
+                "—" if row.unseen_100d_groups is None else str(row.unseen_100d_groups),
+                str(row.active_days),
+                format_ratio(row.single_day_concentration),
+                "是" if row.single_day else "否",
+                row.recent_activity.isoformat() if row.recent_activity else "—",
+                row.metric_version,
+                row.source_cohort_id or "—",
+                row.date_quality,
+                str(row.excluded_organization_count),
+                row.provisional_reason or "—",
+                QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+            )
+            return values[column] if 0 <= column < len(values) else ""
         if column == 0:
             return str(row.rank)
         if column == 1:
@@ -1122,6 +1168,26 @@ class ResearchTableModel(QAbstractTableModel):
 
     @staticmethod
     def _persistence_display(row: PersistenceViewRow, column: int) -> str:
+        if row.metric_version == "persistence_rules_v2":
+            topics = sorted(
+                row.topics.items(), key=lambda item: (-item[1], item[0])
+            )[:4]
+            values = (
+                str(row.rank), row.stock_name, row.stock_code,
+                WINDOW_LABELS.get(row.window_kind.replace("_v2", ""), row.window_kind),
+                "—" if row.persistence_score is None else f"{row.persistence_score:.1f}",
+                f"{row.active_weeks}/{format_ratio(row.active_week_ratio)}",
+                str(row.unique_groups), format_ratio(row.repeat_followup_ratio),
+                "—" if row.depth_score is None else format_ratio(row.depth_score),
+                format_ratio(row.single_day_concentration),
+                " · ".join(
+                    f"{_topic_label(topic)} {count}" for topic, count in topics
+                ) or "—",
+                row.metric_version, row.source_cohort_id or "—", row.date_quality,
+                str(row.excluded_organization_count), row.provisional_reason or "—",
+                QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+            )
+            return values[column] if 0 <= column < len(values) else ""
         if column == 0:
             return str(row.rank)
         if column == 1:
@@ -1189,6 +1255,20 @@ class ResearchTableModel(QAbstractTableModel):
                 QUALITY_LABELS.get(row.quality_state, row.quality_state),
             )[column]
         if isinstance(row, InstitutionZ20ViewRow):
+            if row.metric_version == "warming_v2":
+                return (
+                    row.rank, row.stock_name, row.stock_code,
+                    row.industry or "未标注",
+                    row.z20 if row.z20 is not None else -1e18,
+                    row.absolute_change if row.absolute_change is not None else -1e18,
+                    row.current_unique_groups,
+                    row.unseen_100d_groups if row.unseen_100d_groups is not None else -1,
+                    row.active_days, row.single_day_concentration, row.single_day,
+                    _date_timestamp(row.recent_activity), row.metric_version,
+                    row.source_cohort_id, row.date_quality,
+                    row.excluded_organization_count, row.provisional_reason or "",
+                    QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+                )[column]
             return (
                 row.rank,
                 row.stock_name,
@@ -1216,6 +1296,18 @@ class ResearchTableModel(QAbstractTableModel):
                 QUALITY_LABELS.get(row.quality_state, row.quality_state),
             )[column]
         topics = " ".join(f"{_topic_label(topic)}" for topic, _ in sorted(row.topics.items(), key=lambda item: (-item[1], item[0])))
+        if row.metric_version == "persistence_rules_v2":
+            return (
+                row.rank, row.stock_name, row.stock_code,
+                WINDOW_LABELS.get(row.window_kind.replace("_v2", ""), row.window_kind),
+                row.persistence_score if row.persistence_score is not None else -1e18,
+                row.active_week_ratio, row.unique_groups, row.repeat_followup_ratio,
+                row.depth_score if row.depth_score is not None else -1e18,
+                row.single_day_concentration, topics, row.metric_version,
+                row.source_cohort_id, row.date_quality,
+                row.excluded_organization_count, row.provisional_reason or "",
+                QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+            )[column]
         return (
             row.rank,
             row.stock_name,

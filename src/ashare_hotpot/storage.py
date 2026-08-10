@@ -17,6 +17,9 @@ from .discovery import (
 )
 from .extraction import event_type_hint
 from .models import (
+    ACTIVITY_DATE_PRECISION_EXPLICIT_DAY,
+    ACTIVITY_DATE_PRECISIONS,
+    ActivityOccurrence,
     CoverageSnapshot,
     DiscoveryCandidate,
     EventCluster,
@@ -27,6 +30,7 @@ from .models import (
     FailureInterval,
     Institution,
     InstitutionAlias,
+    InstitutionMetricSnapshotRecord,
     InteractionRecord,
     OcrPageResult,
     OfficialPopularitySnapshot,
@@ -36,19 +40,22 @@ from .models import (
     ResearchActivity,
     ResearchParticipant,
     ResearchParticipantMention,
+    ResearchParticipantOccurrence,
     ReportedParticipantCount,
     Snapshot,
     SourceManifest,
     SourceDocument,
+    SourceWindowCoverage,
     SyncCursor,
 )
 
 
-SCHEMA_VERSION = 121
+SCHEMA_VERSION = 122
 BACKUP_NAME = "hotpot.db.pre-110.bak"
 BACKUP_NAME_111 = "hotpot.db.pre-111.bak"
 BACKUP_NAME_120 = "hotpot.db.pre-120.bak"
 BACKUP_NAME_121 = "hotpot.db.pre-121.bak"
+BACKUP_NAME_122 = "hotpot.db.pre-122.bak"
 
 # Retention periods per plan.md section 7.4.  The ordinary article/interaction
 # cache purge keeps its own 7-day window; research data uses these cutoffs.
@@ -344,7 +351,9 @@ RESEARCH_TABLE_STATEMENTS: tuple[str, ...] = (
         window_start_ts INTEGER,
         window_end_ts INTEGER,
         snapshot_ts INTEGER NOT NULL,
-        metrics_json TEXT NOT NULL DEFAULT '{}'
+        metrics_json TEXT NOT NULL DEFAULT '{}',
+        metric_version TEXT NOT NULL DEFAULT 'z20_legacy',
+        source_cohort_id TEXT NOT NULL DEFAULT ''
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_metric_snapshots_window ON institution_metric_snapshots(window_kind, snapshot_ts)",
@@ -563,6 +572,88 @@ V121_TABLE_STATEMENTS: tuple[str, ...] = (
     """,
 )
 
+# 机构升温科学性修正的数据底座（schema 121 -> 122）。旧的
+# research_activity_dates / research_participants 与 z20 指标快照保留可读；
+# occurrence 表提供可靠日期和“机构—日期”关系，逐来源覆盖表用于后续构建
+# 可比 cohort，指标快照元数据用于 legacy/v2 并行灰度。
+V122_TABLE_STATEMENTS: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS activity_occurrences (
+        occurrence_id TEXT PRIMARY KEY,
+        activity_id TEXT NOT NULL
+            REFERENCES research_activities(activity_id) ON DELETE CASCADE,
+        occurred_on TEXT,
+        period_start TEXT,
+        period_end TEXT,
+        date_precision TEXT NOT NULL DEFAULT 'unknown'
+            CHECK (date_precision IN (
+                'explicit_day', 'explicit_range', 'disclosure_day', 'unknown'
+            )),
+        metric_eligible INTEGER NOT NULL DEFAULT 0
+            CHECK (metric_eligible IN (0, 1)),
+        exclusion_reason TEXT,
+        evidence_id TEXT,
+        parse_version TEXT NOT NULL DEFAULT ''
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_activity_occurrences_activity "
+    "ON activity_occurrences(activity_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_occurrences_day "
+    "ON activity_occurrences(occurred_on, metric_eligible)",
+    """
+    CREATE TABLE IF NOT EXISTS research_participant_occurrences (
+        participant_occurrence_id TEXT PRIMARY KEY,
+        activity_occurrence_id TEXT NOT NULL
+            REFERENCES activity_occurrences(occurrence_id) ON DELETE CASCADE,
+        activity_id TEXT NOT NULL
+            REFERENCES research_activities(activity_id) ON DELETE CASCADE,
+        institution_id TEXT NOT NULL
+            REFERENCES institutions(institution_id) ON DELETE CASCADE,
+        analyst_name TEXT,
+        research_eligible INTEGER NOT NULL DEFAULT 0
+            CHECK (research_eligible IN (0, 1)),
+        eligibility_reason TEXT NOT NULL DEFAULT '',
+        evidence_id TEXT,
+        parse_version TEXT NOT NULL DEFAULT ''
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_participant_occurrences_activity "
+    "ON research_participant_occurrences(activity_id)",
+    "CREATE INDEX IF NOT EXISTS idx_participant_occurrences_occurrence "
+    "ON research_participant_occurrences(activity_occurrence_id)",
+    "CREATE INDEX IF NOT EXISTS idx_participant_occurrences_institution "
+    "ON research_participant_occurrences(institution_id, research_eligible)",
+    """
+    CREATE TABLE IF NOT EXISTS source_window_coverages (
+        source_key TEXT NOT NULL,
+        market TEXT NOT NULL CHECK (market IN ('sh', 'sz', 'bj')),
+        source_kind TEXT NOT NULL DEFAULT 'research_activity'
+            CHECK (source_kind = 'research_activity'),
+        window_kind TEXT NOT NULL,
+        source_cohort_id TEXT NOT NULL,
+        requested_start TEXT NOT NULL,
+        requested_end TEXT NOT NULL,
+        covered_start TEXT,
+        covered_end TEXT,
+        reached_cutoff INTEGER NOT NULL DEFAULT 0
+            CHECK (reached_cutoff IN (0, 1)),
+        reconciled INTEGER NOT NULL DEFAULT 0
+            CHECK (reconciled IN (0, 1)),
+        cohort_eligible INTEGER NOT NULL DEFAULT 0
+            CHECK (cohort_eligible IN (0, 1)),
+        last_success_ts INTEGER,
+        last_error TEXT,
+        exclusion_reason TEXT,
+        updated_ts INTEGER NOT NULL,
+        PRIMARY KEY (source_key, market, window_kind, source_cohort_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_source_window_coverages_window "
+    "ON source_window_coverages(market, window_kind, source_cohort_id)",
+    "CREATE INDEX IF NOT EXISTS idx_source_window_coverages_updated "
+    "ON source_window_coverages(updated_ts)",
+)
+
 POPULARITY_STATE_KEY = "popularity"
 SOURCE_CACHE_PREFIX = "source_cache:"
 
@@ -595,6 +686,9 @@ class StorageStats:
     event_claim_count: int = 0
     participant_mention_count: int = 0
     reported_participant_count_count: int = 0
+    activity_occurrence_count: int = 0
+    participant_occurrence_count: int = 0
+    source_window_coverage_count: int = 0
 
 
 class Storage:
@@ -631,10 +725,12 @@ class Storage:
           (coverage layer) with a one-time ``pre-120.bak`` backup.
         - A version-111 database gets a one-time ``hotpot.db.pre-120.bak``
           backup and is migrated to 120 inside a ``BEGIN IMMEDIATE``
-          transaction, then to 121 (v2 多事实/参与者提及层) with a one-time
-          ``hotpot.db.pre-121.bak`` backup.
+          transaction, then to 121 (v2 多事实/参与者提及层) and 122
+          (机构发生日/逐来源覆盖层), with one-time backups for each step.
         - A version-120 database gets a one-time ``hotpot.db.pre-121.bak``
-          backup and is migrated to 121 inside a ``BEGIN IMMEDIATE``
+          backup and is migrated through 121 to 122.
+        - A version-121 database gets a one-time ``hotpot.db.pre-122.bak``
+          backup and is migrated to 122 inside a ``BEGIN IMMEDIATE``
           transaction.
         - Calling ``initialize`` again on an already-migrated database is a
           no-op (idempotent ``CREATE ... IF NOT EXISTS``) and never creates a
@@ -671,7 +767,12 @@ class Storage:
                     if version == 120:
                         self._create_backup_if_needed(BACKUP_NAME_121)
                         self._migrate_to_121(connection)
-                    else:
+                        version = 121
+                    if version == 121:
+                        self._create_backup_if_needed(BACKUP_NAME_122)
+                        self._migrate_to_122(connection)
+                        version = 122
+                    if version != SCHEMA_VERSION:
                         raise RuntimeError(
                             "数据库版本 %d 无法升级到 %d" % (version, SCHEMA_VERSION)
                         )
@@ -709,6 +810,9 @@ class Storage:
                 connection.execute(statement)
             for statement in V121_TABLE_STATEMENTS:
                 connection.execute(statement)
+            for statement in V122_TABLE_STATEMENTS:
+                connection.execute(statement)
+            self._ensure_institution_metric_metadata_columns(connection)
             self._ensure_institution_metric_batch_state(connection)
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
@@ -726,9 +830,12 @@ class Storage:
                 connection.execute(statement)
             for statement in V121_TABLE_STATEMENTS:
                 connection.execute(statement)
+            for statement in V122_TABLE_STATEMENTS:
+                connection.execute(statement)
             self._ensure_source_documents_page_count(connection)
             self._ensure_source_document_stock_names(connection)
             self._ensure_research_activity_columns(connection)
+            self._ensure_institution_metric_metadata_columns(connection)
             self._ensure_institution_metric_batch_state(connection)
             self._backfill_discovery_candidates(connection)
             connection.commit()
@@ -794,6 +901,28 @@ class Storage:
             connection.execute(
                 "ALTER TABLE source_document_stocks ADD COLUMN stock_name TEXT"
             )
+
+    @staticmethod
+    def _ensure_institution_metric_metadata_columns(
+        connection: sqlite3.Connection,
+    ) -> None:
+        """Add legacy/v2 coexistence metadata without rewriting old rows."""
+
+        existing = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(institution_metric_snapshots)"
+            ).fetchall()
+        }
+        migrations = (
+            ("metric_version", "TEXT NOT NULL DEFAULT 'z20_legacy'"),
+            ("source_cohort_id", "TEXT NOT NULL DEFAULT ''"),
+        )
+        for column, definition in migrations:
+            if column not in existing:
+                connection.execute(
+                    f"ALTER TABLE institution_metric_snapshots ADD COLUMN {column} {definition}"  # noqa: S608
+                )
 
     @staticmethod
     def _ensure_institution_metric_batch_state(
@@ -891,7 +1020,7 @@ class Storage:
             connection.execute("BEGIN IMMEDIATE")
             for statement in V120_TABLE_STATEMENTS:
                 connection.execute(statement)
-            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            connection.execute("PRAGMA user_version = 120")
             connection.commit()
         except Exception:
             connection.rollback()
@@ -912,7 +1041,27 @@ class Storage:
             connection.execute("BEGIN IMMEDIATE")
             for statement in V121_TABLE_STATEMENTS:
                 connection.execute(statement)
-            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            connection.execute("PRAGMA user_version = 121")
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+
+    def _migrate_to_122(self, connection: sqlite3.Connection) -> None:
+        """Migrate a version-121 database to the institution warming v2 base.
+
+        The migration is additive: legacy activity dates, participants,
+        snapshots and z20 payloads are kept intact.  New occurrence/coverage
+        tables and metric-version columns are committed atomically; the caller
+        creates the one-time ``pre-122`` backup before entering this method.
+        """
+
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            for statement in V122_TABLE_STATEMENTS:
+                connection.execute(statement)
+            self._ensure_institution_metric_metadata_columns(connection)
+            connection.execute("PRAGMA user_version = 122")
             connection.commit()
         except Exception:
             connection.rollback()
@@ -1293,6 +1442,21 @@ class Storage:
                     "SELECT COUNT(*) FROM reported_participant_counts"
                 ).fetchone()[0]
             )
+            activity_occurrence_count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM activity_occurrences"
+                ).fetchone()[0]
+            )
+            participant_occurrence_count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM research_participant_occurrences"
+                ).fetchone()[0]
+            )
+            source_window_coverage_count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM source_window_coverages"
+                ).fetchone()[0]
+            )
         try:
             database_bytes = self.database_path.stat().st_size
         except OSError:
@@ -1315,6 +1479,9 @@ class Storage:
             event_claim_count=event_claim_count,
             participant_mention_count=participant_mention_count,
             reported_participant_count_count=reported_participant_count_count,
+            activity_occurrence_count=activity_occurrence_count,
+            participant_occurrence_count=participant_occurrence_count,
+            source_window_coverage_count=source_window_coverage_count,
         )
 
     def get_stock_industries(self, codes: set[str]) -> dict[str, str]:
@@ -1332,6 +1499,18 @@ class Storage:
                 ).fetchall()
                 result.update({str(row["code"]): str(row["industry"]) for row in rows})
         return result
+
+    def get_all_stock_industries(self) -> dict[str, str]:
+        """Return the cached listed-company industry universe.
+
+        The caller must separately establish that the cache is complete before
+        using it for a cross-sectional percentile.
+        """
+
+        rows = self._fetchall(
+            "SELECT code, industry FROM stock_industries ORDER BY code"
+        )
+        return {str(row["code"]): str(row["industry"]) for row in rows}
 
     def upsert_stock_industries(self, industries: dict[str, str], updated_at: datetime) -> None:
         rows = [
@@ -2915,6 +3094,540 @@ class Storage:
         ]
 
     # ------------------------------------------------------------------
+    # Institution warming v2 occurrence/coverage base (schema 122)
+    # ------------------------------------------------------------------
+
+    def replace_research_occurrences(
+        self,
+        activity_id: str,
+        occurrences: list[ActivityOccurrence],
+        participant_occurrences: list[ResearchParticipantOccurrence],
+    ) -> None:
+        """Atomically replace reliable dates and institution/date mappings.
+
+        Parent and child rows are replaced together so a parser rerun cannot
+        expose a mixed occurrence version.  Legacy activity dates and
+        participants are deliberately untouched during the compatibility
+        period.
+        """
+
+        if any(item.activity_id != activity_id for item in occurrences):
+            raise ValueError("活动发生日包含不匹配的 activity_id")
+        for item in occurrences:
+            if item.date_precision not in ACTIVITY_DATE_PRECISIONS:
+                raise ValueError("活动发生日包含未知的日期精度")
+            if (
+                item.period_start is not None
+                and item.period_end is not None
+                and item.period_start > item.period_end
+            ):
+                raise ValueError("活动发生日区间起点晚于终点")
+            if item.metric_eligible and (
+                item.occurred_on is None
+                or item.date_precision != ACTIVITY_DATE_PRECISION_EXPLICIT_DAY
+            ):
+                raise ValueError("只有明确到日的活动时间可参与日期指标")
+        occurrence_ids = {item.occurrence_id for item in occurrences}
+        if any(
+            item.activity_id != activity_id
+            or item.activity_occurrence_id not in occurrence_ids
+            for item in participant_occurrences
+        ):
+            raise ValueError("参与者发生日未关联到同一活动的发生日")
+
+        with self._connect() as connection:
+            connection.execute(
+                "DELETE FROM activity_occurrences WHERE activity_id=?",
+                (activity_id,),
+            )
+            connection.executemany(
+                """
+                INSERT INTO activity_occurrences(
+                    occurrence_id, activity_id, occurred_on, period_start,
+                    period_end, date_precision, metric_eligible,
+                    exclusion_reason, evidence_id, parse_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        item.occurrence_id,
+                        item.activity_id,
+                        item.occurred_on.isoformat() if item.occurred_on else None,
+                        item.period_start.isoformat() if item.period_start else None,
+                        item.period_end.isoformat() if item.period_end else None,
+                        item.date_precision,
+                        int(item.metric_eligible),
+                        item.exclusion_reason,
+                        item.evidence_id,
+                        item.parse_version,
+                    )
+                    for item in occurrences
+                ],
+            )
+            connection.executemany(
+                """
+                INSERT INTO research_participant_occurrences(
+                    participant_occurrence_id, activity_occurrence_id,
+                    activity_id, institution_id, analyst_name,
+                    research_eligible, eligibility_reason, evidence_id,
+                    parse_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        item.participant_occurrence_id,
+                        item.activity_occurrence_id,
+                        item.activity_id,
+                        item.institution_id,
+                        item.analyst_name,
+                        int(item.research_eligible),
+                        item.eligibility_reason,
+                        item.evidence_id,
+                        item.parse_version,
+                    )
+                    for item in participant_occurrences
+                ],
+            )
+
+    def replace_research_activity_bundles(
+        self,
+        bundles: Iterable[
+            tuple[
+                ResearchActivity,
+                tuple[EvidenceRef, ...],
+                tuple[ResearchParticipant, ...],
+                tuple[ResearchParticipantMention, ...],
+                tuple[ActivityOccurrence, ...],
+                tuple[ResearchParticipantOccurrence, ...],
+                ReportedParticipantCount,
+            ]
+        ],
+        fetched_at: datetime,
+    ) -> None:
+        """Atomically publish a fully parsed 550-day activity staging run."""
+
+        rows = tuple(bundles)
+        for activity, _refs, _participants, _mentions, occurrences, participant_occurrences, _count in rows:
+            if any(item.activity_id != activity.activity_id for item in occurrences):
+                raise ValueError("活动发生日包含不匹配的 activity_id")
+            occurrence_ids = {item.occurrence_id for item in occurrences}
+            if len(occurrence_ids) != len(occurrences):
+                raise ValueError("同一活动包含重复 occurrence_id")
+            if any(
+                item.activity_id != activity.activity_id
+                or item.activity_occurrence_id not in occurrence_ids
+                for item in participant_occurrences
+            ):
+                raise ValueError("参与者发生日未关联到同一活动的发生日")
+        fetched_ts = int(fetched_at.timestamp())
+        with self._connect() as connection:
+            for (
+                activity,
+                evidence_refs,
+                participants,
+                mentions,
+                occurrences,
+                participant_occurrences,
+                count,
+            ) in rows:
+                connection.execute(
+                    """
+                    INSERT INTO research_activities(
+                        activity_id, stock_code, source_document_id, activity_type,
+                        reported_participant_count, named_participant_count,
+                        question_count, high_depth_question_count,
+                        topic_counts_json, depth_counts_json, date_precision,
+                        fetched_ts
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(activity_id) DO UPDATE SET
+                        stock_code=excluded.stock_code,
+                        source_document_id=excluded.source_document_id,
+                        activity_type=excluded.activity_type,
+                        reported_participant_count=excluded.reported_participant_count,
+                        named_participant_count=excluded.named_participant_count,
+                        question_count=excluded.question_count,
+                        high_depth_question_count=excluded.high_depth_question_count,
+                        topic_counts_json=excluded.topic_counts_json,
+                        depth_counts_json=excluded.depth_counts_json,
+                        date_precision=excluded.date_precision,
+                        fetched_ts=excluded.fetched_ts
+                    """,
+                    (
+                        activity.activity_id,
+                        activity.stock_code,
+                        activity.source_document_id,
+                        activity.activity_type,
+                        activity.reported_participant_count,
+                        activity.named_participant_count,
+                        activity.question_count,
+                        activity.high_depth_question_count,
+                        json.dumps(activity.topic_counts, ensure_ascii=False),
+                        json.dumps(activity.depth_counts or {}, ensure_ascii=False),
+                        activity.date_precision,
+                        fetched_ts,
+                    ),
+                )
+                connection.execute(
+                    "DELETE FROM research_activity_dates WHERE activity_id=?",
+                    (activity.activity_id,),
+                )
+                connection.executemany(
+                    "INSERT INTO research_activity_dates(activity_id, activity_date) VALUES (?, ?)",
+                    [
+                        (activity.activity_id, day.isoformat())
+                        for day in activity.activity_dates
+                    ],
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO evidence_refs(
+                        evidence_id, document_id, start_offset, end_offset,
+                        excerpt, source_url
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(evidence_id) DO UPDATE SET
+                        document_id=excluded.document_id,
+                        start_offset=excluded.start_offset,
+                        end_offset=excluded.end_offset,
+                        excerpt=excluded.excerpt,
+                        source_url=excluded.source_url
+                    """,
+                    [
+                        (
+                            ref.evidence_id,
+                            ref.document_id,
+                            ref.start_offset,
+                            ref.end_offset,
+                            ref.excerpt,
+                            ref.source_url,
+                        )
+                        for ref in evidence_refs
+                    ],
+                )
+                connection.execute(
+                    "DELETE FROM research_participants WHERE activity_id=?",
+                    (activity.activity_id,),
+                )
+                connection.executemany(
+                    """
+                    INSERT OR IGNORE INTO research_participants(
+                        activity_id, institution_id, analyst_name, evidence_id
+                    ) VALUES (?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            item.activity_id,
+                            item.institution_id,
+                            item.analyst_name,
+                            item.evidence_id,
+                        )
+                        for item in participants
+                    ],
+                )
+                connection.execute(
+                    "DELETE FROM research_participant_mentions WHERE activity_id=?",
+                    (activity.activity_id,),
+                )
+                connection.executemany(
+                    """
+                    INSERT OR IGNORE INTO research_participant_mentions(
+                        mention_id, document_id, activity_id, raw_name,
+                        start_offset, end_offset, organization_category,
+                        parse_version, review_status, evidence_id, created_ts
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            item.mention_id,
+                            item.document_id,
+                            item.activity_id,
+                            item.raw_name,
+                            item.start_offset,
+                            item.end_offset,
+                            item.organization_category,
+                            item.parse_version,
+                            item.review_status,
+                            item.evidence_id,
+                            int(item.created_at.timestamp()),
+                        )
+                        for item in mentions
+                    ],
+                )
+                connection.execute(
+                    "DELETE FROM activity_occurrences WHERE activity_id=?",
+                    (activity.activity_id,),
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO activity_occurrences(
+                        occurrence_id, activity_id, occurred_on, period_start,
+                        period_end, date_precision, metric_eligible,
+                        exclusion_reason, evidence_id, parse_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            item.occurrence_id,
+                            item.activity_id,
+                            item.occurred_on.isoformat() if item.occurred_on else None,
+                            item.period_start.isoformat() if item.period_start else None,
+                            item.period_end.isoformat() if item.period_end else None,
+                            item.date_precision,
+                            int(item.metric_eligible),
+                            item.exclusion_reason,
+                            item.evidence_id,
+                            item.parse_version,
+                        )
+                        for item in occurrences
+                    ],
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO research_participant_occurrences(
+                        participant_occurrence_id, activity_occurrence_id,
+                        activity_id, institution_id, analyst_name,
+                        research_eligible, eligibility_reason, evidence_id,
+                        parse_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            item.participant_occurrence_id,
+                            item.activity_occurrence_id,
+                            item.activity_id,
+                            item.institution_id,
+                            item.analyst_name,
+                            int(item.research_eligible),
+                            item.eligibility_reason,
+                            item.evidence_id,
+                            item.parse_version,
+                        )
+                        for item in participant_occurrences
+                    ],
+                )
+                connection.execute(
+                    """
+                    INSERT INTO reported_participant_counts(
+                        activity_id, named_research_count, all_named_org_count,
+                        reported_institution_count, reported_person_count,
+                        evidence_id, updated_ts
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(activity_id) DO UPDATE SET
+                        named_research_count=excluded.named_research_count,
+                        all_named_org_count=excluded.all_named_org_count,
+                        reported_institution_count=excluded.reported_institution_count,
+                        reported_person_count=excluded.reported_person_count,
+                        evidence_id=excluded.evidence_id,
+                        updated_ts=excluded.updated_ts
+                    """,
+                    (
+                        count.activity_id,
+                        count.named_research_count,
+                        count.all_named_org_count,
+                        count.reported_institution_count,
+                        count.reported_person_count,
+                        count.evidence_id,
+                        int(count.updated_at.timestamp()),
+                    ),
+                )
+
+    def get_activity_occurrences(
+        self, activity_id: str, *, metric_eligible_only: bool = False
+    ) -> list[ActivityOccurrence]:
+        query = "SELECT * FROM activity_occurrences WHERE activity_id=?"
+        if metric_eligible_only:
+            query += " AND metric_eligible=1"
+        query += " ORDER BY COALESCE(occurred_on, period_start, period_end), occurrence_id"
+        rows = self._fetchall(query, (activity_id,))
+        return [
+            ActivityOccurrence(
+                occurrence_id=str(row["occurrence_id"]),
+                activity_id=str(row["activity_id"]),
+                occurred_on=(
+                    date.fromisoformat(str(row["occurred_on"]))
+                    if row["occurred_on"]
+                    else None
+                ),
+                period_start=(
+                    date.fromisoformat(str(row["period_start"]))
+                    if row["period_start"]
+                    else None
+                ),
+                period_end=(
+                    date.fromisoformat(str(row["period_end"]))
+                    if row["period_end"]
+                    else None
+                ),
+                date_precision=str(row["date_precision"]),
+                metric_eligible=bool(row["metric_eligible"]),
+                exclusion_reason=row["exclusion_reason"],
+                evidence_id=row["evidence_id"],
+                parse_version=str(row["parse_version"] or ""),
+            )
+            for row in rows
+        ]
+
+    def get_research_participant_occurrences(
+        self, activity_id: str, *, research_eligible_only: bool = False
+    ) -> list[ResearchParticipantOccurrence]:
+        query = (
+            "SELECT * FROM research_participant_occurrences WHERE activity_id=?"
+        )
+        if research_eligible_only:
+            query += " AND research_eligible=1"
+        query += (
+            " ORDER BY activity_occurrence_id, institution_id, "
+            "COALESCE(analyst_name, ''), participant_occurrence_id"
+        )
+        rows = self._fetchall(query, (activity_id,))
+        return [
+            ResearchParticipantOccurrence(
+                participant_occurrence_id=str(row["participant_occurrence_id"]),
+                activity_occurrence_id=str(row["activity_occurrence_id"]),
+                activity_id=str(row["activity_id"]),
+                institution_id=str(row["institution_id"]),
+                analyst_name=row["analyst_name"],
+                research_eligible=bool(row["research_eligible"]),
+                eligibility_reason=str(row["eligibility_reason"] or ""),
+                evidence_id=row["evidence_id"],
+                parse_version=str(row["parse_version"] or ""),
+            )
+            for row in rows
+        ]
+
+    def upsert_source_window_coverage(
+        self, coverage: SourceWindowCoverage
+    ) -> None:
+        if coverage.source_kind != "research_activity":
+            raise ValueError("机构窗口覆盖只能记录 research_activity 来源")
+        if coverage.requested_start > coverage.requested_end:
+            raise ValueError("请求覆盖区间起点晚于终点")
+        if (
+            coverage.covered_start is not None
+            and coverage.covered_end is not None
+            and coverage.covered_start > coverage.covered_end
+        ):
+            raise ValueError("实际覆盖区间起点晚于终点")
+        if (
+            coverage.covered_end is not None
+            and coverage.covered_end > coverage.requested_end
+        ):
+            raise ValueError("实际覆盖结束日不得晚于请求结束日")
+        if coverage.cohort_eligible and (
+            not coverage.reached_cutoff
+            or not coverage.reconciled
+            or coverage.error is not None
+            or coverage.covered_start is None
+            or coverage.covered_start > coverage.requested_start
+            or coverage.covered_end is None
+            or coverage.covered_end < coverage.requested_end
+        ):
+            raise ValueError("来源未满足完整、无错误且到达回填边界的 cohort 条件")
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO source_window_coverages(
+                    source_key, market, source_kind, window_kind,
+                    source_cohort_id, requested_start, requested_end,
+                    covered_start, covered_end, reached_cutoff, reconciled,
+                    cohort_eligible, last_success_ts, last_error,
+                    exclusion_reason, updated_ts
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_key, market, window_kind, source_cohort_id)
+                DO UPDATE SET
+                    source_kind=excluded.source_kind,
+                    requested_start=excluded.requested_start,
+                    requested_end=excluded.requested_end,
+                    covered_start=excluded.covered_start,
+                    covered_end=excluded.covered_end,
+                    reached_cutoff=excluded.reached_cutoff,
+                    reconciled=excluded.reconciled,
+                    cohort_eligible=excluded.cohort_eligible,
+                    last_success_ts=excluded.last_success_ts,
+                    last_error=excluded.last_error,
+                    exclusion_reason=excluded.exclusion_reason,
+                    updated_ts=excluded.updated_ts
+                """,
+                (
+                    coverage.source_key,
+                    coverage.market,
+                    coverage.source_kind,
+                    coverage.window_kind,
+                    coverage.source_cohort_id,
+                    coverage.requested_start.isoformat(),
+                    coverage.requested_end.isoformat(),
+                    coverage.covered_start.isoformat()
+                    if coverage.covered_start
+                    else None,
+                    coverage.covered_end.isoformat() if coverage.covered_end else None,
+                    int(coverage.reached_cutoff),
+                    int(coverage.reconciled),
+                    int(coverage.cohort_eligible),
+                    int(coverage.last_success_at.timestamp())
+                    if coverage.last_success_at
+                    else None,
+                    coverage.error,
+                    coverage.exclusion_reason,
+                    int(coverage.updated_at.timestamp()),
+                ),
+            )
+
+    def get_source_window_coverages(
+        self,
+        *,
+        market: str | None = None,
+        window_kind: str | None = None,
+        source_cohort_id: str | None = None,
+    ) -> list[SourceWindowCoverage]:
+        clauses: list[str] = []
+        parameters: list[object] = []
+        for column, value in (
+            ("market", market),
+            ("window_kind", window_kind),
+            ("source_cohort_id", source_cohort_id),
+        ):
+            if value is not None:
+                clauses.append(f"{column}=?")
+                parameters.append(value)
+        query = "SELECT * FROM source_window_coverages"
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        query += " ORDER BY market, window_kind, source_key, source_cohort_id"
+        rows = self._fetchall(query, tuple(parameters))
+        return [
+            SourceWindowCoverage(
+                source_key=str(row["source_key"]),
+                market=str(row["market"]),
+                source_kind=str(row["source_kind"]),
+                window_kind=str(row["window_kind"]),
+                source_cohort_id=str(row["source_cohort_id"]),
+                requested_start=date.fromisoformat(str(row["requested_start"])),
+                requested_end=date.fromisoformat(str(row["requested_end"])),
+                covered_start=(
+                    date.fromisoformat(str(row["covered_start"]))
+                    if row["covered_start"]
+                    else None
+                ),
+                covered_end=(
+                    date.fromisoformat(str(row["covered_end"]))
+                    if row["covered_end"]
+                    else None
+                ),
+                reached_cutoff=bool(row["reached_cutoff"]),
+                reconciled=bool(row["reconciled"]),
+                cohort_eligible=bool(row["cohort_eligible"]),
+                last_success_at=(
+                    datetime.fromtimestamp(row["last_success_ts"], tz=SHANGHAI_TZ)
+                    if row["last_success_ts"] is not None
+                    else None
+                ),
+                error=row["last_error"],
+                exclusion_reason=row["exclusion_reason"],
+                updated_at=datetime.fromtimestamp(row["updated_ts"], tz=SHANGHAI_TZ),
+            )
+            for row in rows
+        ]
+
+    # ------------------------------------------------------------------
     # v2 多事实/参与者提及层 (plan.md 第三部分, schema 121)
     # ------------------------------------------------------------------
 
@@ -3167,14 +3880,16 @@ class Storage:
         window_end: datetime | None,
         snapshot_at: datetime,
         publish: bool = True,
+        metric_version: str = "z20_legacy",
+        source_cohort_id: str = "",
     ) -> int:
         with self._connect() as connection:
             cursor = connection.execute(
                 """
                 INSERT INTO institution_metric_snapshots(
                     stock_code, window_kind, window_start_ts, window_end_ts,
-                    snapshot_ts, metrics_json
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    snapshot_ts, metrics_json, metric_version, source_cohort_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     stock_code,
@@ -3183,6 +3898,8 @@ class Storage:
                     int(window_end.timestamp()) if window_end else None,
                     int(snapshot_at.timestamp()),
                     json.dumps(metrics, ensure_ascii=False),
+                    metric_version,
+                    source_cohort_id,
                 ),
             )
             if publish:
@@ -3264,6 +3981,63 @@ class Storage:
             str(row["stock_code"]): (
                 datetime.fromtimestamp(row["snapshot_ts"], tz=SHANGHAI_TZ),
                 dict(json.loads(row["metrics_json"] or "{}")),
+            )
+            for row in rows
+        }
+
+    def get_latest_institution_metric_snapshot_records(
+        self, window_kind: str
+    ) -> dict[str, InstitutionMetricSnapshotRecord]:
+        """Version-aware rows from the latest completed metric batch.
+
+        The existing tuple-returning API remains unchanged for legacy callers;
+        v2 consumers use this method to surface metric/cohort provenance.
+        """
+
+        with self._connect() as connection:
+            state = connection.execute(
+                "SELECT value_json FROM app_state WHERE key=?",
+                (INSTITUTION_METRIC_BATCH_STATE_KEY,),
+            ).fetchone()
+            if state is None:
+                batch_row = connection.execute(
+                    "SELECT MAX(snapshot_ts) FROM institution_metric_snapshots"
+                ).fetchone()
+                batch_ts = batch_row[0] if batch_row else None
+            else:
+                try:
+                    batch_ts = json.loads(state["value_json"]).get("snapshot_ts")
+                except (AttributeError, json.JSONDecodeError, TypeError):
+                    batch_ts = None
+            if batch_ts is None:
+                return {}
+            rows = connection.execute(
+                "SELECT stock_code, window_kind, window_start_ts, window_end_ts, "
+                "snapshot_ts, metrics_json, metric_version, source_cohort_id "
+                "FROM institution_metric_snapshots "
+                "WHERE window_kind=? AND snapshot_ts=? ORDER BY stock_code",
+                (window_kind, int(batch_ts)),
+            ).fetchall()
+        return {
+            str(row["stock_code"]): InstitutionMetricSnapshotRecord(
+                stock_code=str(row["stock_code"]),
+                window_kind=str(row["window_kind"]),
+                window_start=(
+                    datetime.fromtimestamp(row["window_start_ts"], tz=SHANGHAI_TZ)
+                    if row["window_start_ts"] is not None
+                    else None
+                ),
+                window_end=(
+                    datetime.fromtimestamp(row["window_end_ts"], tz=SHANGHAI_TZ)
+                    if row["window_end_ts"] is not None
+                    else None
+                ),
+                snapshot_at=datetime.fromtimestamp(
+                    row["snapshot_ts"], tz=SHANGHAI_TZ
+                ),
+                metrics=dict(json.loads(row["metrics_json"] or "{}")),
+                metric_version=str(row["metric_version"] or "z20_legacy"),
+                source_cohort_id=str(row["source_cohort_id"] or ""),
             )
             for row in rows
         }
@@ -3465,6 +4239,16 @@ class Storage:
                 "(SELECT activity_id FROM research_activities)"
             )
             connection.execute(
+                "DELETE FROM research_participant_occurrences "
+                "WHERE activity_occurrence_id NOT IN "
+                "(SELECT occurrence_id FROM activity_occurrences) "
+                "OR activity_id NOT IN (SELECT activity_id FROM research_activities)"
+            )
+            connection.execute(
+                "DELETE FROM activity_occurrences WHERE activity_id NOT IN "
+                "(SELECT activity_id FROM research_activities)"
+            )
+            connection.execute(
                 "DELETE FROM research_activities WHERE fetched_ts < ?",
                 (research_cutoff,),
             )
@@ -3514,6 +4298,8 @@ class Storage:
             connection.execute("DELETE FROM event_claims")
             connection.execute("DELETE FROM research_participant_mentions")
             connection.execute("DELETE FROM reported_participant_counts")
+            connection.execute("DELETE FROM research_participant_occurrences")
+            connection.execute("DELETE FROM activity_occurrences")
             connection.execute("DELETE FROM research_participants")
             connection.execute("DELETE FROM research_activity_dates")
             connection.execute("DELETE FROM research_activities")
@@ -3537,6 +4323,7 @@ class Storage:
             connection.execute("DELETE FROM policy_documents")
             connection.execute("DELETE FROM source_manifests")
             connection.execute("DELETE FROM coverage_snapshots")
+            connection.execute("DELETE FROM source_window_coverages")
         with self._connect() as connection:
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 

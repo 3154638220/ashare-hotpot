@@ -38,8 +38,10 @@ CSV_HEADERS = {
     "confirm": ("排名", "股票名称", "代码", "事件类型", "正向机制", "重大性", "关键相对量", "确定性", "主要反证/落地风险", "事件时间", "质量状态"),
     "catalyst": ("排名", "股票名称", "代码", "事件类型", "正向机制", "重大性", "关键相对量", "确定性", "主要反证/落地风险", "事件时间", "质量状态"),
     "z20": ("排名", "股票名称", "代码", "行业", "z20", "机构集团数", "新增机构集团", "分析师数", "高深度占比", "最近活动", "覆盖状态"),
+    "z20_v2": ("排名", "股票名称", "代码", "行业", "标准化升温值（描述性）", "绝对增量", "当前集团数", "100 日未见集团", "活跃日期数", "单日集中度", "单日集中", "最近活动", "指标版本", "来源 cohort", "日期质量", "排除组织数", "暂定原因", "覆盖状态"),
     "persist60": ("排名", "股票名称", "代码", "窗口", "持续关注分", "活跃周数/比例", "机构集团数", "重复跟进比例", "研究深度", "单日集中度", "主要关注主题", "覆盖状态"),
     "persist120": ("排名", "股票名称", "代码", "窗口", "持续关注分", "活跃周数/比例", "机构集团数", "重复跟进比例", "研究深度", "单日集中度", "主要关注主题", "覆盖状态"),
+    "persistence_v2": ("排名", "股票名称", "代码", "窗口", "持续关注规则指数", "活跃周数/比例", "机构集团数", "重复跟进比例", "研究深度", "单日集中度", "主要关注主题", "指标版本", "来源 cohort", "日期质量", "排除组织数", "暂定原因", "覆盖状态"),
     "discovery": ("排名", "股票名称", "代码", "发现类型", "原始标题", "触发原因", "正文状态", "发布时间", "来源", "质量状态"),
 }
 
@@ -96,6 +98,22 @@ def row_values(
             QUALITY_LABELS.get(row.quality_state, row.quality_state),
         )
     if isinstance(row, InstitutionZ20ViewRow):
+        if row.metric_version == "warming_v2":
+            return (
+                row.rank, row.stock_name, row.stock_code,
+                row.industry or "未标注",
+                "" if row.z20 is None else f"{row.z20:.2f}",
+                "" if row.absolute_change is None else f"{row.absolute_change:+.2f}",
+                row.current_unique_groups,
+                "" if row.unseen_100d_groups is None else row.unseen_100d_groups,
+                row.active_days,
+                f"{row.single_day_concentration * 100:.1f}%",
+                "是" if row.single_day else "否",
+                row.recent_activity.isoformat() if row.recent_activity else "",
+                row.metric_version, row.source_cohort_id, row.date_quality,
+                row.excluded_organization_count, row.provisional_reason or "",
+                QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+            )
         return (
             row.rank,
             row.stock_name,
@@ -114,16 +132,30 @@ def row_values(
             f"{TOPIC_LABELS.get(topic, topic)} {count}"
             for topic, count in sorted(row.topics.items(), key=lambda item: (-item[1], item[0]))
         )
+        if row.metric_version == "persistence_rules_v2":
+            return (
+                row.rank, row.stock_name, row.stock_code,
+                WINDOW_LABELS.get(row.window_kind.replace("_v2", ""), row.window_kind),
+                "" if row.persistence_score is None else f"{row.persistence_score:.1f}",
+                f"{row.active_weeks}/{row.active_week_ratio * 100:.1f}%",
+                row.unique_groups,
+                f"{row.repeat_followup_ratio * 100:.1f}%",
+                "" if row.depth_score is None else f"{row.depth_score * 100:.1f}%",
+                f"{row.single_day_concentration * 100:.1f}%", topics,
+                row.metric_version, row.source_cohort_id, row.date_quality,
+                row.excluded_organization_count, row.provisional_reason or "",
+                QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
+            )
         return (
             row.rank,
             row.stock_name,
             row.stock_code,
             WINDOW_LABELS.get(row.window_kind, row.window_kind),
-            f"{row.persistence_score:.1f}",
+            "" if row.persistence_score is None else f"{row.persistence_score:.1f}",
             f"{row.active_weeks}/{row.active_week_ratio * 100:.1f}%",
             row.unique_groups,
             f"{row.repeat_followup_ratio * 100:.1f}%",
-            f"{row.depth_score * 100:.1f}%",
+            "" if row.depth_score is None else f"{row.depth_score * 100:.1f}%",
             f"{row.single_day_concentration * 100:.1f}%",
             topics,
             QUALITY_LABELS.get(row.coverage_state, row.coverage_state),
@@ -181,7 +213,20 @@ def export_csv(
     materialized = list(rows)
     with path.open("w", newline="", encoding="utf-8-sig") as stream:
         writer = csv.writer(stream)
-        writer.writerow(CSV_HEADERS[source_key])
+        header_key = source_key
+        if source_key == "z20" and any(
+            isinstance(row, InstitutionZ20ViewRow)
+            and row.metric_version == "warming_v2"
+            for row in materialized
+        ):
+            header_key = "z20_v2"
+        elif source_key in {"persist60", "persist120"} and any(
+            isinstance(row, PersistenceViewRow)
+            and row.metric_version == "persistence_rules_v2"
+            for row in materialized
+        ):
+            header_key = "persistence_v2"
+        writer.writerow(CSV_HEADERS[header_key])
         writer.writerows(row_values(source_key, row) for row in materialized)
     return len(materialized)
 

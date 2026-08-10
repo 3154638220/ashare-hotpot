@@ -21,6 +21,10 @@ from .discovery import (
     discovery_type_label,
     queue_status_label,
 )
+from .institution_coverage import (
+    build_institution_research_coverage,
+    cohort_for_stock,
+)
 from .institution_metrics import build_research_coverage
 from .models import (
     DiscoveryCandidate,
@@ -246,8 +250,73 @@ def load_z20_rows(
     storage: Storage,
     *,
     coverage: ResearchCoverage | None = None,
+    metric_version: str = "z20_legacy",
 ) -> list[InstitutionZ20ViewRow]:
     """Load the 20-trading-day institution warming board from metric snapshots."""
+
+    if metric_version == "warming_v2":
+        records = storage.get_latest_institution_metric_snapshot_records(
+            "warming_20"
+        )
+        if records:
+            names = storage.get_stock_names(set(records))
+            industries = storage.get_stock_industries(set(records))
+            rows: list[InstitutionZ20ViewRow] = []
+            for stock_code, record in records.items():
+                metrics = record.metrics
+                level = str(metrics.get("coverage_level") or "raw_only")
+                provisional = level != "full"
+                rows.append(
+                    InstitutionZ20ViewRow(
+                    rank=0,
+                    stock_code=stock_code,
+                    stock_name=names.get(stock_code, stock_code),
+                    industry=metrics.get("industry") or industries.get(stock_code),
+                    z20=_as_float(metrics.get("warming_score")),
+                    current_unique_groups=int(
+                        metrics.get("current_unique_groups", 0)
+                    ),
+                    new_groups=int(metrics.get("unseen_100d_groups") or 0),
+                    analyst_count=0,
+                    high_depth_ratio=float(
+                        metrics.get("single_day_concentration", 0.0)
+                    ),
+                    question_count=0,
+                    recent_activity=_as_date(metrics.get("recent_activity")),
+                    industry_percentile=_as_float(
+                        metrics.get("industry_percentile")
+                    ),
+                    industry_sample_size=int(
+                        metrics.get("industry_sample_size", 0)
+                    ),
+                    provisional=provisional,
+                    coverage_state=coverage_state(
+                        coverage,
+                        has_rows=True,
+                        provisional_row=provisional,
+                    ),
+                    metric_version="warming_v2",
+                    source_cohort_id=record.source_cohort_id,
+                    absolute_change=_as_float(metrics.get("absolute_change")),
+                    unseen_100d_groups=(
+                        int(metrics["unseen_100d_groups"])
+                        if metrics.get("unseen_100d_groups") is not None
+                        else None
+                    ),
+                    active_days=int(metrics.get("active_days", 0)),
+                    single_day_concentration=float(
+                        metrics.get("single_day_concentration", 0.0)
+                    ),
+                    single_day=bool(metrics.get("single_day", False)),
+                    coverage_level=level,
+                    date_quality=str(metrics.get("date_quality") or "unknown"),
+                    excluded_organization_count=int(
+                        metrics.get("excluded_organization_count", 0)
+                    ),
+                    provisional_reason=metrics.get("provisional_reason"),
+                    )
+                )
+            return _sort_z20(rows)
 
     snapshots = storage.get_latest_institution_metric_snapshots("z20")
     if not snapshots:
@@ -256,13 +325,18 @@ def load_z20_rows(
     industries = storage.get_stock_industries(set(snapshots))
     rows: list[InstitutionZ20ViewRow] = []
     for stock_code, (_snapshot_at, metrics) in snapshots.items():
+        cohort = cohort_for_stock(coverage, stock_code)
+        comparable = not coverage or not coverage.market_cohorts or bool(
+            cohort is not None and cohort.formal_ranking
+        )
+        provisional = bool(metrics.get("provisional", False)) or not comparable
         rows.append(
             InstitutionZ20ViewRow(
                 rank=0,
                 stock_code=stock_code,
                 stock_name=names.get(stock_code, stock_code),
                 industry=industries.get(stock_code),
-                z20=_as_float(metrics.get("z20")),
+                z20=_as_float(metrics.get("z20")) if comparable else None,
                 current_unique_groups=int(metrics.get("current_unique_groups", 0)),
                 new_groups=int(metrics.get("new_groups", 0)),
                 analyst_count=int(metrics.get("analyst_count", 0)),
@@ -271,11 +345,11 @@ def load_z20_rows(
                 recent_activity=_as_date(metrics.get("recent_activity")),
                 industry_percentile=_as_float(metrics.get("industry_percentile")),
                 industry_sample_size=int(metrics.get("industry_sample_size", 0)),
-                provisional=bool(metrics.get("provisional", False)),
+                provisional=provisional,
                 coverage_state=coverage_state(
                     coverage,
                     has_rows=True,
-                    provisional_row=bool(metrics.get("provisional", False)),
+                    provisional_row=provisional,
                 ),
             )
         )
@@ -287,28 +361,42 @@ def load_persistence_rows(
     window_kind: str,
     *,
     coverage: ResearchCoverage | None = None,
+    metric_version: str = "persistence_legacy",
 ) -> list[PersistenceViewRow]:
     """Load the 60/120-trading-day persistence board from metric snapshots."""
 
-    snapshots = storage.get_latest_institution_metric_snapshots(window_kind)
-    if not snapshots:
+    stored_window_kind = (
+        f"{window_kind}_v2"
+        if metric_version == "warming_v2" and not window_kind.endswith("_v2")
+        else window_kind
+    )
+    records = storage.get_latest_institution_metric_snapshot_records(
+        stored_window_kind
+    )
+    if not records and metric_version == "warming_v2":
+        stored_window_kind = window_kind.replace("_v2", "")
+        records = storage.get_latest_institution_metric_snapshot_records(
+            stored_window_kind
+        )
+    if not records:
         return []
-    names = storage.get_stock_names(set(snapshots))
+    names = storage.get_stock_names(set(records))
     rows: list[PersistenceViewRow] = []
-    for stock_code, (_snapshot_at, metrics) in snapshots.items():
+    for stock_code, record in records.items():
+        metrics = record.metrics
         provisional = bool(metrics.get("provisional", False))
         rows.append(
             PersistenceViewRow(
                 rank=0,
                 stock_code=stock_code,
                 stock_name=names.get(stock_code, stock_code),
-                window_kind=window_kind,
-                persistence_score=float(metrics.get("persistence_score", 0.0)),
+                window_kind=stored_window_kind,
+                persistence_score=_as_float(metrics.get("persistence_score")),
                 active_weeks=int(metrics.get("active_weeks", 0)),
                 active_week_ratio=float(metrics.get("active_week_ratio", 0.0)),
                 unique_groups=int(metrics.get("unique_groups", 0)),
                 repeat_followup_ratio=float(metrics.get("repeat_followup_ratio", 0.0)),
-                depth_score=float(metrics.get("depth_score", 0.0)),
+                depth_score=_as_float(metrics.get("depth_score")),
                 single_day_concentration=float(
                     metrics.get("single_day_concentration", 0.0)
                 ),
@@ -324,6 +412,19 @@ def load_persistence_rows(
                     provisional_row=provisional,
                 ),
                 provisional=provisional,
+                metric_version=record.metric_version,
+                source_cohort_id=record.source_cohort_id,
+                question_data_status=str(
+                    metrics.get("question_data_status") or "available"
+                ),
+                date_mapping_complete=bool(
+                    metrics.get("date_mapping_complete", True)
+                ),
+                date_quality=str(metrics.get("date_quality") or "legacy_unknown"),
+                excluded_organization_count=int(
+                    metrics.get("excluded_organization_count", 0)
+                ),
+                provisional_reason=metrics.get("provisional_reason"),
             )
         )
     return _sort_persistence(rows)
@@ -471,6 +572,29 @@ def build_discovery_quality(
 def _sort_z20(rows: list[InstitutionZ20ViewRow]) -> list[InstitutionZ20ViewRow]:
     """plan.md 13.2 ordering: full z20 first, then cold-start raw metrics."""
 
+    if any(row.metric_version == "warming_v2" for row in rows):
+        level_rank = {"full": 0, "provisional": 1, "raw_only": 2}
+        ordered = sorted(
+            rows,
+            key=lambda row: (
+                level_rank.get(row.coverage_level, 3),
+                -(row.z20 if row.z20 is not None else float("-inf")),
+                -(
+                    row.unseen_100d_groups
+                    if row.unseen_100d_groups is not None
+                    else -1
+                ),
+                -row.active_days,
+                -row.current_unique_groups,
+                _date_sort_key(row.recent_activity),
+                row.stock_code,
+            ),
+        )
+        return [
+            _replace_rank(row, rank)
+            for rank, row in enumerate(ordered, start=1)
+        ]
+
     full = [row for row in rows if row.z20 is not None]
     cold = [row for row in rows if row.z20 is None]
     full.sort(
@@ -500,7 +624,12 @@ def _sort_persistence(rows: list[PersistenceViewRow]) -> list[PersistenceViewRow
     rows = sorted(
         rows,
         key=lambda row: (
-            -row.persistence_score,
+            0 if row.persistence_score is not None else 1,
+            -(
+                row.persistence_score
+                if row.persistence_score is not None
+                else 0.0
+            ),
             -row.active_weeks,
             -row.unique_groups,
             _date_sort_key(row.recent_activity),
@@ -625,9 +754,12 @@ def load_institution_detail(
     coverage: ResearchCoverage | None,
 ) -> InstitutionDetail:
     metrics: dict[str, object] = {}
-    latest = storage.get_latest_institution_metric_snapshots(window_kind)
+    latest = storage.get_latest_institution_metric_snapshot_records(window_kind)
     if stock_code in latest:
-        metrics = dict(latest[stock_code][1])
+        record = latest[stock_code]
+        metrics = dict(record.metrics)
+        metrics.setdefault("metric_version", record.metric_version)
+        metrics.setdefault("source_cohort_id", record.source_cohort_id)
     comparison_metrics: dict[str, object] = {}
     if window_kind == "persistence_120":
         comparison = storage.get_latest_institution_metric_snapshots(
@@ -687,3 +819,28 @@ def research_coverage(
     """Public shortcut used by the window and tests."""
 
     return build_research_coverage(settings, storage, now=now)
+
+
+def institution_research_coverage(
+    settings,
+    storage: Storage,
+    *,
+    now: datetime | None = None,
+) -> ResearchCoverage:
+    """Market/cohort coverage used only by institution metric boards."""
+
+    return build_institution_research_coverage(settings, storage, now=now)
+
+
+def z20_view_meta(*, has_formal_rows: bool) -> tuple[str, str]:
+    """Return the required cold-start title when no comparable row exists."""
+
+    if not has_formal_rows:
+        return (
+            "20 日机构关注（冷启动）",
+            "来源共同覆盖不足；仅展示当前窗口原始机构关注，不生成正式升温排名",
+        )
+    return (
+        "20 日机构升温",
+        "标准化升温值（描述性）：最近 20 个交易日相对此前 12 个同口径非重叠 20 日桶",
+    )

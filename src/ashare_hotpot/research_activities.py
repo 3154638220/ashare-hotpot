@@ -21,17 +21,23 @@ from .institutions import (
     participant_qualifies,
 )
 from .models import (
+    ACTIVITY_DATE_PRECISION_DISCLOSURE_DAY,
+    ACTIVITY_DATE_PRECISION_EXPLICIT_DAY,
+    ACTIVITY_DATE_PRECISION_EXPLICIT_RANGE,
+    ActivityOccurrence,
     EvidenceRef,
     PARTICIPANT_MENTION_REVIEW_PENDING,
     ResearchActivity,
     ResearchParticipant,
     ResearchParticipantMention,
+    ResearchParticipantOccurrence,
     SourceDocument,
 )
 
 
 DEPTH_WEIGHTS = {"low": 0.25, "medium": 0.60, "high": 1.00}
 MENTION_PARSE_VERSION = "v2-20260809"
+OCCURRENCE_PARSE_VERSION = "warming-v2-20260810"
 # v1 兼容口径（v2 里程碑 5 回退/并行比较）：发布前整篇正文行级提取。
 MENTION_PARSE_VERSION_V1 = "v1-legacy"
 # v2 机构主指标只统计券商/基金/保险/资管/私募/信托/银行研究部门/境外投资机构；
@@ -46,6 +52,82 @@ RESEARCH_INSTITUTION_TYPES = (
 )
 
 
+_RANGE_FULL_WITH_YEAR_RE = re.compile(
+    r"(?P<y1>\d{4})年(?P<m1>\d{1,2})月(?P<d1>\d{1,2})日"
+    r"(?:至|—|–|-|～|~|到)"
+    r"(?P<y2>\d{4})年(?P<m2>\d{1,2})月(?P<d2>\d{1,2})日"
+)
+_BANK_RESEARCH_ROLE_RE = re.compile(
+    r"研究(?:部|所|院|中心|团队)|投研(?:部|中心|团队)|证券研究|行业研究"
+)
+_TRUST_RESEARCH_ROLE_RE = re.compile(
+    r"研究(?:部|所|院|中心|团队)|投研(?:部|中心|团队)|证券投资|权益投资|"
+    r"资产管理|投资管理|自营(?:部|团队)?"
+)
+_LAW_FIRM_RE = re.compile(r"律师事务所|\b(?:law firm|attorneys?)\b", re.IGNORECASE)
+_CONSULTING_RE = re.compile(
+    r"咨询(?:有限公司|公司|机构)?|顾问(?:有限公司|公司|机构)?|会计师事务所|"
+    r"\b(?:consulting|consultants?)\b",
+    re.IGNORECASE,
+)
+_ENGLISH_LEGAL_SUFFIX_ONLY_RE = re.compile(r"\b(?:limited|ltd\.?)\s*$", re.IGNORECASE)
+_ENGLISH_RESEARCH_SHAPE_RE = re.compile(
+    r"\b(?:asset management|investment management|securities|capital|funds?|"
+    r"partners?|investments?|insurance|advisors?|advisory|private equity|"
+    r"global investors|pension)\b",
+    re.IGNORECASE,
+)
+
+
+def research_eligibility(
+    raw_name: str, institution_type: str, *, context: str = ""
+) -> tuple[bool, str]:
+    """Classify whether one named organisation belongs in the main metric.
+
+    The organisation is always retained in participant/detail storage.  This
+    function only controls occurrence-level metric eligibility and records a
+    transparent reason.  Banks and trusts are contextual roles; a legal
+    ``Limited/Ltd`` suffix by itself never establishes a foreign research
+    institution.
+    """
+
+    raw = raw_name.strip()
+    combined = f"{raw} {context}".strip()
+    lowered = combined.lower()
+    if not participant_qualifies(raw):
+        return False, "媒体、个人或泛称，不计研究机构广度"
+    if _LAW_FIRM_RE.search(combined):
+        return False, "律所，仅保留组织明细"
+    if _CONSULTING_RE.search(combined):
+        return False, "咨询/专业服务机构，仅保留组织明细"
+    if "银行" in raw or re.search(r"\bbank\b", raw, re.IGNORECASE):
+        if _BANK_RESEARCH_ROLE_RE.search(combined):
+            return True, "银行明确研究部门"
+        return False, "银行未明确研究部门"
+    if "信托" in raw or re.search(r"\btrust\b", raw, re.IGNORECASE):
+        if _TRUST_RESEARCH_ROLE_RE.search(combined):
+            return True, "信托明确证券投资/投研角色"
+        return False, "信托未明确证券投资/投研角色"
+    if institution_type in RESEARCH_INSTITUTION_TYPES:
+        return True, f"机构类型：{institution_type}"
+    if _ENGLISH_LEGAL_SUFFIX_ONLY_RE.search(raw) and not _ENGLISH_RESEARCH_SHAPE_RE.search(raw):
+        return False, "英文 Limited/Ltd 仅为法律后缀，未证明研究机构资格"
+    if any(
+        marker in lowered
+        for marker in (
+            "律师事务所",
+            "咨询",
+            "会计师事务所",
+            "传媒",
+            "财经",
+            "technology",
+            "industrial",
+            "pharmaceutical",
+            "biotech",
+        )
+    ):
+        return False, "非研究类专业服务/产业组织"
+    return False, "产业公司或其他非研究组织，仅保留明细"
 _RANGE_FULL_RE = re.compile(
     r"(?P<y>\d{4})年(?P<m1>\d{1,2})月(?P<d1>\d{1,2})日"
     r"(?:至|—|–|-|～|~|到)"
@@ -58,6 +140,25 @@ _RANGE_SHORT_RE = re.compile(
 )
 _SINGLE_FULL_RE = re.compile(r"(?P<y>\d{4})年(?P<m>\d{1,2})月(?P<d>\d{1,2})日")
 _SINGLE_SHORT_RE = re.compile(r"(?<!\d)(?P<m>\d{1,2})月(?P<d>\d{1,2})日(?!\d)")
+_NUMERIC_DATE_RE = re.compile(
+    r"(?<!\d)(?P<y>20\d{2})[./-](?P<m>\d{1,2})[./-](?P<d>\d{1,2})(?!\d)"
+)
+_NUMERIC_RANGE_RE = re.compile(
+    r"(?<!\d)(?P<y1>20\d{2})[./-](?P<m1>\d{1,2})[./-](?P<d1>\d{1,2})"
+    r"\s*(?:至|—|–|～|~|到)\s*"
+    r"(?P<y2>20\d{2})[./-](?P<m2>\d{1,2})[./-](?P<d2>\d{1,2})(?!\d)"
+)
+_STRUCTURED_DATE_LABEL_RE = re.compile(
+    r"(?:活动|调研|会议|接待|路演|说明会|交流)?(?:时间|日期)|活动安排|日程安排"
+)
+_DATE_TABLE_HEADER_RE = re.compile(
+    r"(?:日期|时间).{0,24}(?:参与|参会|机构|单位|投资者)|"
+    r"(?:参与|参会|机构|单位|投资者).{0,24}(?:日期|时间)"
+)
+_DATE_BLOCK_END_RE = re.compile(
+    r"交流内容|主要内容|问答情况|问题[一二三四五六七八九十\d]*\s*[:：]|"
+    r"问\s*[:：]|答\s*[:：]|公司简介|上市公司接待人员|备注[:：]?"
+)
 _REPORTED_RE = re.compile(r"约?(?P<n>\d{1,4})(?:家|位|名)(?:机构|基金公司|基金|投资者|单位)")
 _QUESTION_RE = re.compile(r"(?:问|Q(?:\d+)?|投资者提问)\s*[:：]\s*(?P<q>[^\n]+)")
 
@@ -192,6 +293,7 @@ _META_LINE_KEYWORDS = (
     "证券代码",
     "股票代码",
     "公告编号",
+    "活动安排",
 )
 
 # 参与单位/参加单位 字段：结构化名单来源（plan.md 里程碑 7）。
@@ -346,6 +448,254 @@ def parse_activity_dates(
     if explicit:
         return tuple(sorted(explicit)), "explicit"
     return (published_at.date(),), "disclosure_end"
+
+
+def _line_spans(text: str) -> list[tuple[str, int, int]]:
+    """Return logical lines with stable offsets into the original text."""
+
+    result: list[tuple[str, int, int]] = []
+    cursor = 0
+    for raw_line in text.splitlines(keepends=True):
+        line = raw_line.rstrip("\r\n")
+        result.append((line, cursor, cursor + len(line)))
+        cursor += len(raw_line)
+    if not result and text:
+        result.append((text, 0, len(text)))
+    return result
+
+
+def _safe_date(year: int, month: int, day: int) -> date | None:
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def _date_candidates(
+    line: str, published_day: date
+) -> list[tuple[str, date, date, int, int]]:
+    """Extract day/range candidates from one already-qualified date line.
+
+    This helper deliberately has no opinion about whether the line is an
+    activity-date field.  The caller first establishes that structural
+    context, which prevents dates in Q&A prose from leaking into metrics.
+    """
+
+    result: list[tuple[str, date, date, int, int]] = []
+    consumed: list[tuple[int, int]] = []
+
+    def add_range(match: re.Match[str], start: date | None, end: date | None) -> None:
+        if start is None or end is None or end < start:
+            return
+        result.append(("range", start, end, match.start(), match.end()))
+        consumed.append((match.start(), match.end()))
+
+    for match in _RANGE_FULL_WITH_YEAR_RE.finditer(line):
+        add_range(
+            match,
+            _safe_date(
+                int(match.group("y1")),
+                int(match.group("m1")),
+                int(match.group("d1")),
+            ),
+            _safe_date(
+                int(match.group("y2")),
+                int(match.group("m2")),
+                int(match.group("d2")),
+            ),
+        )
+    for match in _NUMERIC_RANGE_RE.finditer(line):
+        if any(start <= match.start() and match.end() <= end for start, end in consumed):
+            continue
+        add_range(
+            match,
+            _safe_date(
+                int(match.group("y1")),
+                int(match.group("m1")),
+                int(match.group("d1")),
+            ),
+            _safe_date(
+                int(match.group("y2")),
+                int(match.group("m2")),
+                int(match.group("d2")),
+            ),
+        )
+    for match in _RANGE_FULL_RE.finditer(line):
+        if any(start <= match.start() and match.end() <= end for start, end in consumed):
+            continue
+        year = int(match.group("y"))
+        month1 = int(match.group("m1"))
+        month2 = int(match.group("m2")) if match.group("m2") else month1
+        add_range(
+            match,
+            _safe_date(year, month1, int(match.group("d1"))),
+            _safe_date(year, month2, int(match.group("d2"))),
+        )
+    for match in _RANGE_SHORT_RE.finditer(line):
+        if any(start <= match.start() and match.end() <= end for start, end in consumed):
+            continue
+        month1 = int(match.group("m1"))
+        month2 = int(match.group("m2")) if match.group("m2") else month1
+        year = published_day.year if month2 <= published_day.month + 1 else published_day.year - 1
+        add_range(
+            match,
+            _safe_date(year, month1, int(match.group("d1"))),
+            _safe_date(year, month2, int(match.group("d2"))),
+        )
+
+    def add_day(match: re.Match[str], value: date | None) -> None:
+        if value is None:
+            return
+        result.append(("day", value, value, match.start(), match.end()))
+        consumed.append((match.start(), match.end()))
+
+    for pattern in (_SINGLE_FULL_RE, _NUMERIC_DATE_RE):
+        for match in pattern.finditer(line):
+            if any(start <= match.start() and match.end() <= end for start, end in consumed):
+                continue
+            add_day(
+                match,
+                _safe_date(
+                    int(match.group("y")),
+                    int(match.group("m")),
+                    int(match.group("d")),
+                ),
+            )
+    for match in _SINGLE_SHORT_RE.finditer(line):
+        if any(start <= match.start() and match.end() <= end for start, end in consumed):
+            continue
+        month = int(match.group("m"))
+        year = published_day.year if month <= published_day.month + 1 else published_day.year - 1
+        add_day(match, _safe_date(year, month, int(match.group("d"))))
+    return result
+
+
+def _parse_activity_occurrences(
+    document: SourceDocument, activity_id: str
+) -> tuple[tuple[ActivityOccurrence, ...], tuple[EvidenceRef, ...]]:
+    """Parse auditable activity occurrences from structured date contexts.
+
+    Exact days are metric-eligible.  A disclosed range is preserved as one
+    range row instead of being expanded into invented daily activity, while a
+    disclosure-day fallback remains visible but cannot contribute to active
+    days, repeat follow-up or concentration.  Dates after the disclosure day
+    are discarded as likely template/plan dates.
+    """
+
+    text = document.body_text or ""
+    published_day = document.published_at.astimezone(SHANGHAI_TZ).date()
+    lines = _line_spans(text)
+    participant_spans = participant_regions(text)
+    in_structured_block = False
+    in_date_table = False
+    accepted: list[tuple[str, date, date, int, int, str]] = []
+
+    for line, line_start, line_end in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        has_label = _STRUCTURED_DATE_LABEL_RE.search(stripped) is not None
+        if _DATE_TABLE_HEADER_RE.search(stripped):
+            in_date_table = True
+        if has_label and not _date_candidates(stripped, published_day):
+            in_structured_block = True
+        if _DATE_BLOCK_END_RE.search(stripped) and not has_label:
+            in_structured_block = False
+            in_date_table = False
+            continue
+
+        candidates = _date_candidates(stripped, published_day)
+        if not candidates:
+            continue
+        in_participant_region = any(
+            start <= line_start < end for start, end in participant_spans
+        )
+        has_participant_shape = bool(
+            _INSTITUTION_RE.search(stripped)
+            or _ENGLISH_INSTITUTION_RE.search(stripped)
+            or _FOREIGN_BRAND_RE.search(stripped)
+        )
+        if not (
+            has_label
+            or in_structured_block
+            or in_date_table
+            or (in_participant_region and has_participant_shape)
+        ):
+            continue
+        for kind, start, end, _match_start, _match_end in candidates:
+            if start > published_day or end > published_day:
+                continue
+            accepted.append((kind, start, end, line_start, line_end, stripped))
+
+    occurrences: list[ActivityOccurrence] = []
+    evidence_refs: list[EvidenceRef] = []
+    seen: set[tuple[str, date, date]] = set()
+    for kind, start, end, line_start, line_end, excerpt in accepted:
+        exact_day = kind == "day" or start == end
+        precision = (
+            ACTIVITY_DATE_PRECISION_EXPLICIT_DAY
+            if exact_day
+            else ACTIVITY_DATE_PRECISION_EXPLICIT_RANGE
+        )
+        # A source may express one day both as ``YYYY-MM-DD`` and as a
+        # same-start/end range.  They normalize to the same metric occurrence
+        # and therefore must share the dedupe key used by the persisted ID.
+        key = (precision, start, end)
+        if key in seen:
+            continue
+        seen.add(key)
+        evidence_id = f"evidence:{document.document_id}:date:{len(evidence_refs)}"
+        evidence_refs.append(
+            EvidenceRef(
+                evidence_id=evidence_id,
+                document_id=document.document_id,
+                start_offset=line_start,
+                end_offset=line_end,
+                excerpt=re.sub(r"\s+", " ", excerpt).strip()[:240],
+                source_url=document.source_url,
+            )
+        )
+        identity = f"{activity_id}|{precision}|{start.isoformat()}|{end.isoformat()}"
+        occurrences.append(
+            ActivityOccurrence(
+                occurrence_id="occurrence:" + sha1(identity.encode("utf-8")).hexdigest()[:16],
+                activity_id=activity_id,
+                occurred_on=start if exact_day else None,
+                period_start=start,
+                period_end=end,
+                date_precision=precision,
+                metric_eligible=exact_day,
+                exclusion_reason=(
+                    None if exact_day else "仅披露活动区间，未映射到具体活动日"
+                ),
+                evidence_id=evidence_id,
+                parse_version=OCCURRENCE_PARSE_VERSION,
+            )
+        )
+
+    if not occurrences:
+        identity = f"{activity_id}|disclosure|{published_day.isoformat()}"
+        occurrences.append(
+            ActivityOccurrence(
+                occurrence_id="occurrence:" + sha1(identity.encode("utf-8")).hexdigest()[:16],
+                activity_id=activity_id,
+                occurred_on=published_day,
+                period_start=None,
+                period_end=None,
+                date_precision=ACTIVITY_DATE_PRECISION_DISCLOSURE_DAY,
+                metric_eligible=False,
+                exclusion_reason="未找到结构化活动日期，仅保留披露日",
+                evidence_id=None,
+                parse_version=OCCURRENCE_PARSE_VERSION,
+            )
+        )
+    occurrences.sort(
+        key=lambda item: (
+            item.occurred_on or item.period_start or item.period_end or date.min,
+            item.occurrence_id,
+        )
+    )
+    return tuple(occurrences), tuple(evidence_refs)
 
 
 def infer_activity_type(text: str) -> str:
@@ -1100,12 +1450,167 @@ def _extract_analyst_names(line: str) -> list[str]:
     return names
 
 
+def _local_mention_context(line: str, raw_name: str) -> str:
+    """Return the list cell containing one institution, not the whole row.
+
+    This prevents a research-department marker attached to one bank from
+    qualifying another bank that merely appears later on the same list line.
+    """
+
+    position = line.find(raw_name)
+    if position < 0:
+        return raw_name
+    left = max(
+        (line.rfind(separator, 0, position) for separator in "、，,；;|"),
+        default=-1,
+    )
+    right_candidates = [
+        value
+        for value in (line.find(separator, position + len(raw_name)) for separator in "、，,；;|")
+        if value >= 0
+    ]
+    right = min(right_candidates) if right_candidates else len(line)
+    return line[left + 1 : right].strip() or raw_name
+
+
 @dataclass(frozen=True, slots=True)
 class ActivityParseResult:
     activity: ResearchActivity
     participants: tuple[ResearchParticipant, ...]
     evidence_refs: tuple[EvidenceRef, ...]
     raw_mentions: tuple[ResearchParticipantMention, ...] = ()
+    activity_occurrences: tuple[ActivityOccurrence, ...] = ()
+    participant_occurrences: tuple[ResearchParticipantOccurrence, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _ParticipantOccurrenceCandidate:
+    institution_id: str
+    institution_type: str
+    raw_name: str
+    analyst_name: str | None
+    evidence_id: str | None
+    start_offset: int | None
+    context: str
+
+
+def _candidate_occurrences(
+    candidate: _ParticipantOccurrenceCandidate,
+    text: str,
+    published_day: date,
+    occurrences: tuple[ActivityOccurrence, ...],
+) -> tuple[ActivityOccurrence, ...]:
+    """Resolve a participant mention to reliable occurrence rows.
+
+    A single activity occurrence can safely own all listed participants.  For
+    multi-day disclosures, an institution is mapped only when its own table/
+    list row contains one of the explicit dates.  Ambiguous multi-day names
+    remain in detail storage but receive no institution-date relationship.
+    """
+
+    if len(occurrences) == 1:
+        return occurrences
+    if candidate.start_offset is None:
+        return ()
+    line = ""
+    for value, start, end in _line_spans(text):
+        if start <= candidate.start_offset <= end:
+            line = value
+            break
+    if not line:
+        return ()
+    local_days = {
+        start
+        for kind, start, end, _begin, _finish in _date_candidates(
+            line, published_day
+        )
+        if kind == "day" and start == end and start <= published_day
+    }
+    if not local_days:
+        return ()
+    return tuple(
+        occurrence
+        for occurrence in occurrences
+        if occurrence.metric_eligible and occurrence.occurred_on in local_days
+    )
+
+
+def _build_participant_occurrences(
+    document: SourceDocument,
+    activity_id: str,
+    occurrences: tuple[ActivityOccurrence, ...],
+    candidates: list[_ParticipantOccurrenceCandidate],
+) -> tuple[ResearchParticipantOccurrence, ...]:
+    rows: list[ResearchParticipantOccurrence] = []
+    seen: set[tuple[str, str, str | None]] = set()
+    for candidate in candidates:
+        eligible, reason = research_eligibility(
+            candidate.raw_name,
+            candidate.institution_type,
+            context=candidate.context,
+        )
+        for occurrence in _candidate_occurrences(
+            candidate,
+            document.body_text or "",
+            document.published_at.astimezone(SHANGHAI_TZ).date(),
+            occurrences,
+        ):
+            key = (
+                occurrence.occurrence_id,
+                candidate.institution_id,
+                candidate.analyst_name,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            identity = "|".join(
+                (
+                    activity_id,
+                    occurrence.occurrence_id,
+                    candidate.institution_id,
+                    candidate.analyst_name or "",
+                )
+            )
+            rows.append(
+                ResearchParticipantOccurrence(
+                    participant_occurrence_id=(
+                        "participant-occurrence:"
+                        + sha1(identity.encode("utf-8")).hexdigest()[:16]
+                    ),
+                    activity_occurrence_id=occurrence.occurrence_id,
+                    activity_id=activity_id,
+                    institution_id=candidate.institution_id,
+                    analyst_name=candidate.analyst_name,
+                    research_eligible=eligible,
+                    eligibility_reason=reason,
+                    evidence_id=candidate.evidence_id,
+                    parse_version=OCCURRENCE_PARSE_VERSION,
+                )
+            )
+
+    # When a table supplies named analysts after an earlier field-level mention
+    # of the same institution/day, the anonymous placeholder adds no identity
+    # information and would inflate explicit analyst rows.
+    named_pairs = {
+        (row.activity_occurrence_id, row.institution_id)
+        for row in rows
+        if row.analyst_name
+    }
+    rows = [
+        row
+        for row in rows
+        if row.analyst_name
+        or (row.activity_occurrence_id, row.institution_id) not in named_pairs
+    ]
+    rows.sort(
+        key=lambda row: (
+            row.activity_occurrence_id,
+            row.institution_id,
+            row.analyst_name or "",
+            row.participant_occurrence_id,
+        )
+    )
+    return tuple(rows)
 
 
 def parse_research_activity(
@@ -1152,6 +1657,9 @@ def parse_research_activity(
     activity_id = "activity:" + sha1(
         (document.document_id + "|" + stock_code).encode("utf-8")
     ).hexdigest()[:16]
+    activity_occurrences, occurrence_evidence = _parse_activity_occurrences(
+        document, activity_id
+    )
     activity = ResearchActivity(
         activity_id=activity_id,
         stock_code=stock_code,
@@ -1168,8 +1676,9 @@ def parse_research_activity(
     )
 
     participants: list[ResearchParticipant] = []
-    evidence_refs: list[EvidenceRef] = []
+    evidence_refs: list[EvidenceRef] = list(occurrence_evidence)
     mention_rows: list[ResearchParticipantMention] = []
+    occurrence_candidates: list[_ParticipantOccurrenceCandidate] = []
     seen: set[str] = set()
     field_lines = participant_field_lines(text)
     field_offsets = {offset for _value, offset in field_lines}
@@ -1210,7 +1719,12 @@ def parse_research_activity(
         )
 
     def add_mention(
-        raw: str, evidence_id: str, start_offset: int | None = None
+        raw: str,
+        evidence_id: str,
+        start_offset: int | None = None,
+        *,
+        analyst_name: str | None = None,
+        context: str = "",
     ) -> None:
         cleaned = raw.strip()
         if len(cleaned) > 60 or (
@@ -1225,6 +1739,17 @@ def parse_research_activity(
             institution = registry.resolve(cleaned)
         except ValueError:
             return
+        occurrence_candidates.append(
+            _ParticipantOccurrenceCandidate(
+                institution_id=institution.institution_id,
+                institution_type=institution.institution_type,
+                raw_name=cleaned,
+                analyst_name=analyst_name,
+                evidence_id=evidence_id,
+                start_offset=start_offset,
+                context=context or cleaned,
+            )
+        )
         if institution.institution_id in seen:
             return
         seen.add(institution.institution_id)
@@ -1232,7 +1757,7 @@ def parse_research_activity(
             ResearchParticipant(
                 activity_id=activity_id,
                 institution_id=institution.institution_id,
-                analyst_name=None,
+                analyst_name=analyst_name,
                 evidence_id=evidence_id,
             )
         )
@@ -1261,6 +1786,7 @@ def parse_research_activity(
                 start_offset=(
                     offset + name_offset if name_offset >= 0 else None
                 ),
+                context=name,
             )
 
     # 2) 名单章节内逐行解析（v2 里程碑 4：先定位名单章节，取消面向整篇
@@ -1321,64 +1847,33 @@ def parse_research_activity(
                     continue
                 if not participant_qualifies(cleaned):
                     continue
-                try:
-                    institution = registry.resolve(cleaned)
-                except ValueError:
-                    continue
-                if institution.institution_id in seen:
-                    continue
-                seen.add(institution.institution_id)
-                participants.append(
-                    ResearchParticipant(
-                        activity_id=activity_id,
-                        institution_id=institution.institution_id,
-                        analyst_name=paired_analyst,
-                        evidence_id=evidence_id,
-                    )
-                )
                 cleaned_offset = line.find(cleaned)
-                mention_rows.append(
-                    ResearchParticipantMention(
-                        mention_id="mention:"
-                        + sha1(
-                            (
-                                f"{document.document_id}|{activity_id}|{cleaned}|"
-                                f"{region_start + line_offset + max(0, cleaned_offset)}"
-                            ).encode("utf-8")
-                        ).hexdigest()[:16],
-                        document_id=document.document_id,
-                        activity_id=activity_id,
-                        raw_name=cleaned,
-                        start_offset=(
-                            region_start + line_offset + cleaned_offset
-                            if cleaned_offset >= 0
-                            else None
-                        ),
-                        end_offset=(
-                            region_start + line_offset + cleaned_offset
-                            + len(cleaned)
-                            if cleaned_offset >= 0
-                            else None
-                        ),
-                        organization_category=(
-                            "research_institution"
-                            if institution.institution_type
-                            in RESEARCH_INSTITUTION_TYPES
-                            else "other_organization"
-                        ),
-                        parse_version=MENTION_PARSE_VERSION,
-                        review_status=PARTICIPANT_MENTION_REVIEW_PENDING,
-                        evidence_id=evidence_id,
-                        created_at=datetime.now(SHANGHAI_TZ),
-                    )
+                add_mention(
+                    cleaned,
+                    evidence_id,
+                    start_offset=(
+                        region_start + line_offset + cleaned_offset
+                        if cleaned_offset >= 0
+                        else None
+                    ),
+                    analyst_name=paired_analyst,
+                    context=_local_mention_context(line, cleaned),
                 )
 
     activity = replace(activity, named_participant_count=len(participants))
+    participant_occurrences = _build_participant_occurrences(
+        document,
+        activity_id,
+        activity_occurrences,
+        occurrence_candidates,
+    )
     return ActivityParseResult(
         activity=activity,
         participants=tuple(participants),
         evidence_refs=tuple(evidence_refs),
         raw_mentions=tuple(mention_rows),
+        activity_occurrences=activity_occurrences,
+        participant_occurrences=participant_occurrences,
     )
 
 

@@ -53,6 +53,7 @@ from .research_views import (
     COVERAGE_STATE_LABELS,
     build_discovery_quality,
     coverage_state as research_coverage_state,
+    institution_research_coverage,
     load_discovery_rows,
     load_event_detail,
     load_institution_detail,
@@ -60,6 +61,7 @@ from .research_views import (
     load_short_term_rows,
     load_z20_rows,
     research_coverage,
+    z20_view_meta,
 )
 from .service import RefreshService
 from .storage import Storage
@@ -832,7 +834,11 @@ class ProfessionalMainWindow(QMainWindow):
     def _render_research_source(self) -> None:
         source_key = self.selected_source
         self._set_source_button_checked(source_key)
-        coverage = research_coverage(self.settings, self.storage)
+        coverage = (
+            institution_research_coverage(self.settings, self.storage)
+            if source_key in {"z20", "persist60", "persist120"}
+            else research_coverage(self.settings, self.storage)
+        )
         self._research_coverage = coverage
         if source_key in {"confirm", "catalyst"}:
             board = (
@@ -844,7 +850,11 @@ class ProfessionalMainWindow(QMainWindow):
                 self.storage, board, coverage=coverage
             )
         elif source_key == "z20":
-            rows = load_z20_rows(self.storage, coverage=coverage)
+            rows = load_z20_rows(
+                self.storage,
+                coverage=coverage,
+                metric_version=self.settings.institution_metric_version,
+            )
         elif source_key == "discovery":
             rows = load_discovery_rows(self.storage, coverage=coverage)
         else:
@@ -854,7 +864,10 @@ class ProfessionalMainWindow(QMainWindow):
                 else "persistence_120"
             )
             rows = load_persistence_rows(
-                self.storage, window_kind, coverage=coverage
+                self.storage,
+                window_kind,
+                coverage=coverage,
+                metric_version=self.settings.institution_metric_version,
             )
         self.table.setModel(self.research_proxy)
         self.table.setItemDelegateForColumn(4, None)
@@ -937,6 +950,17 @@ class ProfessionalMainWindow(QMainWindow):
     def _render_research_header(self, rows, coverage) -> None:
         source_key = self.selected_source
         title, subtitle = RESEARCH_VIEW_META[source_key]
+        if source_key == "z20":
+            title, subtitle = z20_view_meta(
+                has_formal_rows=any(
+                    row.z20 is not None
+                    and (
+                        row.metric_version != "warming_v2"
+                        or row.coverage_level == "full"
+                    )
+                    for row in rows
+                )
+            )
         self.view_title.setText(title)
         self.view_subtitle.setText(subtitle)
         state = research_coverage_state(coverage, has_rows=bool(rows))
@@ -957,11 +981,27 @@ class ProfessionalMainWindow(QMainWindow):
                 ),
             )
         elif source_key == "z20":
-            full_count = sum(1 for row in rows if row.z20 is not None)
+            full_count = sum(
+                1
+                for row in rows
+                if row.z20 is not None
+                and (
+                    row.metric_version != "warming_v2"
+                    or row.coverage_level == "full"
+                )
+            )
+            cohort_sources = sum(
+                len(item.source_keys) for item in coverage.market_cohorts
+            )
+            supplemental_sources = sum(
+                len(item.supplemental_source_keys)
+                for item in coverage.market_cohorts
+            )
             values = (
                 ("结果", f"{len(rows)} 只"),
-                ("z20 完整覆盖", f"{full_count} 只"),
-                ("覆盖交易日", str(coverage.trading_days_covered)),
+                ("正式升温", f"{full_count} 只"),
+                ("cohort 来源", str(cohort_sources)),
+                ("补充来源", str(supplemental_sources)),
                 ("质量状态", state_label),
             )
         elif source_key == "discovery":
@@ -1149,6 +1189,7 @@ class ProfessionalMainWindow(QMainWindow):
 
     def proxy_model_set_query(self, value: str) -> None:
         self.proxy_model.set_query(value)
+        self.research_proxy.set_query(value)
         self._update_result_count()
 
     def _set_industry_filter(self, tags: set[str]) -> None:
@@ -1363,7 +1404,11 @@ class ProfessionalMainWindow(QMainWindow):
             window_kind = (
                 row.window_kind
                 if isinstance(row, PersistenceViewRow)
-                else "z20"
+                else (
+                    "warming_20"
+                    if row.metric_version == "warming_v2"
+                    else "z20"
+                )
             )
             if self._research_coverage is not None:
                 start_date = self._research_coverage.requested_start
@@ -1622,6 +1667,9 @@ class ProfessionalMainWindow(QMainWindow):
                 f"事件候选事实：{stats.event_claim_count}",
                 f"参与者原始提及：{stats.participant_mention_count}",
                 f"披露总数记录：{stats.reported_participant_count_count}",
+                f"活动发生日：{stats.activity_occurrence_count}",
+                f"参与者发生日：{stats.participant_occurrence_count}",
+                f"逐来源窗口覆盖：{stats.source_window_coverage_count}",
                 f"研究覆盖：{coverage_text}",
                 ai_text,
                 f"最新快照：{latest_snapshot}",
@@ -1648,7 +1696,9 @@ class ProfessionalMainWindow(QMainWindow):
             <p>来自<b>巨潮资讯</b>公告与调研栏目、<b>上证 e 互动</b>上市公司发布与<b>互动易</b>投资者关系活动记录。先对公开文档做持久化事件聚类（同一股票、72 小时内的高置信相似内容合并，金额/客户/日期冲突时宁拆不并），再按十类固定事件类型做规则抽取，输出正向机制、量化字段、确定性、意外性、新颖性与反证；确定性利好要求重大性 L≥2、确定性≥0.70、得分≥60 且无高度反证；潜在催化要求 L≥1、确定性≥0.40、得分≥35，并醒目标注“尚未落地”。`no_valid_signal` 是正常且高频的结果，产品不强迫每条信息生成利好。</p>
             <p><b>待核验</b>：所有公开列表项先进入发现层（财务报告、合同订单、审批客户、资本动作、产能项目、政策补贴、其他需核验披露），附件按“新调研资料 → 高优先级待核验事件 → 最旧普通待解析资料”循环下载；额度不足只标记延后。候选不计分、不称为利好，正文证据决定是否进入确定性利好或潜在催化榜。</p>
             <h3>20 日机构升温</h3>
-            <p>统计最近 20 个交易日相对前五个 20 日分桶基线（共 120 个交易日）的独立机构集团关注加速：<code>z20=(当前-前五桶均值)/max(前五桶标准差,1)</code>。覆盖不足 120 个交易日时 z20 返回空值并显示“冷启动/暂定”，仍展示当前窗口原始指标。机构集团按保守归一与集团归并计算，只描述公开披露的调研/投资者关系参与行为，不代表看多、买入或资金流向。</p>
+            <p>“标准化升温值（描述性）”比较最近 20 个交易日与此前 12 个非重叠 20 日桶；使用样本方差和透明预测方差，不预测股价或收益。12 个历史桶为完整，5–11 个仅为暂定，少于 5 个只展示原始机构关注。来源 cohort、日期质量、排除组织数和暂定原因会随表格、CSV、复制及详情一起显示；机构关注仅表示公开披露的研究参与行为，不代表看多、买入、持仓或资金流向。</p>
+            <h3>60/120 日持续关注</h3>
+            <p>总分名称为“持续关注规则指数”，仅是四个透明规则组件的加权摘要。没有合格机构、可靠机构—日期映射或完整问答正文时总分为空；低深度问题与正文缺失分别显示。该指数未经独立标签校准，不赋予统计预测含义。</p>
             <h3>60/120 日持续关注</h3>
             <p>持续关注分 = 100 × (0.40×活跃周比例 + 0.25×重复跟进比例 + 0.20×研究深度 + 0.15×(1-单日集中度))。120 日视图额外比较最近 60 日与此前 60 日的新增/流失机构集团、类型占比、高深度占比、活跃周比例与集中度变化，这些只描述研究行为结构，不推断投资观点。</p>
             <h3>可选 AI 增强</h3>

@@ -1234,9 +1234,7 @@ _ENGLISH_RESEARCH_SUFFIXES = (
     "fund",
     "funds",
     "partners",
-    "bank",
     "insurance",
-    "trust",
     "advisors",
     "advisory",
     "investments",
@@ -1245,8 +1243,6 @@ _ENGLISH_RESEARCH_SUFFIXES = (
     "ventures",
     "equity",
     "private equity",
-    "limited",
-    "ltd",
     "hong kong",
 )
 _ENGLISH_FOREIGN_BRANDS = (
@@ -1277,6 +1273,14 @@ def infer_institution_type(normalized_alias: str) -> str:
     """Map a normalized alias to one of the fixed institution types."""
 
     value = normalized_alias.lower()
+    # warming v2: a bank is eligible only when the participant context names
+    # a research department, and a trust requires an explicit investment/
+    # research role.  The entity type alone therefore stays ``other``; the
+    # occurrence-level eligibility classifier makes the contextual decision.
+    if "银行" in value or re.search(r"\bbank\b", value):
+        return "other"
+    if "信托" in value or re.search(r"\btrust\b", value):
+        return "other"
     if any(keyword in value for keyword in _FOREIGN_KEYWORDS):
         return "foreign_institution"
     if any(keyword in value for keyword in _ENGLISH_RESEARCH_SUFFIXES):

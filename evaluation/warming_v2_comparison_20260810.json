@@ -1,0 +1,69 @@
+{
+  "schema_version": 122,
+  "database": "C:\\Users\\31546\\AppData\\Local\\Temp\\ashare_warming_v2_20260810\\hotpot.db",
+  "generated_at": "2026-08-10T14:16:47.909634+08:00",
+  "top20": {
+    "legacy": [
+      "688498",
+      "688313",
+      "688235",
+      "600110",
+      "603456",
+      "603309",
+      "688386",
+      "002083",
+      "001328",
+      "002956",
+      "301571",
+      "688110",
+      "688711",
+      "688309",
+      "300420",
+      "603931",
+      "300768",
+      "002258",
+      "001201",
+      "601860"
+    ],
+    "warming_v2": [],
+    "overlap_count": 0,
+    "added": [],
+    "removed": [
+      "001201",
+      "001328",
+      "002083",
+      "002258",
+      "002956",
+      "300420",
+      "300768",
+      "301571",
+      "600110",
+      "601860",
+      "603309",
+      "603456",
+      "603931",
+      "688110",
+      "688235",
+      "688309",
+      "688313",
+      "688386",
+      "688498",
+      "688711"
+    ]
+  },
+  "non_research_organization_pollution": {
+    "excluded_occurrences": 5418,
+    "all_participant_occurrences": 28313,
+    "rate": 0.19136085896937802
+  },
+  "date_corrections": {
+    "corrected_activities": 286,
+    "comparable_activities": 1108
+  },
+  "single_day_concentration": {
+    "single_day_rows": 0,
+    "warming_rows": 0,
+    "share": null
+  },
+  "note": "只比较公开披露的机构研究行为与数据质量；未使用股价、收益、持仓或资金流数据，未做回测。"
+}

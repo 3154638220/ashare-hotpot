@@ -1341,6 +1341,230 @@ class ResearchParticipant:
         )
 
 
+ACTIVITY_DATE_PRECISION_EXPLICIT_DAY = "explicit_day"
+ACTIVITY_DATE_PRECISION_EXPLICIT_RANGE = "explicit_range"
+ACTIVITY_DATE_PRECISION_DISCLOSURE_DAY = "disclosure_day"
+ACTIVITY_DATE_PRECISION_UNKNOWN = "unknown"
+ACTIVITY_DATE_PRECISIONS: tuple[str, ...] = (
+    ACTIVITY_DATE_PRECISION_EXPLICIT_DAY,
+    ACTIVITY_DATE_PRECISION_EXPLICIT_RANGE,
+    ACTIVITY_DATE_PRECISION_DISCLOSURE_DAY,
+    ACTIVITY_DATE_PRECISION_UNKNOWN,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ActivityOccurrence:
+    """One date-bearing occurrence of a disclosed research activity.
+
+    ``occurred_on`` is populated only for a specific activity day.  Ranges and
+    disclosure-day fallbacks remain auditable through ``period_start`` /
+    ``period_end`` and ``date_precision`` but must set ``metric_eligible`` to
+    false until a reliable activity day is available.
+    """
+
+    occurrence_id: str
+    activity_id: str
+    occurred_on: date | None
+    period_start: date | None
+    period_end: date | None
+    date_precision: str
+    metric_eligible: bool
+    exclusion_reason: str | None
+    evidence_id: str | None
+    parse_version: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "occurrence_id": self.occurrence_id,
+            "activity_id": self.activity_id,
+            "occurred_on": self.occurred_on.isoformat() if self.occurred_on else None,
+            "period_start": self.period_start.isoformat() if self.period_start else None,
+            "period_end": self.period_end.isoformat() if self.period_end else None,
+            "date_precision": self.date_precision,
+            "metric_eligible": self.metric_eligible,
+            "exclusion_reason": self.exclusion_reason,
+            "evidence_id": self.evidence_id,
+            "parse_version": self.parse_version,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ActivityOccurrence":
+        return cls(
+            occurrence_id=str(data.get("occurrence_id") or ""),
+            activity_id=str(data.get("activity_id") or ""),
+            occurred_on=_d(data.get("occurred_on")),
+            period_start=_d(data.get("period_start")),
+            period_end=_d(data.get("period_end")),
+            date_precision=str(
+                data.get("date_precision") or ACTIVITY_DATE_PRECISION_UNKNOWN
+            ),
+            metric_eligible=bool(data.get("metric_eligible", False)),
+            exclusion_reason=data.get("exclusion_reason"),
+            evidence_id=data.get("evidence_id"),
+            parse_version=str(data.get("parse_version") or ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ResearchParticipantOccurrence:
+    """An explicit institution/person association with one activity day.
+
+    ``research_eligible`` is persisted at the occurrence level so excluded
+    companies, law firms, media and other organisations remain visible in the
+    detail view without leaking into institution breadth.  Analyst identity is
+    kept together with ``institution_id`` so same-name analysts at different
+    institutions are never collapsed by the storage contract.
+    """
+
+    participant_occurrence_id: str
+    activity_occurrence_id: str
+    activity_id: str
+    institution_id: str
+    analyst_name: str | None
+    research_eligible: bool
+    eligibility_reason: str
+    evidence_id: str | None
+    parse_version: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "participant_occurrence_id": self.participant_occurrence_id,
+            "activity_occurrence_id": self.activity_occurrence_id,
+            "activity_id": self.activity_id,
+            "institution_id": self.institution_id,
+            "analyst_name": self.analyst_name,
+            "research_eligible": self.research_eligible,
+            "eligibility_reason": self.eligibility_reason,
+            "evidence_id": self.evidence_id,
+            "parse_version": self.parse_version,
+        }
+
+    @classmethod
+    def from_dict(
+        cls, data: dict[str, Any]
+    ) -> "ResearchParticipantOccurrence":
+        return cls(
+            participant_occurrence_id=str(
+                data.get("participant_occurrence_id") or ""
+            ),
+            activity_occurrence_id=str(data.get("activity_occurrence_id") or ""),
+            activity_id=str(data.get("activity_id") or ""),
+            institution_id=str(data.get("institution_id") or ""),
+            analyst_name=data.get("analyst_name"),
+            research_eligible=bool(data.get("research_eligible", False)),
+            eligibility_reason=str(data.get("eligibility_reason") or ""),
+            evidence_id=data.get("evidence_id"),
+            parse_version=str(data.get("parse_version") or ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SourceWindowCoverage:
+    """Comparable coverage for one research source, market and metric window."""
+
+    source_key: str
+    market: str  # sh | sz | bj
+    source_kind: str  # research_activity only for institution metrics
+    window_kind: str
+    source_cohort_id: str
+    requested_start: date
+    requested_end: date
+    covered_start: date | None
+    covered_end: date | None
+    reached_cutoff: bool
+    reconciled: bool
+    cohort_eligible: bool
+    last_success_at: datetime | None
+    error: str | None
+    exclusion_reason: str | None
+    updated_at: datetime
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_key": self.source_key,
+            "market": self.market,
+            "source_kind": self.source_kind,
+            "window_kind": self.window_kind,
+            "source_cohort_id": self.source_cohort_id,
+            "requested_start": self.requested_start.isoformat(),
+            "requested_end": self.requested_end.isoformat(),
+            "covered_start": self.covered_start.isoformat() if self.covered_start else None,
+            "covered_end": self.covered_end.isoformat() if self.covered_end else None,
+            "reached_cutoff": self.reached_cutoff,
+            "reconciled": self.reconciled,
+            "cohort_eligible": self.cohort_eligible,
+            "last_success_at": self.last_success_at.isoformat()
+            if self.last_success_at
+            else None,
+            "error": self.error,
+            "exclusion_reason": self.exclusion_reason,
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SourceWindowCoverage":
+        return cls(
+            source_key=str(data.get("source_key") or ""),
+            market=str(data.get("market") or ""),
+            source_kind=str(data.get("source_kind") or "research_activity"),
+            window_kind=str(data.get("window_kind") or ""),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+            requested_start=date.fromisoformat(str(data["requested_start"])),
+            requested_end=date.fromisoformat(str(data["requested_end"])),
+            covered_start=_d(data.get("covered_start")),
+            covered_end=_d(data.get("covered_end")),
+            reached_cutoff=bool(data.get("reached_cutoff", False)),
+            reconciled=bool(data.get("reconciled", False)),
+            cohort_eligible=bool(data.get("cohort_eligible", False)),
+            last_success_at=_dt(data.get("last_success_at")),
+            error=data.get("error"),
+            exclusion_reason=data.get("exclusion_reason"),
+            updated_at=datetime.fromisoformat(str(data["updated_at"])),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class InstitutionMetricSnapshotRecord:
+    """Versioned institution metric row while legacy and v2 coexist."""
+
+    stock_code: str
+    window_kind: str
+    window_start: datetime | None
+    window_end: datetime | None
+    snapshot_at: datetime
+    metrics: dict[str, object]
+    metric_version: str
+    source_cohort_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stock_code": self.stock_code,
+            "window_kind": self.window_kind,
+            "window_start": self.window_start.isoformat() if self.window_start else None,
+            "window_end": self.window_end.isoformat() if self.window_end else None,
+            "snapshot_at": self.snapshot_at.isoformat(),
+            "metrics": dict(self.metrics),
+            "metric_version": self.metric_version,
+            "source_cohort_id": self.source_cohort_id,
+        }
+
+    @classmethod
+    def from_dict(
+        cls, data: dict[str, Any]
+    ) -> "InstitutionMetricSnapshotRecord":
+        return cls(
+            stock_code=str(data.get("stock_code") or ""),
+            window_kind=str(data.get("window_kind") or ""),
+            window_start=_dt(data.get("window_start")),
+            window_end=_dt(data.get("window_end")),
+            snapshot_at=datetime.fromisoformat(str(data["snapshot_at"])),
+            metrics=dict(data.get("metrics") or {}),
+            metric_version=str(data.get("metric_version") or "z20_legacy"),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class CoverageState:
     """Coverage state of a research backfill window for one source."""
@@ -1424,6 +1648,70 @@ class SyncCursor:
 
 
 @dataclass(frozen=True, slots=True)
+class ResearchSourceCohort:
+    """Comparable research-activity source set for one A-share market.
+
+    ``source_keys`` is sticky once a source has entered a cohort: a temporary
+    source failure therefore makes the market cold instead of silently
+    shrinking both the current bucket and its historical baseline.
+    ``supplemental_source_keys`` are visible but excluded from both sides of
+    the comparison until they cover the complete requested window.
+    """
+
+    market: str  # sh | sz | bj
+    window_kind: str
+    source_cohort_id: str
+    source_keys: tuple[str, ...]
+    supplemental_source_keys: tuple[str, ...]
+    unavailable_source_keys: tuple[str, ...]
+    requested_start: date
+    requested_end: date
+    covered_start: date | None
+    covered_end: date | None
+    trading_days_covered: int
+    formal_ranking: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "market": self.market,
+            "window_kind": self.window_kind,
+            "source_cohort_id": self.source_cohort_id,
+            "source_keys": list(self.source_keys),
+            "supplemental_source_keys": list(self.supplemental_source_keys),
+            "unavailable_source_keys": list(self.unavailable_source_keys),
+            "requested_start": self.requested_start.isoformat(),
+            "requested_end": self.requested_end.isoformat(),
+            "covered_start": self.covered_start.isoformat()
+            if self.covered_start
+            else None,
+            "covered_end": self.covered_end.isoformat() if self.covered_end else None,
+            "trading_days_covered": self.trading_days_covered,
+            "formal_ranking": self.formal_ranking,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ResearchSourceCohort":
+        return cls(
+            market=str(data.get("market") or ""),
+            window_kind=str(data.get("window_kind") or "warming_20"),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+            source_keys=tuple(str(item) for item in data.get("source_keys", [])),
+            supplemental_source_keys=tuple(
+                str(item) for item in data.get("supplemental_source_keys", [])
+            ),
+            unavailable_source_keys=tuple(
+                str(item) for item in data.get("unavailable_source_keys", [])
+            ),
+            requested_start=date.fromisoformat(str(data["requested_start"])),
+            requested_end=date.fromisoformat(str(data["requested_end"])),
+            covered_start=_d(data.get("covered_start")),
+            covered_end=_d(data.get("covered_end")),
+            trading_days_covered=int(data.get("trading_days_covered", 0)),
+            formal_ranking=bool(data.get("formal_ranking", False)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ResearchCoverage:
     """Coverage state shared by the 20/60/120-day research boards.
 
@@ -1443,6 +1731,8 @@ class ResearchCoverage:
     last_success_at: datetime | None
     provisional: bool
     error: str | None
+    market_cohorts: tuple[ResearchSourceCohort, ...] = ()
+    formal_ranking: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1459,6 +1749,8 @@ class ResearchCoverage:
             else None,
             "provisional": self.provisional,
             "error": self.error,
+            "market_cohorts": [item.to_dict() for item in self.market_cohorts],
+            "formal_ranking": self.formal_ranking,
         }
 
     @classmethod
@@ -1475,6 +1767,11 @@ class ResearchCoverage:
             last_success_at=_dt(data.get("last_success_at")),
             provisional=bool(data.get("provisional", False)),
             error=data.get("error"),
+            market_cohorts=tuple(
+                ResearchSourceCohort.from_dict(item)
+                for item in data.get("market_cohorts", [])
+            ),
+            formal_ranking=bool(data.get("formal_ranking", False)),
         )
 
 
@@ -1536,22 +1833,117 @@ class Z20Row:
 
 
 @dataclass(frozen=True, slots=True)
+class WarmingV2Row:
+    """Descriptive 20-day institution warming metric (``warming_v2``)."""
+
+    stock_code: str
+    industry: str | None
+    warming_score: float | None
+    baseline_mean: float | None
+    baseline_variance: float | None
+    predictive_variance: float | None
+    baseline_bucket_count: int
+    coverage_level: str  # full | provisional | raw_only
+    absolute_change: float | None
+    current_unique_groups: int
+    unseen_100d_groups: int | None
+    active_days: int
+    single_day_concentration: float
+    single_day: bool
+    recent_activity: date | None
+    industry_percentile: float | None
+    industry_sample_size: int
+    source_cohort_id: str
+    date_quality: str = "explicit_day"
+    excluded_organization_count: int = 0
+    provisional_reason: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stock_code": self.stock_code,
+            "industry": self.industry,
+            "warming_score": self.warming_score,
+            "baseline_mean": self.baseline_mean,
+            "baseline_variance": self.baseline_variance,
+            "predictive_variance": self.predictive_variance,
+            "baseline_bucket_count": self.baseline_bucket_count,
+            "coverage_level": self.coverage_level,
+            "absolute_change": self.absolute_change,
+            "current_unique_groups": self.current_unique_groups,
+            "unseen_100d_groups": self.unseen_100d_groups,
+            "active_days": self.active_days,
+            "single_day_concentration": self.single_day_concentration,
+            "single_day": self.single_day,
+            "recent_activity": self.recent_activity.isoformat()
+            if self.recent_activity
+            else None,
+            "industry_percentile": self.industry_percentile,
+            "industry_sample_size": self.industry_sample_size,
+            "source_cohort_id": self.source_cohort_id,
+            "date_quality": self.date_quality,
+            "excluded_organization_count": self.excluded_organization_count,
+            "provisional_reason": self.provisional_reason,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "WarmingV2Row":
+        return cls(
+            stock_code=str(data["stock_code"]),
+            industry=data.get("industry"),
+            warming_score=_to_float(data.get("warming_score")),
+            baseline_mean=_to_float(data.get("baseline_mean")),
+            baseline_variance=_to_float(data.get("baseline_variance")),
+            predictive_variance=_to_float(data.get("predictive_variance")),
+            baseline_bucket_count=int(data.get("baseline_bucket_count", 0)),
+            coverage_level=str(data.get("coverage_level") or "raw_only"),
+            absolute_change=_to_float(data.get("absolute_change")),
+            current_unique_groups=int(data.get("current_unique_groups", 0)),
+            unseen_100d_groups=(
+                int(data["unseen_100d_groups"])
+                if data.get("unseen_100d_groups") is not None
+                else None
+            ),
+            active_days=int(data.get("active_days", 0)),
+            single_day_concentration=float(
+                data.get("single_day_concentration", 0.0)
+            ),
+            single_day=bool(data.get("single_day", False)),
+            recent_activity=_d(data.get("recent_activity")),
+            industry_percentile=_to_float(data.get("industry_percentile")),
+            industry_sample_size=int(data.get("industry_sample_size", 0)),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+            date_quality=str(data.get("date_quality") or "explicit_day"),
+            excluded_organization_count=int(
+                data.get("excluded_organization_count", 0)
+            ),
+            provisional_reason=data.get("provisional_reason"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PersistenceRow:
     """One row of the 60/120-trading-day persistence board."""
 
     stock_code: str
     window_kind: str  # persistence_60 | persistence_120
-    persistence_score: float
+    persistence_score: float | None
     active_weeks: int
     active_week_ratio: float
     unique_groups: int
     repeat_followup_ratio: float
-    depth_score: float
+    depth_score: float | None
     single_day_concentration: float
     topics: dict[str, int]
     recent_activity: date | None
     covered_trading_days: int
     provisional: bool = False
+    question_data_status: str = "available"
+    date_mapping_complete: bool = True
+    metric_version: str = "persistence_legacy"
+    provisional_reason: str | None = None
+    source_cohort_id: str = ""
+    date_quality: str = "explicit_day"
+    excluded_organization_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1570,6 +1962,13 @@ class PersistenceRow:
             else None,
             "covered_trading_days": self.covered_trading_days,
             "provisional": self.provisional,
+            "question_data_status": self.question_data_status,
+            "date_mapping_complete": self.date_mapping_complete,
+            "metric_version": self.metric_version,
+            "provisional_reason": self.provisional_reason,
+            "source_cohort_id": self.source_cohort_id,
+            "date_quality": self.date_quality,
+            "excluded_organization_count": self.excluded_organization_count,
         }
 
     @classmethod
@@ -1577,12 +1976,12 @@ class PersistenceRow:
         return cls(
             stock_code=str(data["stock_code"]),
             window_kind=str(data.get("window_kind") or ""),
-            persistence_score=float(data.get("persistence_score", 0.0)),
+            persistence_score=_to_float(data.get("persistence_score")),
             active_weeks=int(data.get("active_weeks", 0)),
             active_week_ratio=float(data.get("active_week_ratio", 0.0)),
             unique_groups=int(data.get("unique_groups", 0)),
             repeat_followup_ratio=float(data.get("repeat_followup_ratio", 0.0)),
-            depth_score=float(data.get("depth_score", 0.0)),
+            depth_score=_to_float(data.get("depth_score")),
             single_day_concentration=float(data.get("single_day_concentration", 0.0)),
             topics={
                 str(key): int(value)
@@ -1591,6 +1990,19 @@ class PersistenceRow:
             recent_activity=_d(data.get("recent_activity")),
             covered_trading_days=int(data.get("covered_trading_days", 0)),
             provisional=bool(data.get("provisional", False)),
+            question_data_status=str(
+                data.get("question_data_status") or "available"
+            ),
+            date_mapping_complete=bool(data.get("date_mapping_complete", True)),
+            metric_version=str(
+                data.get("metric_version") or "persistence_legacy"
+            ),
+            provisional_reason=data.get("provisional_reason"),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+            date_quality=str(data.get("date_quality") or "explicit_day"),
+            excluded_organization_count=int(
+                data.get("excluded_organization_count", 0)
+            ),
         )
 
 
@@ -1685,6 +2097,17 @@ class InstitutionZ20ViewRow:
     industry_sample_size: int
     provisional: bool
     coverage_state: str
+    metric_version: str = "z20_legacy"
+    source_cohort_id: str = ""
+    absolute_change: float | None = None
+    unseen_100d_groups: int | None = None
+    active_days: int = 0
+    single_day_concentration: float = 0.0
+    single_day: bool = False
+    coverage_level: str = "raw_only"
+    date_quality: str = "legacy_unknown"
+    excluded_organization_count: int = 0
+    provisional_reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1705,6 +2128,17 @@ class InstitutionZ20ViewRow:
             "industry_sample_size": self.industry_sample_size,
             "provisional": self.provisional,
             "coverage_state": self.coverage_state,
+            "metric_version": self.metric_version,
+            "source_cohort_id": self.source_cohort_id,
+            "absolute_change": self.absolute_change,
+            "unseen_100d_groups": self.unseen_100d_groups,
+            "active_days": self.active_days,
+            "single_day_concentration": self.single_day_concentration,
+            "single_day": self.single_day,
+            "coverage_level": self.coverage_level,
+            "date_quality": self.date_quality,
+            "excluded_organization_count": self.excluded_organization_count,
+            "provisional_reason": self.provisional_reason,
         }
 
     @classmethod
@@ -1725,6 +2159,25 @@ class InstitutionZ20ViewRow:
             industry_sample_size=int(data.get("industry_sample_size", 0)),
             provisional=bool(data.get("provisional", False)),
             coverage_state=str(data.get("coverage_state") or "ok"),
+            metric_version=str(data.get("metric_version") or "z20_legacy"),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+            absolute_change=_to_float(data.get("absolute_change")),
+            unseen_100d_groups=(
+                int(data["unseen_100d_groups"])
+                if data.get("unseen_100d_groups") is not None
+                else None
+            ),
+            active_days=int(data.get("active_days", 0)),
+            single_day_concentration=float(
+                data.get("single_day_concentration", 0.0)
+            ),
+            single_day=bool(data.get("single_day", False)),
+            coverage_level=str(data.get("coverage_level") or "raw_only"),
+            date_quality=str(data.get("date_quality") or "legacy_unknown"),
+            excluded_organization_count=int(
+                data.get("excluded_organization_count", 0)
+            ),
+            provisional_reason=data.get("provisional_reason"),
         )
 
 
@@ -1736,18 +2189,25 @@ class PersistenceViewRow:
     stock_code: str
     stock_name: str
     window_kind: str  # persistence_60 | persistence_120
-    persistence_score: float
+    persistence_score: float | None
     active_weeks: int
     active_week_ratio: float
     unique_groups: int
     repeat_followup_ratio: float
-    depth_score: float
+    depth_score: float | None
     single_day_concentration: float
     topics: dict[str, int]
     recent_activity: date | None
     covered_trading_days: int
     coverage_state: str
     provisional: bool = False
+    metric_version: str = "persistence_legacy"
+    source_cohort_id: str = ""
+    question_data_status: str = "available"
+    date_mapping_complete: bool = True
+    date_quality: str = "legacy_unknown"
+    excluded_organization_count: int = 0
+    provisional_reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1769,6 +2229,13 @@ class PersistenceViewRow:
             "covered_trading_days": self.covered_trading_days,
             "coverage_state": self.coverage_state,
             "provisional": self.provisional,
+            "metric_version": self.metric_version,
+            "source_cohort_id": self.source_cohort_id,
+            "question_data_status": self.question_data_status,
+            "date_mapping_complete": self.date_mapping_complete,
+            "date_quality": self.date_quality,
+            "excluded_organization_count": self.excluded_organization_count,
+            "provisional_reason": self.provisional_reason,
         }
 
     @classmethod
@@ -1778,12 +2245,12 @@ class PersistenceViewRow:
             stock_code=str(data["stock_code"]),
             stock_name=str(data.get("stock_name") or data["stock_code"]),
             window_kind=str(data.get("window_kind") or "persistence_60"),
-            persistence_score=float(data.get("persistence_score", 0.0)),
+            persistence_score=_to_float(data.get("persistence_score")),
             active_weeks=int(data.get("active_weeks", 0)),
             active_week_ratio=float(data.get("active_week_ratio", 0.0)),
             unique_groups=int(data.get("unique_groups", 0)),
             repeat_followup_ratio=float(data.get("repeat_followup_ratio", 0.0)),
-            depth_score=float(data.get("depth_score", 0.0)),
+            depth_score=_to_float(data.get("depth_score")),
             single_day_concentration=float(data.get("single_day_concentration", 0.0)),
             topics={
                 str(key): int(value)
@@ -1793,6 +2260,19 @@ class PersistenceViewRow:
             covered_trading_days=int(data.get("covered_trading_days", 0)),
             coverage_state=str(data.get("coverage_state") or "ok"),
             provisional=bool(data.get("provisional", False)),
+            metric_version=str(
+                data.get("metric_version") or "persistence_legacy"
+            ),
+            source_cohort_id=str(data.get("source_cohort_id") or ""),
+            question_data_status=str(
+                data.get("question_data_status") or "available"
+            ),
+            date_mapping_complete=bool(data.get("date_mapping_complete", True)),
+            date_quality=str(data.get("date_quality") or "legacy_unknown"),
+            excluded_organization_count=int(
+                data.get("excluded_organization_count", 0)
+            ),
+            provisional_reason=data.get("provisional_reason"),
         )
 
 

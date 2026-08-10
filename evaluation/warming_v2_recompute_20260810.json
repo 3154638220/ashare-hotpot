@@ -1,0 +1,12 @@
+{
+  "database_copy": "C:\\Users\\31546\\AppData\\Local\\Temp\\ashare_warming_v2_20260810\\hotpot.db",
+  "run_at": "2026-08-10T14:07:25.065127+08:00",
+  "pipeline_version": "v2",
+  "documents_scanned": 3443,
+  "activities_persisted": 3439,
+  "participants_added": 30310,
+  "warming_rows": 0,
+  "persistence_60_rows": 0,
+  "persistence_120_rows": 0,
+  "errors": []
+}

@@ -594,8 +594,13 @@ def test_service_parses_documents_and_persists_activities(tmp_path) -> None:
     assert len(mentions) == 6
     assert all(m.parse_version == "v2-20260809" for m in mentions)
     assert all(m.review_status == "pending_review" for m in mentions)
-    assert len(result.z20_rows) == 1
-    assert result.z20_rows[0].stock_code == "300999"
+    # warming v2：fixture 仅披露 8 月 4–6 日区间，未把机构映射到
+    # 具体活动日；活动/参与者保留明细，但不得进入活跃日或升温指标。
+    occurrences = storage.get_activity_occurrences(activity.activity_id)
+    assert len(occurrences) == 1
+    assert occurrences[0].date_precision == "explicit_range"
+    assert occurrences[0].metric_eligible is False
+    assert result.z20_rows == ()
 
 
 def test_service_550_day_recompute_window(tmp_path) -> None:
@@ -653,7 +658,9 @@ def test_service_failed_recompute_keeps_previous_batch(tmp_path, monkeypatch) ->
     _seed_calendar(storage, END, 120)
     fixture = (
         Path(__file__).parent / "fixtures" / "research_activity_record.txt"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8").replace(
+        "2026年8月4日至8月6日", "2026年8月6日"
+    )
     storage.upsert_source_document(_document(fixture, "doc-good"), NOW)
     settings = AppSettings(app_root=tmp_path)
 

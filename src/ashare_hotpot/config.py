@@ -249,6 +249,9 @@ class AppSettings:
     # 整篇正文行级提取兼容口径，仅用于回退与并行比较。切换后需 550 天
     # 机构活动基线重算才生效（批次原子发布，失败保留上一批已发布指标）。
     research_pipeline_version: str = "v2"
+    # Institution metric/UI gray switch.  ``warming_v2`` is the released
+    # default; ``z20_legacy`` keeps one version-cycle rollback capability.
+    institution_metric_version: str = "warming_v2"
     research_max_pages_per_run: int = 40
     research_max_pdfs_per_run: int = 100
     detail_workers: int = 4

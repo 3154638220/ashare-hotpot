@@ -170,7 +170,9 @@ def test_refresh_runs_research_board_stage_and_writes_stats(
     storage.replace_trading_days(now.year, weekdays, source="sse", updated_at=now)
     fixture = (
         Path(__file__).parent / "fixtures" / "research_activity_record.txt"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8").replace(
+        "2026年8月4日至8月6日", "2026年8月6日"
+    )
     storage.upsert_source_document(
         SourceDocument(
             document_id="doc-wired",
@@ -336,7 +338,9 @@ def test_refresh_populates_calendar_before_publishing_institution_metrics(
     storage = Storage(settings.database_path)
     fixture = (
         Path(__file__).parent / "fixtures" / "research_activity_record.txt"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8").replace(
+        "2026年8月4日至8月6日", "2026年8月6日"
+    )
     storage.upsert_source_document(
         SourceDocument(
             document_id="doc-calendar-wired",

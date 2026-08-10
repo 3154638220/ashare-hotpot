@@ -159,7 +159,7 @@ EXPECTED_V121_TABLES = {
 def test_fresh_database_reports_121_and_v2_schema(tmp_path) -> None:
     storage = Storage(tmp_path / "hotpot.db")
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_V121_TABLES <= _table_names(connection)
 
 
@@ -194,7 +194,7 @@ def test_120_database_upgrades_to_121_with_backup_once_and_stays_idempotent(
 
     storage = Storage(path)
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_V121_TABLES <= _table_names(connection)
 
     # pre-121 备份只创建一次；重复初始化不覆盖备份、不重复建表。
@@ -241,7 +241,7 @@ def test_120_migration_rolls_back_and_keeps_120_database(
     monkeypatch.undo()
     storage = Storage(path)
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_V121_TABLES <= _table_names(connection)
     assert storage.get_source_document("doc-1") is not None
 

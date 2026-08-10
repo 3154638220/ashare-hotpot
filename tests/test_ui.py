@@ -878,8 +878,30 @@ def test_research_view_renders_seeded_rows_and_filters(qtbot, tmp_path) -> None:
     window.event_type_filter.set_selected_tags({"重大订单"})
     assert window.research_proxy.rowCount() == 1
     window.search_input.setText("600519")
-    assert window.research_proxy.rowCount() == 1
+    assert window.research_proxy.rowCount() == 0
     window.clear_filters()
+    assert window.research_proxy.rowCount() == 2
+
+
+def test_research_search_filters_by_code_and_name(qtbot, tmp_path) -> None:
+    window = _make_research_window(tmp_path, qtbot)
+    window._select_source("confirm")
+
+    window.search_input.setText("600519")
+    assert window.research_proxy.rowCount() == 1
+    assert window.research_table_model.row_at(
+        window.research_proxy.mapToSource(window.research_proxy.index(0, 0)).row()
+    ).stock_name == "贵州茅台"
+
+    window.search_input.setText("平安")
+    assert window.research_proxy.rowCount() == 1
+    assert window.research_table_model.row_at(
+        window.research_proxy.mapToSource(window.research_proxy.index(0, 0)).row()
+    ).stock_code == "000001"
+
+    window.search_input.setText("不存在")
+    assert window.research_proxy.rowCount() == 0
+    window.search_input.clear()
     assert window.research_proxy.rowCount() == 2
 
 

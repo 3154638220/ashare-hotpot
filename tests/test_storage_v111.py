@@ -159,7 +159,7 @@ def test_fresh_database_reports_120_and_discovery_schema(tmp_path) -> None:
     storage = Storage(tmp_path / "hotpot.db")
 
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_DISCOVERY_TABLES <= _table_names(connection)
         assert EXPECTED_DISCOVERY_INDEXES <= _index_names(connection)
         columns = {
@@ -180,7 +180,7 @@ def test_110_database_upgrades_to_120_with_backup_once_and_backfill(
     storage = Storage(path)
 
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_DISCOVERY_TABLES <= _table_names(connection)
     # 迁移回填：附件文档进入待解析队列，已解析文档进入待核验，失败文档保持失败。
     statuses = {
@@ -200,7 +200,7 @@ def test_110_database_upgrades_to_120_with_backup_once_and_backfill(
     assert backup_path.read_bytes() == backup_before
     assert len(storage.get_discovery_candidates()) == 3
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_111_migration_rolls_back_and_keeps_110_database(
@@ -227,7 +227,7 @@ def test_111_migration_rolls_back_and_keeps_110_database(
     monkeypatch.undo()
     storage = Storage(path)
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_v0_migration_chain_creates_all_backups(tmp_path) -> None:
@@ -243,7 +243,7 @@ def test_v0_migration_chain_creates_all_backups(tmp_path) -> None:
 
     storage = Storage(path)
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 121
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_DISCOVERY_TABLES <= _table_names(connection)
     assert path.with_name(BACKUP_NAME).exists()
     assert path.with_name("hotpot.db.pre-120.bak").exists() and path.with_name("hotpot.db.pre-121.bak").exists()

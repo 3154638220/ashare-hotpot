@@ -580,8 +580,8 @@ class ResearchDetailPanel(QFrame):
 
     def set_institution(self, detail: InstitutionDetail, quality_label: str) -> None:
         self.current_urls = []
-        window_label = "60 日" if detail.window_kind == "persistence_60" else (
-            "120 日" if detail.window_kind == "persistence_120" else "20 日"
+        window_label = "60 日" if detail.window_kind in {"persistence_60", "persistence_60_v2"} else (
+            "120 日" if detail.window_kind in {"persistence_120", "persistence_120_v2"} else "20 日"
         )
         self.title_label.setText(detail.stock_name)
         self.meta_label.setText(
@@ -723,13 +723,34 @@ class ResearchDetailPanel(QFrame):
         metrics = detail.metrics
         if not metrics:
             return []
+        if detail.window_kind == "warming_20":
+            score = metrics.get("warming_score")
+            parts = [
+                f"标准化升温值（描述性） {float(score):.2f}"
+                if score is not None
+                else "标准化升温值（描述性） —"
+            ]
+            parts.append(f"当前集团 {metrics.get('current_unique_groups', 0)}")
+            change = metrics.get("absolute_change")
+            parts.append(
+                f"绝对增量 {float(change):+.2f}" if change is not None else "绝对增量 —"
+            )
+            return parts
         if detail.window_kind == "z20":
             z20 = metrics.get("z20")
             parts = [f"z20 {float(z20):.2f}" if z20 is not None else "z20 冷启动"]
             parts.append(f"机构集团 {metrics.get('current_unique_groups', 0)}")
             parts.append(f"新增 {metrics.get('new_groups', 0)}")
             return parts
-        parts = [f"持续关注分 {float(metrics.get('persistence_score', 0.0)):.1f}"]
+        score = metrics.get("persistence_score")
+        label = (
+            "持续关注规则指数"
+            if detail.window_kind.endswith("_v2")
+            else "持续关注分"
+        )
+        parts = [
+            f"{label} {float(score):.1f}" if score is not None else f"{label} —"
+        ]
         parts.append(f"活跃周 {metrics.get('active_weeks', 0)}")
         parts.append(f"机构集团 {metrics.get('unique_groups', 0)}")
         return parts
@@ -738,6 +759,32 @@ class ResearchDetailPanel(QFrame):
         metrics = detail.metrics
         if not metrics:
             return ["（暂无指标快照，刷新后生成）"]
+        if detail.window_kind == "warming_20":
+            score = metrics.get("warming_score")
+            percentile = metrics.get("industry_percentile")
+            lines = [
+                f"标准化升温值（描述性） = {float(score):.2f}"
+                if score is not None
+                else "标准化升温值（描述性） = —",
+                f"绝对增量 {float(metrics['absolute_change']):+.2f}"
+                if metrics.get("absolute_change") is not None
+                else "绝对增量 —",
+                f"当前机构集团数 {metrics.get('current_unique_groups', 0)}",
+                f"100 日未见集团数 {metrics.get('unseen_100d_groups', '—')}",
+                f"活跃日期数 {metrics.get('active_days', 0)}",
+                f"单日集中度 {float(metrics.get('single_day_concentration', 0.0)) * 100:.1f}%"
+                + ("（单日集中）" if metrics.get("single_day") else ""),
+                f"行业分位 {float(percentile):.1f}%"
+                if percentile is not None
+                else "行业分位 —（行业宇宙不完整或样本不足 20）",
+                f"指标版本 {metrics.get('metric_version', 'warming_v2')}",
+                f"来源 cohort {metrics.get('source_cohort_id') or '—'}",
+                f"日期质量 {metrics.get('date_quality') or '—'}",
+                f"排除组织数 {metrics.get('excluded_organization_count', 0)}",
+            ]
+            if metrics.get("provisional_reason"):
+                lines.append(f"暂定原因 {metrics['provisional_reason']}")
+            return lines
         if detail.window_kind == "z20":
             z20 = metrics.get("z20")
             percentile = metrics.get("industry_percentile")
@@ -750,15 +797,30 @@ class ResearchDetailPanel(QFrame):
                 f"行业关注分位 {float(percentile) * 100:.1f}%" if percentile is not None else "行业关注分位 样本不足",
             ]
             return lines
+        score = metrics.get("persistence_score")
+        depth = metrics.get("depth_score")
+        label = "持续关注规则指数" if detail.window_kind.endswith("_v2") else "持续关注分"
         lines = [
-            f"持续关注分 {float(metrics.get('persistence_score', 0.0)):.1f}",
+            f"{label} {float(score):.1f}" if score is not None else f"{label} —",
             f"活跃周数 {metrics.get('active_weeks', 0)} / 比例 {float(metrics.get('active_week_ratio', 0.0)) * 100:.1f}%",
             f"独立机构集团数 {metrics.get('unique_groups', 0)}",
             f"重复跟进比例 {float(metrics.get('repeat_followup_ratio', 0.0)) * 100:.1f}%",
-            f"研究深度 {float(metrics.get('depth_score', 0.0)) * 100:.1f}%",
+            f"研究深度 {float(depth) * 100:.1f}%" if depth is not None else "研究深度 —（问答正文缺失）",
             f"单日集中度 {float(metrics.get('single_day_concentration', 0.0)) * 100:.1f}%",
             f"覆盖交易日 {metrics.get('covered_trading_days', 0)}",
         ]
+        if detail.window_kind.endswith("_v2"):
+            lines.extend(
+                [
+                    f"指标版本 {metrics.get('metric_version', 'persistence_rules_v2')}",
+                    f"来源 cohort {metrics.get('source_cohort_id') or '—'}",
+                    f"日期质量 {metrics.get('date_quality') or '—'}",
+                    f"排除组织数 {metrics.get('excluded_organization_count', 0)}",
+                    f"问答状态 {metrics.get('question_data_status') or '—'}",
+                ]
+            )
+            if metrics.get("provisional_reason"):
+                lines.append(f"暂定原因 {metrics['provisional_reason']}")
         return lines
 
     def open_primary(self) -> None:
