@@ -1,6 +1,6 @@
 # A股热度
 
-> **当前版本：** v1.1.0。质量评估采用已冻结的全量 LLM 标注口径，未进行真实人工抽检；相关指标和已知限制见下文。
+> **当前版本：** v1.1.1。质量评估采用已冻结的全量 LLM 标注口径，未进行真实人工抽检；相关指标和已知限制见下文。
 
 一个 Windows 10/11 x64 原生桌面工具。用户手动刷新后，软件展示四个独立榜单：**基本面消息**（同花顺公开新闻 + 巨潮资讯全市场公告）、**基本面互动**（深交所互动易 + 上证 e 互动的官方问答代理指标）、**综合人气**与**飙升榜**（东方财富官方榜单）。数据零配置、手动刷新、公开发布，只读取全市场信息流，不逐只股票抓帖。
 
@@ -8,8 +8,10 @@
 
 ## 下载与安装
 
-Windows x64 安装包可从 [v1.1.0 Release](https://github.com/3154638220/ashare-hotpot/releases/tag/v1.1.0) 下载：
-[AshareHotPot-Setup-1.1.0-x64.exe](https://github.com/3154638220/ashare-hotpot/releases/download/v1.1.0/AshareHotPot-Setup-1.1.0-x64.exe)。
+Windows x64 安装包可从 [v1.1.1 Release](https://github.com/3154638220/ashare-hotpot/releases/tag/v1.1.1) 下载：
+[AshareHotPot-Setup-1.1.1-x64.exe](https://github.com/3154638220/ashare-hotpot/releases/download/v1.1.1/AshareHotPot-Setup-1.1.1-x64.exe)。
+
+v1.1.1 修复 Windows 10 在 125%/150% 显示缩放下顶部命令栏空间不足时“刷新”按钮不可见的问题；数据口径、数据库 schema、研究规则与排名阈值均未改变。
 
 ## 功能
 

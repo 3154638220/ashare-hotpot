@@ -216,6 +216,7 @@ def test_professional_shell_displays_snapshot_and_filters(qtbot, tmp_path) -> No
     assert window.windowTitle() == "A股热度"
     assert window.menuBar().isHidden()
     assert window.command_bar.height() == 52
+    assert window.navigation_bar.height() == 44
     assert window.refresh_button.defaultAction() is window.refresh_action
     assert set(window.source_buttons) == {"news", "interaction", "pop", "surge"}
     assert window.content_stack.currentWidget() is window.empty_state
@@ -291,6 +292,24 @@ def test_professional_shell_displays_snapshot_and_filters(qtbot, tmp_path) -> No
     )
     assert name_font.bold()
     assert not name_font.underline()
+
+
+def test_command_bars_keep_controls_visible_at_scaled_display_widths(qtbot, tmp_path) -> None:
+    window = make_window(tmp_path, qtbot)
+
+    # 1024 is the supported minimum. 1220 is the default window width;
+    # 1280/1536 are common logical widths for 1920px displays at 150%/125%.
+    for logical_width in (1024, 1220, 1280, 1536):
+        window.resize(logical_width, 780)
+        window.show()
+        QApplication.processEvents()
+
+        assert window.refresh_button.isVisible()
+        assert window.more_button.isVisible()
+        assert window.window_hours_input.isVisible()
+        assert window.freshness_label.isVisible()
+        assert all(button.isVisible() for button in window.source_buttons.values())
+        assert all(button.isVisible() for button in window.research_buttons.values())
 
 
 def test_main_window_restores_refresh_controls(qtbot, tmp_path) -> None:
@@ -845,7 +864,7 @@ def test_research_navigation_two_groups_and_empty_state(qtbot, tmp_path) -> None
     assert window.research_buttons["catalyst"].text() == "潜在催化"
     assert window.research_buttons["z20"].text() == "机构升温"
     assert window.research_buttons["persist"].text() == "持续关注"
-    # The two visual groups live in the same command bar.
+    # The two visual groups live in the same dedicated navigation row.
     assert window.research_buttons["confirm"] is not window.source_buttons["news"]
 
     window._select_source("confirm")

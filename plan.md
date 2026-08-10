@@ -2075,3 +2075,14 @@ offscreen 启动，初始化 schema 122，SQLite `integrity_check=ok`。安装�
 临时安装与数据目录已清理，未触碰现有用户数据库。
 代码未签名，SmartScreen 提示属于已公开的分发风险；未提交、未打标签、未推送、未创建 GitHub Release，
 这些 Git/外部发布动作须按仓库约定由用户另行明确授权。
+
+v1.1.1 补丁发布审计（2026-08-10）：用户明确授权发布 GitHub Release。补丁只修复 Windows 10 在 125%/150%
+显示缩放下顶部导航挤占刷新命令的问题：命令区与导航区拆成两行，并冻结 1024/1220/1280/1536 逻辑像素宽度的
+控件可见性回归；不改变数据口径、schema 122、事件规则、机构指标或排名阈值。版本元数据、README 下载链接、
+Inno Setup 文件版本统一为 1.1.1。验证：UI/版本元数据定向 `32 passed`；全量离线 `634 passed, 13 skipped`；
+live 全套三次均为 `12 passed, 1 failed`（互动易活动流 30 秒读超时），该契约定向重跑 `1 passed`，其余来源全过，
+未删除测试或放宽超时；Windows 11 x64、Python 3.12.7、PyInstaller 6.21.0 onedir 与 Inno Setup 6.7.3 安装包
+构建成功；打包目录及静默安装后的应用均在 150% 缩放、隔离数据目录下启动，schema 122 且 `integrity_check=ok`，
+静默卸载成功。安装包 `AshareHotPot-Setup-1.1.1-x64.exe` 为 44,434,994 字节，SHA-256
+`40390E4260559B1052478B0646FB43AFE4D711DFDE411FAF08C77D02FB03E024`。本补丁无对应功能里程碑复选框，未改复选框；
+研究评估仍为 LLM 标注口径，研究机构列名召回 0.857 的既有风险与未签名 SmartScreen 风险继续公开。

@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 APP_NAME = "A股热度"
 APP_SLUG = "AshareHotPot"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 PROJECT_URL = "https://github.com/3154638220/ashare-hotpot"
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 

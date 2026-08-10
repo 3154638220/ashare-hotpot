@@ -27,16 +27,20 @@ QWidget {{
     font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
     font-size: 13px;
 }}
-QToolBar#commandBar {{
+QToolBar#commandBar, QToolBar#navigationBar {{
     background: {COLOR_SURFACE};
     border: 0;
-    border-bottom: 1px solid {COLOR_BORDER};
     spacing: 6px;
     padding: 6px 12px;
 }}
-QToolBar#commandBar::separator {{ width: 1px; background: {COLOR_BORDER}; margin: 8px 6px; }}
+QToolBar#navigationBar {{ border-bottom: 1px solid {COLOR_BORDER}; padding: 4px 12px; }}
+QToolBar#commandBar::separator, QToolBar#navigationBar::separator {{
+    width: 1px;
+    background: {COLOR_BORDER};
+    margin: 8px 6px;
+}}
 QLabel#brandTitle {{ font-size: 15px; font-weight: 700; padding-right: 8px; }}
-QLabel#researchGroupLabel {{ color: {COLOR_MUTED}; font-size: 12px; font-weight: 700; padding: 0 6px; }}
+QLabel#navigationGroupLabel {{ color: {COLOR_MUTED}; font-size: 12px; font-weight: 700; padding: 0 4px; }}
 QLabel#viewTitle {{ font-size: 17px; font-weight: 700; }}
 QLabel#mutedLabel, QLabel#viewSubtitle, QLabel#toolLabel, QLabel#detailMeta {{ color: {COLOR_MUTED}; }}
 QLabel#viewSubtitle, QLabel#detailMeta {{ font-size: 12px; }}
@@ -87,7 +91,13 @@ QPushButton:disabled, QToolButton:disabled {{ color: #5F6C7C; background: #12192
 QPushButton#primaryButton, QToolButton#primaryButton {{ background: {COLOR_LINK}; border-color: {COLOR_LINK}; color: white; font-weight: 700; }}
 QPushButton#primaryButton:hover, QToolButton#primaryButton:hover {{ background: #679FFF; border-color: #679FFF; }}
 QPushButton#dangerButton {{ color: #FF9CA5; }}
-QPushButton#sourceTab {{ background: transparent; border-color: transparent; color: {COLOR_MUTED}; font-weight: 600; }}
+QPushButton#sourceTab {{
+    background: transparent;
+    border-color: transparent;
+    color: {COLOR_MUTED};
+    font-weight: 600;
+    padding: 0 8px;
+}}
 QPushButton#sourceTab:hover {{ background: #192331; color: {COLOR_TEXT}; }}
 QPushButton#sourceTab:checked {{ background: #1A2A40; border-color: #315887; color: #DCEAFF; }}
 QToolButton#moreButton {{ font-size: 19px; font-weight: 700; padding: 0 9px; }}

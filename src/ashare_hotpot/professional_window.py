@@ -282,46 +282,6 @@ class ProfessionalMainWindow(QMainWindow):
         brand_title = QLabel(APP_NAME)
         brand_title.setObjectName("brandTitle")
         toolbar.addWidget(brand_title)
-        toolbar.addSeparator()
-
-        self.source_button_group = QButtonGroup(self)
-        self.source_button_group.setExclusive(True)
-        self.source_buttons: dict[str, QPushButton] = {}
-        for key, label in (
-            ("news", "基本面消息"),
-            ("interaction", "基本面互动"),
-            ("pop", "综合人气"),
-            ("surge", "飙升榜"),
-        ):
-            button = QPushButton(label)
-            button.setObjectName("sourceTab")
-            button.setCheckable(True)
-            button.setMinimumWidth(96)
-            button.clicked.connect(lambda _checked=False, source=key: self._select_source(source))
-            self.source_buttons[key] = button
-            self.source_button_group.addButton(button)
-            toolbar.addWidget(button)
-
-        toolbar.addSeparator()
-        research_group_label = QLabel("研究信号")
-        research_group_label.setObjectName("researchGroupLabel")
-        toolbar.addWidget(research_group_label)
-        self.research_buttons: dict[str, QPushButton] = {}
-        for key, label in (
-            ("confirm", "确定性利好"),
-            ("catalyst", "潜在催化"),
-            ("z20", "机构升温"),
-            ("persist", "持续关注"),
-            ("discovery", "待核验"),
-        ):
-            button = QPushButton(label)
-            button.setObjectName("sourceTab")
-            button.setCheckable(True)
-            button.setMinimumWidth(96)
-            button.clicked.connect(lambda _checked=False, source=key: self._select_source(source))
-            self.research_buttons[key] = button
-            self.source_button_group.addButton(button)
-            toolbar.addWidget(button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -355,6 +315,57 @@ class ProfessionalMainWindow(QMainWindow):
         self.more_button.setPopupMode(QToolButton.InstantPopup)
         self.more_button.setMenu(self._build_more_menu())
         toolbar.addWidget(self.more_button)
+
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        navigation = QToolBar()
+        navigation.setObjectName("navigationBar")
+        navigation.setMovable(False)
+        navigation.setFloatable(False)
+        navigation.setFixedHeight(44)
+        self.addToolBar(Qt.TopToolBarArea, navigation)
+        self.navigation_bar = navigation
+
+        self.source_button_group = QButtonGroup(self)
+        self.source_button_group.setExclusive(True)
+        self.source_buttons: dict[str, QPushButton] = {}
+        source_group_label = QLabel("原始关注度")
+        source_group_label.setObjectName("navigationGroupLabel")
+        navigation.addWidget(source_group_label)
+        for key, label in (
+            ("news", "基本面消息"),
+            ("interaction", "基本面互动"),
+            ("pop", "综合人气"),
+            ("surge", "飙升榜"),
+        ):
+            button = QPushButton(label)
+            button.setObjectName("sourceTab")
+            button.setCheckable(True)
+            button.setMinimumWidth(84)
+            button.clicked.connect(lambda _checked=False, source=key: self._select_source(source))
+            self.source_buttons[key] = button
+            self.source_button_group.addButton(button)
+            navigation.addWidget(button)
+
+        navigation.addSeparator()
+        research_group_label = QLabel("研究信号")
+        research_group_label.setObjectName("navigationGroupLabel")
+        navigation.addWidget(research_group_label)
+        self.research_buttons: dict[str, QPushButton] = {}
+        for key, label in (
+            ("confirm", "确定性利好"),
+            ("catalyst", "潜在催化"),
+            ("z20", "机构升温"),
+            ("persist", "持续关注"),
+            ("discovery", "待核验"),
+        ):
+            button = QPushButton(label)
+            button.setObjectName("sourceTab")
+            button.setCheckable(True)
+            button.setMinimumWidth(84)
+            button.clicked.connect(lambda _checked=False, source=key: self._select_source(source))
+            self.research_buttons[key] = button
+            self.source_button_group.addButton(button)
+            navigation.addWidget(button)
 
     def _build_more_menu(self) -> QMenu:
         menu = QMenu(self)
