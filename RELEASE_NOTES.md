@@ -1,8 +1,8 @@
 # 发布说明
 
-## v1.2.2
+## v1.1.2
 
-v1.2.2 是数据库升级兼容性补丁，不改变数据口径、SQLite schema（仍为 122）、事件规则、机构指标公式或排名阈值。
+v1.1.2 是数据库升级兼容性补丁，不改变数据口径、SQLite schema（仍为 122）、事件规则、机构指标公式或排名阈值。
 
 ### 修复
 
@@ -20,7 +20,7 @@ v1.2.2 是数据库升级兼容性补丁，不改变数据口径、SQLite schema
 
 - 真实 v0.2.0 schema 升级、已标记为 122 的缺表自修复、研究视图查询和版本元数据回归均已覆盖；全量离线测试 `636 passed, 13 skipped`。
 - Windows 11 x64、Python 3.12.7、PyInstaller 6.21.0 的 `onedir` 构建和 Inno Setup 6.7.3 安装包构建通过。
-- 安装包 `AshareHotPot-Setup-1.2.2-x64.exe` 大小 44,428,768 字节，SHA-256 为 `DC022450CD01C32437915332937A4FDEEC08987E33A5DFAFC19AC1816A67E7FF`；发布同时附带 `SHA256SUMS.txt`。
+- 安装包 `AshareHotPot-Setup-1.1.2-x64.exe` 大小 44,433,394 字节，SHA-256 为 `473E40CD45445E398A108254B122E10706832666675ABDC2DE2A54D21E2EB27D`；发布同时附带 `SHA256SUMS.txt`。
 
 ## v1.1.1
 

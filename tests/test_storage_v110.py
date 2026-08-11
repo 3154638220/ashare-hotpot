@@ -69,7 +69,7 @@ EXPECTED_RESEARCH_INDEXES = {
 
 
 # Exact v0.2.0 table contract.  That release had no ``interactions`` table,
-# which is the historical upgrade path covered by the v1.2.2 repair.
+# which is the historical upgrade path covered by the v1.1.2 repair.
 V020_SCHEMA = """
 CREATE TABLE articles (
     url TEXT PRIMARY KEY,
