@@ -167,6 +167,31 @@ CREATE INDEX IF NOT EXISTS idx_interactions_question_time ON interactions(questi
 CREATE INDEX IF NOT EXISTS idx_interactions_code ON interactions(code);
 """
 
+# ``executescript`` implicitly commits an open SQLite transaction.  Keep the
+# interaction-table DDL as individual statements too, so migrations can repair
+# older databases atomically without breaking their BEGIN IMMEDIATE boundary.
+INTERACTION_SCHEMA_STATEMENTS: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS interactions (
+        record_id TEXT PRIMARY KEY,
+        platform_key TEXT NOT NULL,
+        platform_name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        stock_name TEXT NOT NULL,
+        question TEXT NOT NULL,
+        question_time_ts INTEGER NOT NULL,
+        question_url TEXT NOT NULL,
+        reply TEXT,
+        reply_time_ts INTEGER,
+        replied INTEGER NOT NULL DEFAULT 0,
+        filtered_reason TEXT,
+        fetched_ts INTEGER NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_interactions_question_time ON interactions(question_time_ts)",
+    "CREATE INDEX IF NOT EXISTS idx_interactions_code ON interactions(code)",
+)
+
 RESEARCH_TABLE_STATEMENTS: tuple[str, ...] = (
     """
     CREATE TABLE IF NOT EXISTS source_documents (
@@ -732,9 +757,9 @@ class Storage:
         - A version-121 database gets a one-time ``hotpot.db.pre-122.bak``
           backup and is migrated to 122 inside a ``BEGIN IMMEDIATE``
           transaction.
-        - Calling ``initialize`` again on an already-migrated database is a
-          no-op (idempotent ``CREATE ... IF NOT EXISTS``) and never creates a
-          second backup.
+        - Calling ``initialize`` again on an already-migrated database safely
+          repairs any missing additive tables (including the v0.2 interaction
+          cache) and never creates a second backup.
         """
 
         if not self._database_file_exists():
@@ -817,11 +842,17 @@ class Storage:
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def _ensure_research_schema(self, connection: sqlite3.Connection) -> None:
-        """Idempotently ensure research tables/indexes exist on a database
-        that already reports the target version.  Safe to call repeatedly."""
+        """Idempotently repair additive tables on an already-current database.
+
+        v1.1.1 could label a v0.2 database as schema 122 without creating its
+        later-added ``interactions`` cache table.  Re-check it here so those
+        installations recover on their next launch rather than crashing while
+        rendering a saved research snapshot.
+        """
 
         try:
             connection.execute("BEGIN IMMEDIATE")
+            self._ensure_interaction_schema(connection)
             for statement in RESEARCH_TABLE_STATEMENTS:
                 connection.execute(statement)
             for statement in DISCOVERY_TABLE_STATEMENTS:
@@ -842,6 +873,13 @@ class Storage:
         except Exception:
             connection.rollback()
             raise
+
+    @staticmethod
+    def _ensure_interaction_schema(connection: sqlite3.Connection) -> None:
+        """Create the additive official-Q&A cache table inside the caller's transaction."""
+
+        for statement in INTERACTION_SCHEMA_STATEMENTS:
+            connection.execute(statement)
 
     @staticmethod
     def _ensure_source_documents_page_count(
@@ -953,6 +991,9 @@ class Storage:
 
         try:
             connection.execute("BEGIN IMMEDIATE")
+            # v0.2.0 predates the official-Q&A cache table.  It must exist
+            # before the migrated database is marked as a later schema.
+            self._ensure_interaction_schema(connection)
             self._migrate_articles_columns(connection)
             for statement in RESEARCH_TABLE_STATEMENTS:
                 connection.execute(statement)

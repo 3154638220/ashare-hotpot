@@ -68,6 +68,85 @@ EXPECTED_RESEARCH_INDEXES = {
 }
 
 
+# Exact v0.2.0 table contract.  That release had no ``interactions`` table,
+# which is the historical upgrade path covered by the v1.2.2 repair.
+V020_SCHEMA = """
+CREATE TABLE articles (
+    url TEXT PRIMARY KEY,
+    seq TEXT NOT NULL,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    published_ts INTEGER NOT NULL,
+    channel_key TEXT NOT NULL,
+    channel_name TEXT NOT NULL,
+    source_name TEXT NOT NULL,
+    stocks_json TEXT NOT NULL,
+    filtered_reason TEXT,
+    fetch_error TEXT,
+    fetched_ts INTEGER NOT NULL
+);
+CREATE INDEX idx_articles_published ON articles(published_ts);
+
+CREATE TABLE refresh_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_ts INTEGER NOT NULL,
+    finished_ts INTEGER,
+    status TEXT NOT NULL,
+    message TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_ts INTEGER NOT NULL,
+    window_start_ts INTEGER NOT NULL,
+    window_end_ts INTEGER NOT NULL,
+    partial INTEGER NOT NULL,
+    payload_json TEXT NOT NULL
+);
+CREATE INDEX idx_snapshots_created ON snapshots(created_ts DESC);
+
+CREATE TABLE stock_industries (
+    code TEXT PRIMARY KEY,
+    industry TEXT NOT NULL,
+    updated_ts INTEGER NOT NULL
+);
+
+CREATE TABLE guba_stock_catalog (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    updated_ts INTEGER NOT NULL
+);
+
+CREATE TABLE guba_posts (
+    post_id TEXT PRIMARY KEY,
+    code TEXT NOT NULL,
+    stock_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    published_ts INTEGER NOT NULL,
+    author TEXT NOT NULL,
+    comment_count INTEGER NOT NULL,
+    fetched_ts INTEGER NOT NULL
+);
+CREATE INDEX idx_guba_posts_published ON guba_posts(published_ts);
+CREATE INDEX idx_guba_posts_code_published ON guba_posts(code, published_ts DESC);
+
+CREATE TABLE guba_scan_state (
+    code TEXT PRIMARY KEY,
+    scanned_ts INTEGER NOT NULL,
+    pages_scanned INTEGER NOT NULL,
+    reached_cutoff INTEGER NOT NULL,
+    error TEXT
+);
+
+CREATE TABLE app_state (
+    key TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_ts INTEGER NOT NULL
+);
+"""
+
+
 def _now() -> datetime:
     return datetime(2026, 8, 6, 10, 0, tzinfo=SHANGHAI_TZ)
 
@@ -92,6 +171,31 @@ def _create_legacy_database(path) -> None:
             "ths",
             "同花顺",
             "新闻",
+            "[]",
+            int(_now().timestamp()),
+        ),
+    )
+    connection.commit()
+    connection.close()
+
+
+def _create_v020_database(path) -> None:
+    connection = sqlite3.connect(path)
+    connection.executescript(V020_SCHEMA)
+    connection.execute(
+        "INSERT INTO articles("
+        "url, seq, title, summary, published_ts, channel_key, channel_name, "
+        "source_name, stocks_json, fetched_ts"
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "https://example.test/v020",
+            "2",
+            "v0.2 新闻",
+            "",
+            int(_now().timestamp()),
+            "companynews",
+            "公司资讯",
+            "同花顺财经",
             "[]",
             int(_now().timestamp()),
         ),
@@ -185,6 +289,59 @@ def test_legacy_database_migrates_in_place_with_backup_created_once(tmp_path) ->
     with storage._connect() as connection:
         assert connection.execute("SELECT COUNT(*) FROM articles").fetchone()[0] == 1
         assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+
+
+def test_v020_database_upgrade_creates_interaction_cache_for_research_views(tmp_path) -> None:
+    """A real v0.2 database must not crash stock-name lookup after upgrading."""
+
+    path = tmp_path / "hotpot.db"
+    _create_v020_database(path)
+
+    storage = Storage(path)
+
+    with storage._connect() as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        assert "interactions" in _table_names(connection)
+        assert "idx_interactions_question_time" in _index_names(connection)
+        assert "idx_interactions_code" in _index_names(connection)
+    assert storage.get_stock_names({"000001"}) == {"000001": "000001"}
+    assert storage.get_articles_between(
+        _now() - timedelta(hours=1), _now() + timedelta(hours=1)
+    )[0].title == "v0.2 新闻"
+    assert path.with_name(BACKUP_NAME).exists()
+
+
+def test_current_schema_repairs_missing_interaction_cache_without_reset(tmp_path) -> None:
+    """Repair databases incorrectly marked as current by the original v1.1.1 migration."""
+
+    path = tmp_path / "hotpot.db"
+    storage = Storage(path)
+    now = _now()
+    storage.upsert_article(
+        ParsedArticle(
+            "3",
+            "https://example.test/retained",
+            "保留的缓存文章",
+            "",
+            now,
+            "companynews",
+            "公司资讯",
+            "同花顺财经",
+        ),
+        now,
+    )
+    with storage._connect() as connection:
+        connection.execute("DROP TABLE interactions")
+
+    storage.initialize()
+
+    with storage._connect() as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        assert "interactions" in _table_names(connection)
+    assert storage.get_stock_names({"000001"}) == {"000001": "000001"}
+    assert storage.get_articles_between(now - timedelta(hours=1), now + timedelta(hours=1))[0].title == (
+        "保留的缓存文章"
+    )
 
 
 def test_failed_migration_rolls_back_and_keeps_legacy_database(
