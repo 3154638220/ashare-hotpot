@@ -62,6 +62,37 @@ def test_parse_next_article_extracts_only_a_share() -> None:
     assert article.published_at == datetime(2026, 8, 4, 18, 7, 54, tzinfo=SHANGHAI_TZ)
 
 
+def test_parse_industry_research_article_preserves_explicit_industry_tag() -> None:
+    html = (FIXTURES / "ths_industry_research_article.html").read_text(encoding="utf-8")
+    candidate = ArticleCandidate(
+        seq="industry-001",
+        url="https://stock.10jqka.com.cn/20260812/cindustry001.shtml",
+        title="Industry research fixture",
+        summary="Industry research body",
+        published_at=datetime(2026, 8, 12, 17, 0, tzinfo=SHANGHAI_TZ),
+        channel_key="industry_research",
+        channel_name="行业研究",
+    )
+    article = parse_article_detail(candidate, html)
+    assert article.channel_key == "industry_research"
+    assert article.industry_tags == ("证券",)
+    assert [stock.code for stock in article.stocks] == ["000001"]
+
+
+def test_parse_industry_research_fixture_list_page() -> None:
+    html = (FIXTURES / "ths_industry_research_list_page.html").read_text(encoding="utf-8")
+    items = parse_list_page(
+        html,
+        source_key="industry_research",
+        source_name="行业研究",
+        base_url="https://stock.10jqka.com.cn/bkfy_list/",
+        now=datetime(2026, 8, 12, 18, 0, tzinfo=SHANGHAI_TZ),
+    )
+    assert len(items) == 1
+    assert items[0].channel_key == "industry_research"
+    assert items[0].seq == "678790294"
+
+
 def test_parse_legacy_article_and_beijing_stock() -> None:
     html = (FIXTURES / "article_legacy.html").read_text(encoding="utf-8")
     article = parse_article_detail(_candidate(), html)

@@ -148,12 +148,20 @@ def coverage_state(
 
     if provisional_row:
         return "provisional"
-    if coverage is None or coverage.error:
-        return "error" if coverage is not None else "cold_start"
+    if coverage is None:
+        return "cold_start"
+    # A failed source must not make the whole board look unavailable when at
+    # least one announcement source has a successful cursor (and its cached
+    # results remain usable).  Keep the error visible in the quality details,
+    # but classify the aggregate view as partial coverage.  ``error`` is
+    # reserved for a failure with no usable source at all.
+    if coverage.error and coverage.sources_scanned == 0:
+        return "error"
     if not has_rows and (coverage.covered_start is None or not coverage.sources_scanned):
         return "cold_start"
     if (
-        coverage.provisional
+        coverage.error
+        or coverage.provisional
         or coverage.calendar_fallback
         or not coverage.reached_cutoff
         or coverage.trading_days_covered == 0
@@ -818,7 +826,16 @@ def research_coverage(
 ) -> ResearchCoverage:
     """Public shortcut used by the window and tests."""
 
-    return build_research_coverage(settings, storage, now=now)
+    # The active signal views consume public announcements only.  Institution
+    # activity cursors remain readable through the legacy coverage helpers, but
+    # must not make the current short-term boards look partially covered after
+    # that module was retired from refresh.
+    return build_research_coverage(
+        settings,
+        storage,
+        now=now,
+        kinds=("announcement",),
+    )
 
 
 def institution_research_coverage(

@@ -18,6 +18,8 @@ from ashare_hotpot.models import (
     InteractionCoverage,
     InteractionRankingRow,
     InteractionRecord,
+    IndustryHeatRow,
+    IndustryHeatSnapshot,
     NewsEvent,
     OfficialPopularitySnapshot,
     ParsedArticle,
@@ -216,7 +218,7 @@ def test_professional_shell_displays_snapshot_and_filters(qtbot, tmp_path) -> No
     assert window.windowTitle() == "A股热度"
     assert window.menuBar().isHidden()
     assert window.command_bar.height() == 52
-    assert window.navigation_bar.height() == 44
+    assert window.navigation_bar.height() == 56
     assert window.refresh_button.defaultAction() is window.refresh_action
     assert set(window.source_buttons) == {"news", "interaction", "pop", "surge"}
     assert window.content_stack.currentWidget() is window.empty_state
@@ -312,6 +314,43 @@ def test_command_bars_keep_controls_visible_at_scaled_display_widths(qtbot, tmp_
         assert all(button.isVisible() for button in window.research_buttons.values())
 
 
+def test_navigation_is_grouped_and_vertically_aligned(qtbot, tmp_path) -> None:
+    window = make_window(tmp_path, qtbot)
+    window.show()
+    QApplication.processEvents()
+
+    groups = (
+        window.source_navigation_group,
+        window.industry_navigation_group,
+        window.research_navigation_group,
+    )
+    assert [group.property("section") for group in groups] == [
+        "original",
+        "industry",
+        "research",
+    ]
+    assert len({group.height() for group in groups}) == 1
+
+    buttons = (
+        *window.source_buttons.values(),
+        window.industry_button,
+        *window.research_buttons.values(),
+    )
+    assert len({button.height() for button in buttons}) == 1
+    assert len({button.mapTo(window.navigation_bar, button.rect().center()).y() for button in buttons}) == 1
+
+    group_for_button = {
+        **{button: window.source_navigation_group for button in window.source_buttons.values()},
+        window.industry_button: window.industry_navigation_group,
+        **{button: window.research_navigation_group for button in window.research_buttons.values()},
+    }
+    for button, group in group_for_button.items():
+        top_left = button.mapTo(group, button.rect().topLeft())
+        bottom_right = button.mapTo(group, button.rect().bottomRight())
+        assert top_left.y() >= 5
+        assert group.height() - 1 - bottom_right.y() >= 5
+
+
 def test_main_window_restores_refresh_controls(qtbot, tmp_path) -> None:
     window = make_window(tmp_path, qtbot)
     window.refresh_action.setEnabled(False)
@@ -371,9 +410,12 @@ def test_popularity_single_click_does_not_open_and_activation_does(qtbot, tmp_pa
     index = window.proxy_model.index(0, RankingTableModel.STOCK_NAME_COLUMN)
     window.table.clicked.emit(index)
     assert opened == []
-    assert window.detail_panel.open_button.text() == "打开官方页"
+    assert window.detail_panel.open_button.text() == "打开所选新闻"
+    assert not window.detail_panel.official_button.isHidden()
     window.activate_selected()
-    assert opened == ["https://guba.eastmoney.com/rank/stock?code=000001"]
+    assert opened == ["https://example.com/ping-an"]
+    window.detail_panel.official_button.click()
+    assert opened[-1] == "https://guba.eastmoney.com/rank/stock?code=000001"
 
 
 def test_stale_popularity_is_explicit_and_keeps_rows(qtbot, tmp_path) -> None:
@@ -389,6 +431,70 @@ def test_stale_popularity_is_explicit_and_keeps_rows(qtbot, tmp_path) -> None:
     assert window.freshness_label.text() == "数据已过期"
     assert window.kpi_chips[2].value.text() == "已过期"
     assert "身份核实页" in window.quality_label.text()
+
+
+def test_industry_navigation_detail_trend_and_export_share_columns(
+    qtbot, tmp_path, monkeypatch
+) -> None:
+    window = make_window(tmp_path, qtbot)
+    snapshot = make_snapshot()
+    article = snapshot.events[0].articles[0]
+    snapshot.industry_heat = IndustryHeatSnapshot(
+        snapshot_at=snapshot.created_at,
+        window_start=snapshot.window_start,
+        window_end=snapshot.window_end,
+        rows=[
+            IndustryHeatRow(
+                1, "金融", 75.0, 2, 100.0, 1, 50.0,
+                mapping_status="complete", source_status="complete",
+                article_urls=(article.url,),
+            ),
+            IndustryHeatRow(
+                2, "电子", 25.0, 1, 50.0, 0, 0.0,
+                mapping_status="complete", source_status="complete",
+            ),
+        ],
+        top100_total=3,
+        top100_mapped=3,
+        mapping_coverage=1.0,
+        research_article_total=1,
+        research_article_mapped=1,
+        mapping_status="complete",
+        source_status="complete",
+        articles=[article],
+    )
+    window.storage.save_industry_daily_snapshot(snapshot.industry_heat, snapshot.created_at.date())
+    window.set_snapshot(snapshot)
+    window._select_source("industry")
+
+    assert window.selected_source == "industry"
+    assert [window.industry_table_model.headerData(i, Qt.Horizontal) for i in range(8)] == [
+        "排名", "行业", "热度", "A", "A分位", "B", "B分位", "映射/来源状态"
+    ]
+    index = window.industry_table_model.index(0, 0)
+    window.table.clicked.emit(index)
+    assert window.industry_detail_panel.title_label.text() == "金融"
+    assert window.industry_detail_panel.article_tree.topLevelItemCount() == 1
+    assert "50%" in window.industry_detail_panel.summary_label.text()
+    assert window.industry_detail_panel.trend.points[-1][1] == 75.0
+
+    target = tmp_path / "industry.csv"
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QFileDialog.getSaveFileName",
+        lambda *_args, **_kwargs: (str(target), "CSV 文件 (*.csv)"),
+    )
+    window.export_current_results()
+    with target.open("r", encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.reader(stream))
+    assert rows[0] == ["排名", "行业", "热度", "A", "A分位", "B", "B分位", "映射/来源状态"]
+    assert rows[1] == ["1", "金融", "75.00", "2", "100.00", "1", "50.00", "complete/complete"]
+    copied_text: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QApplication.clipboard",
+        lambda: type("Clip", (), {"setText": lambda _self, value: copied_text.append(value)})(),
+    )
+    window.copy_selected_row()
+    assert copied_text[0].split("\t") == rows[1]
 
 
 def test_csv_export_uses_visible_filtered_order_and_copy_is_tab_separated(
@@ -423,11 +529,15 @@ def test_csv_export_uses_visible_filtered_order_and_copy_is_tab_separated(
     assert rows[1][1:3] == ["贵州茅台", "600519"]
     assert rows[1][8:10] == ["同花顺", "新闻"]
 
+    copied_text: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QApplication.clipboard",
+        lambda: type("Clip", (), {"setText": lambda _self, value: copied_text.append(value)})(),
+    )
     index = window.proxy_model.index(0, 0)
     window.table.setCurrentIndex(index)
     window.copy_selected_row()
-    copied = QApplication.clipboard().text()
-    assert copied.split("\t")[1:3] == ["贵州茅台", "600519"]
+    assert copied_text[0].split("\t")[1:3] == ["贵州茅台", "600519"]
 
 
 def test_interaction_tab_switching_filters_and_detail(qtbot, tmp_path, monkeypatch) -> None:
@@ -698,12 +808,17 @@ def test_show_about_connects_diagnostics_to_the_main_window(qtbot, tmp_path, mon
         release_url=release_url(),
         parent=window,
     )
+    copied_text: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QApplication.clipboard",
+        lambda: type("Clip", (), {"setText": lambda _self, value: copied_text.append(value)})(),
+    )
     monkeypatch.setattr("ashare_hotpot.professional_window.AboutDialog", lambda **_kwargs: dialog)
     monkeypatch.setattr(dialog, "exec", lambda: dialog.diagnostics_requested.emit())
 
     window.show_about()
 
-    assert QApplication.clipboard().text() == window.diagnostic_text()
+    assert copied_text == [window.diagnostic_text()]
     assert window.status_message.text() == "诊断信息已复制"
 
 
@@ -853,17 +968,9 @@ def _make_research_window(tmp_path, qtbot, *, seed: bool = True):
 
 def test_research_navigation_two_groups_and_empty_state(qtbot, tmp_path) -> None:
     window = _make_research_window(tmp_path, qtbot, seed=False)
-    assert set(window.research_buttons) == {
-        "confirm",
-        "catalyst",
-        "z20",
-        "persist",
-        "discovery",
-    }
+    assert set(window.research_buttons) == {"confirm", "catalyst", "discovery"}
     assert window.research_buttons["confirm"].text() == "确定性利好"
     assert window.research_buttons["catalyst"].text() == "潜在催化"
-    assert window.research_buttons["z20"].text() == "机构升温"
-    assert window.research_buttons["persist"].text() == "持续关注"
     # The two visual groups live in the same dedicated navigation row.
     assert window.research_buttons["confirm"] is not window.source_buttons["news"]
 
@@ -1006,15 +1113,19 @@ def test_research_csv_export_and_copy_match_table_columns(qtbot, tmp_path, monke
     exported = "\n".join(",".join(row) for row in rows)
     assert "密钥" not in exported and "api_key" not in exported.lower()
 
+    copied_text: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QApplication.clipboard",
+        lambda: type("Clip", (), {"setText": lambda _self, value: copied_text.append(value)})(),
+    )
     window.table.setCurrentIndex(window.research_proxy.index(0, 0))
     window.copy_selected_row()
-    copied = QApplication.clipboard().text()
-    assert copied.split("\t")[1:3] == ["平安银行", "000001"]
+    assert copied_text[0].split("\t")[1:3] == ["平安银行", "000001"]
 
 
 def test_research_quality_panel_shows_cold_start_text(qtbot, tmp_path) -> None:
     window = _make_research_window(tmp_path, qtbot, seed=False)
-    window._select_source("z20")
+    window._select_source("confirm")
     assert window.content_stack.currentWidget() is window.empty_state
     assert "暂无数据" in window.empty_title.text()
     assert "冷启动" in window.quality_label.text() or "回填" in window.quality_label.text()
@@ -1187,10 +1298,14 @@ def test_discovery_csv_export_and_copy_match_table_columns(
     assert rows[1][3] == "财务报告"
     assert rows[1][6] == "待核验"
 
+    copied_text: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QApplication.clipboard",
+        lambda: type("Clip", (), {"setText": lambda _self, value: copied_text.append(value)})(),
+    )
     window.table.setCurrentIndex(window.research_proxy.index(0, 0))
     window.copy_selected_row()
-    copied = QApplication.clipboard().text()
-    assert copied.split("\t")[1:3] == ["688167", "688167"]
+    assert copied_text[0].split("\t")[1:3] == ["688167", "688167"]
 
 
 def test_discovery_quality_panel_shows_per_source_stats(qtbot, tmp_path) -> None:
@@ -1219,44 +1334,14 @@ def test_discovery_quality_panel_shows_per_source_stats(qtbot, tmp_path) -> None
     assert "覆盖交易日" in text
 
 
-def test_research_persistence_window_toggle_and_rows(qtbot, tmp_path) -> None:
+def test_institution_navigation_is_retired(qtbot, tmp_path) -> None:
     window = _make_research_window(tmp_path, qtbot, seed=False)
-    _seed_article(window.storage, code="000001", name="平安银行")
-    _seed_article(window.storage, code="600519", name="贵州茅台")
-    now = datetime(2026, 8, 6, 20, 0, tzinfo=SHANGHAI_TZ)
-    for code, score in (("000001", 66.0), ("600519", 80.0)):
-        window.storage.upsert_institution_metric_snapshot(
-            stock_code=code,
-            window_kind="persistence_120",
-            metrics={
-                "persistence_score": score,
-                "active_weeks": 8,
-                "active_week_ratio": 0.7,
-                "unique_groups": 10,
-                "repeat_followup_ratio": 0.5,
-                "depth_score": 0.6,
-                "single_day_concentration": 0.2,
-                "topics": {"orders": 2},
-                "recent_activity": "2026-08-05",
-                "covered_trading_days": 120,
-            },
-            window_start=now - timedelta(days=120),
-            window_end=now,
-            snapshot_at=now,
-        )
-    window._select_source("persist")
-    assert window.selected_source == "persist120"
-    assert window.research_proxy.rowCount() == 2
-    assert window.persist_120_button.isChecked()
-    assert window.research_table_model.data(
-        window.research_table_model.index(0, 3)
-    ) == "120 日"
-    window._select_persist_window("persist60")
-    assert window.selected_source == "persist60"
-    assert window.research_proxy.rowCount() == 0
-    assert window.content_stack.currentWidget() is window.empty_state
-    window._select_persist_window("persist120")
-    assert window.research_proxy.rowCount() == 2
+    assert set(window.research_buttons) == {"confirm", "catalyst", "discovery"}
+    assert window._select_source("z20") is None
+    assert window._select_source("persist") is None
+    assert window.selected_source == "news"
+    assert not hasattr(window, "persist_60_button")
+    assert not hasattr(window, "persist_120_button")
 
 
 def test_settings_dialog_ai_tab_values_and_clear_credential(qtbot, tmp_path, monkeypatch) -> None:

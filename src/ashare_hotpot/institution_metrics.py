@@ -931,10 +931,14 @@ def build_research_coverage(
     calendar_service = calendar or TradingCalendarService(storage)
     now_dt = now or datetime.now(SHANGHAI_TZ)
     requested_start = now_dt.date() - timedelta(days=settings.backfill_days)
-    states = [
-        storage.get_sync_state(config.key, config.kind)
+    selected_configs = tuple(
+        config
         for config in settings.research_sources
         if kinds is None or config.kind in kinds
+    )
+    states = [
+        storage.get_sync_state(config.key, config.kind)
+        for config in selected_configs
     ]
     states = [state for state in states if state is not None]
     covered_start = min(
@@ -987,6 +991,7 @@ def build_research_coverage(
         calendar_fallback
         or calendar_missing
         or not states
+        or any(state.last_error for state in states)
         or not all(state.last_success_at is not None for state in states)
     )
     return ResearchCoverage(
@@ -997,7 +1002,7 @@ def build_research_coverage(
         sources_scanned=sum(
             1 for state in states if state.last_success_at is not None
         ),
-        sources_total=len(settings.research_sources),
+        sources_total=len(selected_configs),
         reached_cutoff=reached_cutoff,
         calendar_fallback=calendar_fallback,
         last_success_at=last_success_at,

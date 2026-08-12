@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import html
 import platform
+from datetime import timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QSplitter,
@@ -30,38 +32,36 @@ from PySide6.QtWidgets import (
     QTableView,
     QToolBar,
     QToolButton,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from .config import APP_NAME, APP_VERSION, PROJECT_URL, AppSettings, release_url
+from .config import APP_NAME, APP_VERSION, PROJECT_URL, AppSettings, SHANGHAI_TZ, release_url
 from .exporting import SOURCE_LABELS, default_export_name, export_csv, tab_separated_row
 from .icons import app_icon, icon
 from .ai_extractor import AiCredentialStore
 from .models import (
     DiscoveryViewRow,
-    InstitutionZ20ViewRow,
     InteractionRankingRow,
-    PersistenceViewRow,
     PopularityRankRow,
+    IndustryHeatRow,
+    IndustryHeatSnapshot,
     RankingRow,
     ShortTermViewRow,
     Snapshot,
+    ParsedArticle,
 )
 from .preferences import UiPreferences
 from .research_views import (
     COVERAGE_STATE_LABELS,
     build_discovery_quality,
     coverage_state as research_coverage_state,
-    institution_research_coverage,
     load_discovery_rows,
     load_event_detail,
-    load_institution_detail,
-    load_persistence_rows,
     load_short_term_rows,
-    load_z20_rows,
     research_coverage,
-    z20_view_meta,
 )
 from .service import RefreshService
 from .storage import Storage
@@ -97,10 +97,245 @@ from .ui import (
 
 # 涨跌幅列的最小宽度（综合人气榜第 4 列、飙升榜第 5 列）。
 PERCENT_COLUMN_WIDTH = 150
+INDUSTRY_SOURCE_KEY = "industry"
 
-RESEARCH_SOURCE_KEYS = frozenset(
-    {"confirm", "catalyst", "z20", "persist60", "persist120", "discovery"}
-)
+
+class IndustryTableModel(QAbstractTableModel):
+    HEADERS = ("排名", "行业", "热度", "A", "A分位", "B", "B分位", "映射/来源状态")
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.rows: list[IndustryHeatRow] = []
+
+    def set_rows(self, rows: list[IndustryHeatRow]) -> None:
+        self.beginResetModel()
+        self.rows = list(rows)
+        self.endResetModel()
+
+    def row_at(self, row: int) -> IndustryHeatRow | None:
+        return self.rows[row] if 0 <= row < len(self.rows) else None
+
+    def rowCount(self, parent=QModelIndex()):  # noqa: N802
+        return 0 if parent.isValid() else len(self.rows)
+
+    def columnCount(self, parent=QModelIndex()):  # noqa: N802
+        return 0 if parent.isValid() else len(self.HEADERS)
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):  # noqa: N802
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal and 0 <= section < len(self.HEADERS):
+            return self.HEADERS[section]
+        return None
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self.rows)):
+            return None
+        row = self.rows[index.row()]
+        values = (
+            row.rank, row.industry, f"{row.heat:.2f}", row.a,
+            f"{row.a_percentile:.2f}", row.b, f"{row.b_percentile:.2f}",
+            f"{row.mapping_status}/{row.source_status}",
+        )
+        if role == Qt.DisplayRole:
+            return str(values[index.column()])
+        if role == Qt.UserRole:
+            return values[index.column()]
+        if role == Qt.TextAlignmentRole and index.column() in {0, 2, 3, 4, 5, 6}:
+            return int(Qt.AlignVCenter | Qt.AlignRight)
+        if role == Qt.FontRole and index.column() in {1, 2}:
+            from PySide6.QtGui import QFont
+            font = QFont()
+            font.setBold(True)
+            return font
+        if role == Qt.ForegroundRole and index.column() == 2:
+            return QColor("#f2b84b")
+        return None
+
+    def sort(self, column: int, order=Qt.AscendingOrder) -> None:  # noqa: N802
+        if not 0 <= column < len(self.HEADERS):
+            return
+        numeric_columns = {0, 2, 3, 4, 5, 6}
+
+        def key(row: IndustryHeatRow):
+            values = (
+                row.rank,
+                row.industry,
+                row.heat,
+                row.a,
+                row.a_percentile,
+                row.b,
+                row.b_percentile,
+                f"{row.mapping_status}/{row.source_status}",
+            )
+            return values[column] if column in numeric_columns else str(values[column])
+
+        self.layoutAboutToBeChanged.emit()
+        self.rows.sort(key=key, reverse=order == Qt.DescendingOrder)
+        self.layoutChanged.emit()
+
+
+class IndustryTrendWidget(QFrame):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.points: list[tuple[str, float | None]] = []
+        self.setMinimumHeight(150)
+
+    def set_points(self, points: list[tuple[str, float | None]]) -> None:
+        self.points = points
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = self.rect().adjusted(30, 12, -12, -24)
+        painter.setPen(QPen(QColor("#425064"), 1))
+        painter.drawRect(rect)
+        if not self.points:
+            painter.setPen(QColor("#8b98aa"))
+            painter.drawText(rect, Qt.AlignCenter, "暂无有效快照")
+            return
+        painter.setPen(QColor("#8b98aa"))
+        for value in (0, 50, 100):
+            y = rect.bottom() - value * rect.height() / 100
+            painter.drawText(2, int(y - 8), 24, 16, Qt.AlignRight, str(value))
+        if len(self.points) == 1:
+            step = 0
+        else:
+            step = rect.width() / (len(self.points) - 1)
+        painter.setPen(QPen(QColor("#5bc0eb"), 2))
+        last = None
+        for index, (_day, value) in enumerate(self.points):
+            if value is None:
+                last = None
+                continue
+            point = rect.left() + step * index, rect.bottom() - value * rect.height() / 100
+            if last is not None:
+                painter.drawLine(last[0], int(last[1]), int(point[0]), int(point[1]))
+            last = point
+        if all(value is None for _day, value in self.points):
+            painter.setPen(QColor("#8b98aa"))
+            painter.drawText(rect, Qt.AlignCenter, "暂无有效快照")
+        painter.setPen(QColor("#8b98aa"))
+        if self.points:
+            painter.drawText(rect.left(), rect.bottom() + 5, 100, 18, Qt.AlignLeft, self.points[0][0])
+            painter.drawText(rect.right() - 100, rect.bottom() + 5, 100, 18, Qt.AlignRight, self.points[-1][0])
+
+
+class IndustryDetailPanel(QFrame):
+    open_url_requested = Signal(str)
+    close_requested = Signal()
+
+    def __init__(self, storage: Storage, parent=None) -> None:
+        super().__init__(parent)
+        self.storage = storage
+        self.current_row: IndustryHeatRow | None = None
+        self.current_snapshot: IndustryHeatSnapshot | None = None
+        self.setMinimumWidth(420)
+        layout = QVBoxLayout(self)
+        header = QFrame()
+        header_layout = QHBoxLayout(header)
+        title_box = QVBoxLayout()
+        self.title_label = QLabel("行业热度详情")
+        self.title_label.setObjectName("viewTitle")
+        self.meta_label = QLabel("选择行业查看明细")
+        self.meta_label.setObjectName("detailMeta")
+        title_box.addWidget(self.title_label)
+        title_box.addWidget(self.meta_label)
+        header_layout.addLayout(title_box, 1)
+        close = QPushButton()
+        close.setIcon(icon("close"))
+        close.clicked.connect(self.close_requested)
+        header_layout.addWidget(close)
+        layout.addWidget(header)
+        self.summary_label = QLabel("行业热度 = 50% × A分位 + 50% × B分位；B 使用 log(1+B) 计算分位。")
+        self.summary_label.setWordWrap(True)
+        self.summary_label.setObjectName("mutedLabel")
+        layout.addWidget(self.summary_label)
+        self.article_tree = QTreeWidget()
+        self.article_tree.setHeaderLabels(["参与 B 的行业文章", "来源", "发布时间"])
+        self.article_tree.setRootIsDecorated(False)
+        self.article_tree.itemDoubleClicked.connect(self._open_article)
+        layout.addWidget(self.article_tree, 1)
+        self.trend_label = QLabel("最近 30 个有效日趋势")
+        self.trend_label.setObjectName("sectionTitle")
+        layout.addWidget(self.trend_label)
+        self.trend = IndustryTrendWidget()
+        layout.addWidget(self.trend)
+        self.open_button = QPushButton("打开所选文章")
+        self.open_button.clicked.connect(self._open_selected)
+        self.open_button.setEnabled(False)
+        layout.addWidget(self.open_button, 0, Qt.AlignRight)
+
+    def clear(self) -> None:
+        self.current_row = None
+        self.current_snapshot = None
+        self.title_label.setText("行业热度详情")
+        self.meta_label.setText("选择行业查看明细")
+        self.article_tree.clear()
+        self.trend.set_points([])
+        self.open_button.setEnabled(False)
+
+    def set_row(self, row: IndustryHeatRow, snapshot: IndustryHeatSnapshot) -> None:
+        self.current_row = row
+        self.current_snapshot = snapshot
+        self.title_label.setText(row.industry)
+        self.meta_label.setText(f"排名 {row.rank} · 当前榜 {row.source_status} · 映射 {row.mapping_status}")
+        self.summary_label.setText(
+            f"A={row.a}（A分位 {row.a_percentile:.2f}） · B={row.b}（B分位 {row.b_percentile:.2f}） · "
+            f"行业热度 {row.heat:.2f} = 50% × {row.a_percentile:.2f} + 50% × {row.b_percentile:.2f}"
+        )
+        self.article_tree.clear()
+        allowed = set(row.article_urls)
+        for article in sorted(snapshot.articles, key=lambda item: item.published_at, reverse=True):
+            if (article.url or article.seq) not in allowed:
+                continue
+            item = QTreeWidgetItem([
+                article.title,
+                article.provider_name or article.source_name,
+                article.published_at.strftime("%m-%d %H:%M"),
+            ])
+            item.setData(0, Qt.UserRole, article.url)
+            self.article_tree.addTopLevelItem(item)
+        if self.article_tree.topLevelItemCount():
+            self.article_tree.setCurrentItem(self.article_tree.topLevelItem(0))
+        self.open_button.setEnabled(self.article_tree.topLevelItemCount() > 0)
+        history = list(reversed(self.storage.get_industry_daily_snapshots(30)))
+        history_by_day = {
+            item.snapshot_at.astimezone(SHANGHAI_TZ).date(): item
+            for item in history
+            if item.snapshot_at
+        }
+        points: list[tuple[str, float | None]] = []
+        if history_by_day:
+            day = min(history_by_day)
+            last_day = max(history_by_day)
+            while day <= last_day:
+                # The history table stores successful points only.  Fill
+                # weekday gaps explicitly so the painter breaks the line and
+                # the user can distinguish a missing point from a zero score.
+                item = history_by_day.get(day) if day.weekday() < 5 else None
+                value = (
+                    next(
+                        (candidate.heat for candidate in item.rows if candidate.industry == row.industry),
+                        None,
+                    )
+                    if item is not None
+                    else None
+                )
+                points.append((day.isoformat(), value))
+                day += timedelta(days=1)
+        self.trend.set_points(points)
+
+    def _open_selected(self) -> None:
+        item = self.article_tree.currentItem()
+        if item and item.data(0, Qt.UserRole):
+            self.open_url_requested.emit(str(item.data(0, Qt.UserRole)))
+
+    def _open_article(self, item, _column) -> None:
+        if item.data(0, Qt.UserRole):
+            self.open_url_requested.emit(str(item.data(0, Qt.UserRole)))
+
+RESEARCH_SOURCE_KEYS = frozenset({"confirm", "catalyst", "discovery"})
 
 RESEARCH_VIEW_META: dict[str, tuple[str, str]] = {
     "confirm": (
@@ -110,18 +345,6 @@ RESEARCH_VIEW_META: dict[str, tuple[str, str]] = {
     "catalyst": (
         "潜在催化",
         "中标待签、审批中、框架协议或筹划阶段的潜在事件",
-    ),
-    "z20": (
-        "20 日机构升温",
-        "最近 20 个交易日相对前 100 个交易日分桶基线的机构关注加速",
-    ),
-    "persist60": (
-        "60 日持续关注",
-        "最近 60 个交易日机构活动的持续性、重复跟进、深度与集中度",
-    ),
-    "persist120": (
-        "120 日持续关注",
-        "最近 120 个交易日机构活动的持续性、重复跟进、深度与集中度",
     ),
     "discovery": (
         "待核验",
@@ -166,6 +389,8 @@ class ProfessionalMainWindow(QMainWindow):
 
         self.snapshot: Snapshot | None = None
         self.selected_source = self.preferences.last_source
+        if self.selected_source in {"z20", "persist", "persist60", "persist120"}:
+            self.selected_source = "news"
         self._news_industry_tags: set[str] = set()
         self._news_content_types: set[str] = set()
         self._interaction_industry_tags: set[str] = set()
@@ -321,16 +546,16 @@ class ProfessionalMainWindow(QMainWindow):
         navigation.setObjectName("navigationBar")
         navigation.setMovable(False)
         navigation.setFloatable(False)
-        navigation.setFixedHeight(44)
+        navigation.setFixedHeight(56)
         self.addToolBar(Qt.TopToolBarArea, navigation)
+        navigation.layout().setContentsMargins(5, 12, 5, 12)
         self.navigation_bar = navigation
 
         self.source_button_group = QButtonGroup(self)
         self.source_button_group.setExclusive(True)
         self.source_buttons: dict[str, QPushButton] = {}
-        source_group_label = QLabel("原始关注度")
-        source_group_label.setObjectName("navigationGroupLabel")
-        navigation.addWidget(source_group_label)
+        source_group, source_group_layout = self._navigation_group("原始榜单", "original")
+        self.source_navigation_group = source_group
         for key, label in (
             ("news", "基本面消息"),
             ("interaction", "基本面互动"),
@@ -340,32 +565,64 @@ class ProfessionalMainWindow(QMainWindow):
             button = QPushButton(label)
             button.setObjectName("sourceTab")
             button.setCheckable(True)
+            button.setFixedHeight(30)
             button.setMinimumWidth(84)
             button.clicked.connect(lambda _checked=False, source=key: self._select_source(source))
             self.source_buttons[key] = button
             self.source_button_group.addButton(button)
-            navigation.addWidget(button)
+            source_group_layout.addWidget(button)
+        navigation.addWidget(source_group)
 
-        navigation.addSeparator()
-        research_group_label = QLabel("研究信号")
-        research_group_label.setObjectName("navigationGroupLabel")
-        navigation.addWidget(research_group_label)
+        industry_group, industry_group_layout = self._navigation_group("行业观察", "industry")
+        self.industry_navigation_group = industry_group
+        self.industry_button = QPushButton("行业热度")
+        self.industry_button.setObjectName("sourceTab")
+        self.industry_button.setCheckable(True)
+        self.industry_button.setFixedHeight(30)
+        self.industry_button.setMinimumWidth(92)
+        self.industry_button.clicked.connect(lambda: self._select_source(INDUSTRY_SOURCE_KEY))
+        self.source_button_group.addButton(self.industry_button)
+        industry_group_layout.addWidget(self.industry_button)
+        navigation.addWidget(industry_group)
+
+        research_group, research_group_layout = self._navigation_group("研究信号", "research")
+        self.research_navigation_group = research_group
         self.research_buttons: dict[str, QPushButton] = {}
         for key, label in (
             ("confirm", "确定性利好"),
             ("catalyst", "潜在催化"),
-            ("z20", "机构升温"),
-            ("persist", "持续关注"),
             ("discovery", "待核验"),
         ):
             button = QPushButton(label)
             button.setObjectName("sourceTab")
             button.setCheckable(True)
+            button.setFixedHeight(30)
             button.setMinimumWidth(84)
             button.clicked.connect(lambda _checked=False, source=key: self._select_source(source))
             self.research_buttons[key] = button
             self.source_button_group.addButton(button)
-            navigation.addWidget(button)
+            research_group_layout.addWidget(button)
+        navigation.addWidget(research_group)
+
+        navigation_spacer = QWidget()
+        navigation_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        navigation.addWidget(navigation_spacer)
+
+    @staticmethod
+    def _navigation_group(title: str, section: str) -> tuple[QFrame, QHBoxLayout]:
+        group = QFrame()
+        group.setObjectName("navigationGroup")
+        group.setProperty("section", section)
+        group.setFixedHeight(42)
+        layout = QHBoxLayout(group)
+        layout.setContentsMargins(6, 5, 6, 5)
+        layout.setSpacing(2)
+
+        label = QLabel(title)
+        label.setObjectName("navigationGroupLabel")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        return group, layout
 
     def _build_more_menu(self) -> QMenu:
         menu = QMenu(self)
@@ -502,6 +759,8 @@ class ProfessionalMainWindow(QMainWindow):
         self.research_proxy.rowsRemoved.connect(self._update_result_count)
         self.research_proxy.modelReset.connect(self._update_result_count)
 
+        self.industry_table_model = IndustryTableModel(self)
+
         self.table = QTableView()
         self.table.setModel(self.proxy_model)
         self.heat_bar_delegate = HeatBarDelegate(self.table)
@@ -538,6 +797,13 @@ class ProfessionalMainWindow(QMainWindow):
         self.detail_stack = QStackedWidget()
         self.detail_stack.addWidget(self.detail_panel)
         self.detail_stack.addWidget(self.research_detail_panel)
+
+        self.industry_detail_panel = IndustryDetailPanel(self.storage)
+        self.industry_detail_panel.close_requested.connect(
+            lambda: self._set_detail_visible(False)
+        )
+        self.industry_detail_panel.open_url_requested.connect(self._open_url)
+        self.detail_stack.addWidget(self.industry_detail_panel)
 
         self.splitter.addWidget(table_panel)
         self.splitter.addWidget(self.detail_stack)
@@ -590,31 +856,9 @@ class ProfessionalMainWindow(QMainWindow):
         self.quality_filter.selection_changed.connect(self._set_quality_filter)
         layout.addWidget(self.quality_filter)
 
-        self.persist_window_group = QButtonGroup(self)
-        self.persist_60_button = QPushButton("60 日")
-        self.persist_60_button.setObjectName("sourceTab")
-        self.persist_60_button.setCheckable(True)
-        self.persist_60_button.setMinimumWidth(64)
-        self.persist_60_button.clicked.connect(
-            lambda: self._select_persist_window("persist60")
-        )
-        self.persist_120_button = QPushButton("120 日")
-        self.persist_120_button.setObjectName("sourceTab")
-        self.persist_120_button.setCheckable(True)
-        self.persist_120_button.setMinimumWidth(64)
-        self.persist_120_button.clicked.connect(
-            lambda: self._select_persist_window("persist120")
-        )
-        self.persist_window_group.addButton(self.persist_60_button)
-        self.persist_window_group.addButton(self.persist_120_button)
-        layout.addWidget(self.persist_60_button)
-        layout.addWidget(self.persist_120_button)
-
         self.event_type_filter.hide()
         self.topic_filter.hide()
         self.quality_filter.hide()
-        self.persist_60_button.hide()
-        self.persist_120_button.hide()
 
         layout.addStretch(1)
         self.search_input = SearchLineEdit()
@@ -683,6 +927,12 @@ class ProfessionalMainWindow(QMainWindow):
 
     def set_snapshot(self, snapshot: Snapshot) -> None:
         self.snapshot = snapshot
+        if snapshot.industry_heat.rows and not snapshot.industry_heat.articles:
+            snapshot.industry_heat.articles = self.storage.get_articles_between(
+                snapshot.industry_heat.window_start or snapshot.window_start,
+                snapshot.industry_heat.window_end or snapshot.window_end,
+            )
+        self.industry_button.setEnabled(True)
         for key in ("pop", "surge"):
             self.source_buttons[key].setEnabled(snapshot.popularity.available)
         self.source_buttons["interaction"].setEnabled(
@@ -700,7 +950,7 @@ class ProfessionalMainWindow(QMainWindow):
     def _select_source(self, source_key: str) -> None:
         if source_key == "persist":
             source_key = self._persist_window
-        if source_key not in {"news", "interaction", "pop", "surge"} | set(RESEARCH_SOURCE_KEYS):
+        if source_key not in {"news", "interaction", "pop", "surge", INDUSTRY_SOURCE_KEY} | set(RESEARCH_SOURCE_KEYS):
             return
         if source_key in {"pop", "surge"} and (not self.snapshot or not self.snapshot.popularity.available):
             return
@@ -727,25 +977,10 @@ class ProfessionalMainWindow(QMainWindow):
             self.source_buttons[source_key].setChecked(True)
         elif source_key in self.research_buttons:
             self.research_buttons[source_key].setChecked(True)
-        elif source_key in {"persist60", "persist120"}:
-            self.research_buttons["persist"].setChecked(True)
+        elif source_key == INDUSTRY_SOURCE_KEY:
+            self.industry_button.setChecked(True)
         else:
             self.source_buttons["news"].setChecked(True)
-
-    def _select_persist_window(self, window_kind: str) -> None:
-        if window_kind not in {"persist60", "persist120"}:
-            return
-        if window_kind == self.selected_source:
-            self.persist_60_button.setChecked(window_kind == "persist60")
-            self.persist_120_button.setChecked(window_kind == "persist120")
-            return
-        if self.selected_source:
-            self._save_table_state(self.selected_source)
-        self._persist_window = window_kind
-        self.preferences.persist_window = window_kind
-        self.selected_source = window_kind
-        self.preferences.last_source = window_kind
-        self._render_selected_source()
 
     def _selected_rows(
         self,
@@ -758,10 +993,15 @@ class ProfessionalMainWindow(QMainWindow):
             return self.snapshot.popularity.surging
         if self.selected_source == "interaction":
             return self.snapshot.interaction_rankings
+        if self.selected_source == INDUSTRY_SOURCE_KEY:
+            return self.snapshot.industry_heat.rows
         return self.snapshot.rankings
 
     def _render_selected_source(self) -> None:
         source_key = self.selected_source
+        if source_key == INDUSTRY_SOURCE_KEY:
+            self._render_industry_source()
+            return
         if source_key in RESEARCH_SOURCE_KEYS:
             self._render_research_source()
             return
@@ -842,14 +1082,44 @@ class ProfessionalMainWindow(QMainWindow):
         self._update_result_count()
         self._update_action_states()
 
+    def _render_industry_source(self) -> None:
+        if not self.snapshot:
+            self._render_empty_shell()
+            return
+        self._set_source_button_checked(INDUSTRY_SOURCE_KEY)
+        self._table_mode = "industry"
+        self.table.setModel(self.industry_table_model)
+        self.industry_table_model.set_rows(self.snapshot.industry_heat.rows)
+        self._configure_table_columns()
+        self._restore_table_state(INDUSTRY_SOURCE_KEY)
+        self.industry_label.setVisible(False)
+        self.industry_filter.setVisible(False)
+        self.content_type_label.setVisible(False)
+        self.content_type_filter.setVisible(False)
+        self.platform_label.setVisible(False)
+        self.platform_filter.setVisible(False)
+        self.event_type_filter.setVisible(False)
+        self.topic_filter.setVisible(False)
+        self.quality_filter.setVisible(False)
+        self._render_header()
+        rows = self.snapshot.industry_heat.rows
+        self.content_stack.setCurrentWidget(self.table if rows else self.empty_state)
+        if not rows:
+            self.empty_title.setText("行业热度暂无数据")
+            self.empty_hint.setText("完成东方财富 Top100 与同花顺行业研究 24 小时覆盖后生成。")
+        self.detail_stack.setCurrentWidget(self.industry_detail_panel)
+        self.industry_detail_panel.clear()
+        self.snapshot_time_label.setText(
+            f"行业快照 {format_datetime(self.snapshot.industry_heat.snapshot_at)}"
+            if self.snapshot.industry_heat.snapshot_at else "行业快照 暂无"
+        )
+        self._update_result_count()
+        self._update_action_states()
+
     def _render_research_source(self) -> None:
         source_key = self.selected_source
         self._set_source_button_checked(source_key)
-        coverage = (
-            institution_research_coverage(self.settings, self.storage)
-            if source_key in {"z20", "persist60", "persist120"}
-            else research_coverage(self.settings, self.storage)
-        )
+        coverage = research_coverage(self.settings, self.storage)
         self._research_coverage = coverage
         if source_key in {"confirm", "catalyst"}:
             board = (
@@ -860,26 +1130,8 @@ class ProfessionalMainWindow(QMainWindow):
             rows = load_short_term_rows(
                 self.storage, board, coverage=coverage
             )
-        elif source_key == "z20":
-            rows = load_z20_rows(
-                self.storage,
-                coverage=coverage,
-                metric_version=self.settings.institution_metric_version,
-            )
         elif source_key == "discovery":
             rows = load_discovery_rows(self.storage, coverage=coverage)
-        else:
-            window_kind = (
-                "persistence_60"
-                if source_key == "persist60"
-                else "persistence_120"
-            )
-            rows = load_persistence_rows(
-                self.storage,
-                window_kind,
-                coverage=coverage,
-                metric_version=self.settings.institution_metric_version,
-            )
         self.table.setModel(self.research_proxy)
         self.table.setItemDelegateForColumn(4, None)
         self._table_mode = "research"
@@ -907,22 +1159,16 @@ class ProfessionalMainWindow(QMainWindow):
     def _configure_research_filters(self, rows) -> None:
         source_key = self.selected_source
         is_short = source_key in {"confirm", "catalyst"}
-        is_z20 = source_key == "z20"
-        is_persist = source_key in {"persist60", "persist120"}
         is_discovery = source_key == "discovery"
-        self.industry_label.setVisible(is_z20)
-        self.industry_filter.setVisible(is_z20)
+        self.industry_label.setVisible(False)
+        self.industry_filter.setVisible(False)
         self.content_type_label.setVisible(False)
         self.content_type_filter.setVisible(False)
         self.platform_label.setVisible(False)
         self.platform_filter.setVisible(False)
         self.event_type_filter.setVisible(is_short)
-        self.topic_filter.setVisible(is_persist)
+        self.topic_filter.setVisible(False)
         self.quality_filter.setVisible(not is_discovery)
-        self.persist_60_button.setVisible(is_persist)
-        self.persist_120_button.setVisible(is_persist)
-        self.persist_60_button.setChecked(source_key == "persist60")
-        self.persist_120_button.setChecked(source_key == "persist120")
 
         if is_short:
             options = sorted({row.event_type for row in rows if row.event_type})
@@ -933,22 +1179,8 @@ class ProfessionalMainWindow(QMainWindow):
             self.research_proxy.set_event_types(self._research_event_types)
         else:
             self.research_proxy.set_event_types(set())
-        if is_persist:
-            topics = sorted({topic for row in rows for topic in row.topics})
-            self.topic_filter.set_options(topics)
-            self.topic_filter.set_selected_tags(self._research_topics, emit=False)
-            self.research_proxy.set_topics(self._research_topics)
-        else:
-            self.research_proxy.set_topics(set())
-        if is_z20:
-            industries = sorted({row.industry or "未标注" for row in rows})
-            self.industry_filter.set_options(industries)
-            self.industry_filter.set_selected_tags(
-                self._research_industries, emit=False
-            )
-            self.research_proxy.set_industries(self._research_industries)
-        else:
-            self.research_proxy.set_industries(set())
+        self.research_proxy.set_topics(set())
+        self.research_proxy.set_industries(set())
         self.quality_filter.set_options(set(QUALITY_STATE_BY_LABEL))
         selected_quality = {
             label
@@ -961,17 +1193,6 @@ class ProfessionalMainWindow(QMainWindow):
     def _render_research_header(self, rows, coverage) -> None:
         source_key = self.selected_source
         title, subtitle = RESEARCH_VIEW_META[source_key]
-        if source_key == "z20":
-            title, subtitle = z20_view_meta(
-                has_formal_rows=any(
-                    row.z20 is not None
-                    and (
-                        row.metric_version != "warming_v2"
-                        or row.coverage_level == "full"
-                    )
-                    for row in rows
-                )
-            )
         self.view_title.setText(title)
         self.view_subtitle.setText(subtitle)
         state = research_coverage_state(coverage, has_rows=bool(rows))
@@ -990,30 +1211,6 @@ class ProfessionalMainWindow(QMainWindow):
                     if coverage.last_success_at
                     else "—",
                 ),
-            )
-        elif source_key == "z20":
-            full_count = sum(
-                1
-                for row in rows
-                if row.z20 is not None
-                and (
-                    row.metric_version != "warming_v2"
-                    or row.coverage_level == "full"
-                )
-            )
-            cohort_sources = sum(
-                len(item.source_keys) for item in coverage.market_cohorts
-            )
-            supplemental_sources = sum(
-                len(item.supplemental_source_keys)
-                for item in coverage.market_cohorts
-            )
-            values = (
-                ("结果", f"{len(rows)} 只"),
-                ("正式升温", f"{full_count} 只"),
-                ("cohort 来源", str(cohort_sources)),
-                ("补充来源", str(supplemental_sources)),
-                ("质量状态", state_label),
             )
         elif source_key == "discovery":
             pending = sum(1 for row in rows if row.parse_status == "pending_attachment")
@@ -1034,9 +1231,13 @@ class ProfessionalMainWindow(QMainWindow):
         else:
             values = (
                 ("结果", f"{len(rows)} 只"),
-                ("窗口", RESEARCH_VIEW_META[source_key][0].split(" ")[0]),
-                ("覆盖交易日", str(coverage.trading_days_covered)),
                 ("质量状态", state_label),
+                (
+                    "同步时间",
+                    coverage.last_success_at.strftime("%m-%d %H:%M")
+                    if coverage.last_success_at
+                    else "—",
+                ),
             )
         for chip, (label, value) in zip(self.kpi_chips, values):
             chip.label.setText(label)
@@ -1081,6 +1282,7 @@ class ProfessionalMainWindow(QMainWindow):
                 RankingTableModel.HEAT_COLUMN, self.heat_bar_delegate
             )
             self._table_mode = "legacy"
+        self.industry_table_model.set_rows([])
         self.table_model.set_rows([], source_key="news")
         self.view_title.setText(SOURCE_LABELS.get(self.selected_source, "基本面消息"))
         self.view_subtitle.setText("等待首次刷新")
@@ -1095,6 +1297,31 @@ class ProfessionalMainWindow(QMainWindow):
         assert self.snapshot is not None
         source_key = self.selected_source
         rows = self._selected_rows()
+        if source_key == INDUSTRY_SOURCE_KEY:
+            heat = self.snapshot.industry_heat
+            self.view_title.setText("行业热度")
+            self.view_subtitle.setText(
+                "东方财富综合人气 Top100 行业覆盖 A + 同花顺行业研究 24 小时文章 B · 不使用飙升榜"
+            )
+            state = heat.source_status if heat.mapping_status == "complete" else "暂定/部分映射"
+            values = (
+                ("结果", f"{len(rows)} 个行业"),
+                ("A覆盖", f"{heat.top100_mapped}/{heat.top100_total}"),
+                ("B文章", str(heat.research_article_mapped)),
+                ("状态", state),
+            )
+            for chip, (label, value) in zip(self.kpi_chips, values):
+                chip.label.setText(label)
+                chip.set_value(value)
+            self.quality_label.setText(
+                f"A映射覆盖率 {heat.mapping_coverage * 100:.2f}% · 未映射文章 {heat.unmapped_article_count} · "
+                f"来源状态 {heat.source_status}{(' · ' + heat.source_error) if heat.source_error else ''}"
+            )
+            self._set_freshness(
+                "完整结果" if heat.source_status == "complete" and heat.mapping_status == "complete" else "暂定/部分覆盖",
+                "fresh" if heat.source_status == "complete" and heat.mapping_status == "complete" else "stale",
+            )
+            return
         self.view_title.setText(SOURCE_LABELS[source_key])
         if source_key == "news":
             stats = self.snapshot.stats
@@ -1210,9 +1437,6 @@ class ProfessionalMainWindow(QMainWindow):
         elif self.selected_source == "interaction":
             self._interaction_industry_tags = set(tags)
             self.proxy_model.set_industry_tags(tags)
-        elif self.selected_source == "z20":
-            self._research_industries = set(tags)
-            self.research_proxy.set_industries(tags)
         self._update_result_count()
 
     def _set_content_type_filter(self, content_types: set[str]) -> None:
@@ -1229,8 +1453,6 @@ class ProfessionalMainWindow(QMainWindow):
 
     def _set_topic_filter(self, topics: set[str]) -> None:
         self._research_topics = set(topics)
-        if self.selected_source in {"persist60", "persist120"}:
-            self.research_proxy.set_topics(topics)
         self._update_result_count()
 
     def _set_quality_filter(self, labels: set[str]) -> None:
@@ -1278,19 +1500,31 @@ class ProfessionalMainWindow(QMainWindow):
         self._update_result_count()
 
     def _update_result_count(self, *_: object) -> None:
-        model = (
-            self.research_proxy
-            if getattr(self, "_table_mode", "legacy") == "research"
-            else (self.proxy_model if hasattr(self, "proxy_model") else None)
-        )
+        if getattr(self, "_table_mode", "legacy") == "industry":
+            model = self.industry_table_model
+        else:
+            model = (
+                self.research_proxy
+                if getattr(self, "_table_mode", "legacy") == "research"
+                else (self.proxy_model if hasattr(self, "proxy_model") else None)
+            )
         count = model.rowCount() if model is not None else 0
-        self.result_count_label.setText(f"{count} 只股票")
+        self.result_count_label.setText(f"{count} 个行业" if self._table_mode == "industry" else f"{count} 只股票")
         if hasattr(self, "heat_bar_delegate") and self._table_mode == "legacy":
             self.heat_bar_delegate.set_maximum(self.proxy_model.maximum_filtered_heat())
         if hasattr(self, "export_action"):
             self._update_action_states()
 
     def _configure_table_columns(self) -> None:
+        if self.selected_source == INDUSTRY_SOURCE_KEY:
+            header = self.table.horizontalHeader()
+            for column in range(self.industry_table_model.columnCount()):
+                header.setSectionResizeMode(column, QHeaderView.Interactive)
+            header.setSectionResizeMode(1, QHeaderView.Stretch)
+            for column, width in ((0, 58), (2, 82), (3, 72), (4, 84), (5, 72), (6, 84), (7, 150)):
+                self.table.setColumnWidth(column, width)
+            self._apply_density()
+            return
         header = self.table.horizontalHeader()
         model = self.table.model()
         column_count = model.columnCount() if model is not None else self.table_model.columnCount()
@@ -1309,16 +1543,6 @@ class ProfessionalMainWindow(QMainWindow):
             self.table.setColumnWidth(5, 150)
             self.table.setColumnWidth(9, 110)
             self.table.setColumnWidth(10, 90)
-        elif self.selected_source == "z20":
-            self.table.setColumnWidth(3, 120)
-            self.table.setColumnWidth(4, 80)
-            self.table.setColumnWidth(9, 100)
-            self.table.setColumnWidth(10, 90)
-        elif self.selected_source in {"persist60", "persist120"}:
-            self.table.setColumnWidth(3, 60)
-            self.table.setColumnWidth(4, 90)
-            self.table.setColumnWidth(10, 180)
-            self.table.setColumnWidth(11, 90)
         elif self.selected_source == "pop":
             self.table.setColumnWidth(3, 96)
             self.table.setColumnWidth(4, PERCENT_COLUMN_WIDTH)
@@ -1391,7 +1615,10 @@ class ProfessionalMainWindow(QMainWindow):
 
     def _selection_changed(self) -> None:
         row = self._current_row()
-        if isinstance(row, RankingRow) and self.snapshot:
+        if isinstance(row, IndustryHeatRow) and self.snapshot:
+            self.detail_stack.setCurrentWidget(self.industry_detail_panel)
+            self.industry_detail_panel.set_row(row, self.snapshot.industry_heat)
+        elif isinstance(row, RankingRow) and self.snapshot:
             self.detail_stack.setCurrentWidget(self.detail_panel)
             self.detail_panel.set_news(row, self.snapshot.events)
         elif isinstance(row, InteractionRankingRow) and self.snapshot:
@@ -1399,7 +1626,17 @@ class ProfessionalMainWindow(QMainWindow):
             self.detail_panel.set_interaction(row, self.snapshot.interactions)
         elif isinstance(row, PopularityRankRow):
             self.detail_stack.setCurrentWidget(self.detail_panel)
-            self.detail_panel.set_popularity(row, self.selected_source)
+            articles = self.snapshot.events if self.snapshot else []
+            flat_articles = [article for event in articles for article in event.articles]
+            if self.snapshot:
+                flat_articles.extend(
+                    article for article in self.storage.get_articles_between(
+                        self.snapshot.window_start, self.snapshot.window_end
+                    )
+                    if article.channel_key != "industry_research"
+                )
+            unique = {article.url: article for article in flat_articles if article.url}
+            self.detail_panel.set_popularity_articles(row, self.selected_source, list(unique.values()))
         elif isinstance(row, ShortTermViewRow):
             self.detail_stack.setCurrentWidget(self.research_detail_panel)
             detail = load_event_detail(self.storage, row.event_id, row.stock_code)
@@ -1407,41 +1644,6 @@ class ProfessionalMainWindow(QMainWindow):
                 self.research_detail_panel.set_short_term(
                     detail,
                     COVERAGE_STATE_LABELS.get(row.quality_state, row.quality_state),
-                )
-            else:
-                self.research_detail_panel.clear()
-        elif isinstance(row, (InstitutionZ20ViewRow, PersistenceViewRow)):
-            self.detail_stack.setCurrentWidget(self.research_detail_panel)
-            window_kind = (
-                row.window_kind
-                if isinstance(row, PersistenceViewRow)
-                else (
-                    "warming_20"
-                    if row.metric_version == "warming_v2"
-                    else "z20"
-                )
-            )
-            if self._research_coverage is not None:
-                start_date = self._research_coverage.requested_start
-                end_date = self._research_coverage.covered_end or start_date
-            else:
-                start_date = end_date = None
-            coverage = self._research_coverage
-            if start_date is not None and end_date is not None:
-                detail = load_institution_detail(
-                    self.storage,
-                    row.stock_code,
-                    row.stock_name,
-                    window_kind,
-                    start_date=start_date,
-                    end_date=end_date,
-                    coverage=coverage,
-                )
-                self.research_detail_panel.set_institution(
-                    detail,
-                    COVERAGE_STATE_LABELS.get(
-                        row.coverage_state, row.coverage_state
-                    ),
                 )
             else:
                 self.research_detail_panel.clear()
@@ -1462,15 +1664,16 @@ class ProfessionalMainWindow(QMainWindow):
         RankingRow
         | PopularityRankRow
         | InteractionRankingRow
+        | IndustryHeatRow
         | ShortTermViewRow
-        | InstitutionZ20ViewRow
-        | PersistenceViewRow
         | DiscoveryViewRow
         | None
     ):
         index = self.table.currentIndex()
         if not index.isValid():
             return None
+        if self._table_mode == "industry":
+            return self.industry_table_model.row_at(index.row())
         if self._table_mode == "research":
             source_index = self.research_proxy.mapToSource(index)
             return self.research_table_model.row_at(source_index.row())
@@ -1483,9 +1686,15 @@ class ProfessionalMainWindow(QMainWindow):
         if not self.detail_stack.isVisible():
             self._set_detail_visible(True)
             self._selection_changed()
-        self._active_detail_panel().open_primary()
+        panel = self._active_detail_panel()
+        if isinstance(panel, IndustryDetailPanel):
+            panel._open_selected()
+        else:
+            panel.open_primary()
 
     def _active_detail_panel(self):
+        if self.detail_stack.currentWidget() is self.industry_detail_panel:
+            return self.industry_detail_panel
         return (
             self.research_detail_panel
             if self.detail_stack.currentWidget() is self.research_detail_panel
@@ -1504,8 +1713,8 @@ class ProfessionalMainWindow(QMainWindow):
         menu = QMenu(self)
         primary = menu.addAction("查看详情")
         if isinstance(row, PopularityRankRow):
-            primary.setText("打开官方页")
-            primary.triggered.connect(self.activate_selected)
+            primary.setText("打开东方财富官方页")
+            primary.triggered.connect(self.detail_panel.open_official)
         else:
             primary.triggered.connect(lambda: self._set_detail_visible(True))
         copy_identity = menu.addAction(icon("copy"), "复制股票名称和代码")
@@ -1520,7 +1729,9 @@ class ProfessionalMainWindow(QMainWindow):
 
     @staticmethod
     def _stock_identity(row) -> tuple[str, str]:
-        if isinstance(row, (ShortTermViewRow, InstitutionZ20ViewRow, PersistenceViewRow)):
+        if isinstance(row, IndustryHeatRow):
+            return row.industry, ""
+        if isinstance(row, ShortTermViewRow):
             return row.stock_name, row.stock_code
         return row.name, row.code
 
@@ -1538,6 +1749,8 @@ class ProfessionalMainWindow(QMainWindow):
 
     def _visible_rows(self) -> list:
         rows: list = []
+        if self._table_mode == "industry":
+            return list(self.industry_table_model.rows)
         if self._table_mode == "research":
             proxy = self.research_proxy
             source_model = self.research_table_model
@@ -1704,17 +1917,14 @@ class ProfessionalMainWindow(QMainWindow):
             <h3>综合人气榜与飙升榜</h3>
             <p>来自<b>东方财富</b>公开官方榜单，保留官方口径独立展示；该榜综合访问、关注和社区互动，本身不等于基本面讨论。产品只展示官方排名、排名变化和公开行情字段，不推导未公开的热度分值或权重，也不合成主观总分。</p>
             <h3>确定性利好与潜在催化（研究信号）</h3>
-            <p>来自<b>巨潮资讯</b>公告与调研栏目、<b>上证 e 互动</b>上市公司发布与<b>互动易</b>投资者关系活动记录。先对公开文档做持久化事件聚类（同一股票、72 小时内的高置信相似内容合并，金额/客户/日期冲突时宁拆不并），再按十类固定事件类型做规则抽取，输出正向机制、量化字段、确定性、意外性、新颖性与反证；确定性利好要求重大性 L≥2、确定性≥0.70、得分≥60 且无高度反证；潜在催化要求 L≥1、确定性≥0.40、得分≥35，并醒目标注“尚未落地”。`no_valid_signal` 是正常且高频的结果，产品不强迫每条信息生成利好。</p>
+            <p>来自<b>巨潮资讯、上交所与北交所</b>公开公司公告。先对公开文档做持久化事件聚类（同一股票、72 小时内的高置信相似内容合并，金额/客户/日期冲突时宁拆不并），再按十六类固定事件类型做规则抽取，输出正向机制、量化字段、确定性、意外性、新颖性与反证；确定性利好要求重大性 L≥2、确定性≥0.70、得分≥60 且无高度反证；潜在催化要求 L≥1、确定性≥0.40、得分≥35，并醒目标注“尚未落地”。`no_valid_signal` 是正常且高频的结果，产品不强迫每条信息生成利好。</p>
             <p><b>待核验</b>：所有公开列表项先进入发现层（财务报告、合同订单、审批客户、资本动作、产能项目、政策补贴、其他需核验披露），附件按“新调研资料 → 高优先级待核验事件 → 最旧普通待解析资料”循环下载；额度不足只标记延后。候选不计分、不称为利好，正文证据决定是否进入确定性利好或潜在催化榜。</p>
-            <h3>20 日机构升温</h3>
-            <p>“标准化升温值（描述性）”比较最近 20 个交易日与此前 12 个非重叠 20 日桶；使用样本方差和透明预测方差，不预测股价或收益。12 个历史桶为完整，5–11 个仅为暂定，少于 5 个只展示原始机构关注。来源 cohort、日期质量、排除组织数和暂定原因会随表格、CSV、复制及详情一起显示；机构关注仅表示公开披露的研究参与行为，不代表看多、买入、持仓或资金流向。</p>
-            <h3>60/120 日持续关注</h3>
-            <p>总分名称为“持续关注规则指数”，仅是四个透明规则组件的加权摘要。没有合格机构、可靠机构—日期映射或完整问答正文时总分为空；低深度问题与正文缺失分别显示。该指数未经独立标签校准，不赋予统计预测含义。</p>
-            <h3>60/120 日持续关注</h3>
-            <p>持续关注分 = 100 × (0.40×活跃周比例 + 0.25×重复跟进比例 + 0.20×研究深度 + 0.15×(1-单日集中度))。120 日视图额外比较最近 60 日与此前 60 日的新增/流失机构集团、类型占比、高深度占比、活跃周比例与集中度变化，这些只描述研究行为结构，不推断投资观点。</p>
+            <h3>行业热度</h3>
+            <p>A 是东方财富综合人气 Top100 的一级行业覆盖，B 是同花顺“行业研究”最近 24 小时可解析文章数；两项分别使用并列平均秩分位，行业热度 = 50%×A分位 + 50%×B分位。飙升榜不参与 A。优先采用正文明确行业标签，缺失时才按正文明确关联股票保守回退；无法映射的样本不计入分母并显示覆盖状态。</p>
+            <p>只有上海时间 18:00 后、东方财富 Top100 新鲜且行业研究 24 小时覆盖完整时，才写入当天首份不可变日快照。失败、部分覆盖或仅缓存结果仍可查看，但不进入历史趋势。行业热度只用于公开信息整理，不预测股价或收益。</p>
             <h3>可选 AI 增强</h3>
             <p>默认关闭；开启后仅向模型发送规则初筛后的事件代表文本，输出经同一数据契约严格校验，模型故障只降级当前事件（显示“规则降级”），不影响整榜。密钥使用 Windows DPAPI 加密保存在独立文件，不写入数据库、日志、导出或剪贴板。</p>
-            <p>研究来源采用低频渐进回填（最近 200 个自然日，每次刷新最多 20 个列表页或 50 份 PDF/DOC/DOCX 附件，额度按来源均分）；冷启动、部分覆盖、日历降级和附件失败都会在当前视图的“数据质量”与表格质量列中明确标注。</p>
+            <p>公告来源采用低频渐进回填并受页面与附件配额约束；机构活动来源和机构指标不再进入主动刷新。部分覆盖、来源失败、映射不足和附件失败都会在当前视图明确标注。</p>
             <p>官方榜单与新增来源低频读取并使用短期缓存；任何来源读取失败、沿用本地缓存或未到达窗口边界都会在界面“数据质量”中明确标注部分覆盖与过期状态。</p>
             <p><b>风险声明：</b>所有结果仅供公开信息整理，不构成投资建议。</p>
             """,

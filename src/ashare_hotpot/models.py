@@ -547,6 +547,11 @@ class OfficialPopularitySnapshot:
     is_stale: bool = False
     success_at: datetime | None = None
     error: str | None = None
+    # True only when this refresh reused a prior successful board from the
+    # short cache.  It is intentionally separate from ``is_stale``: a fresh
+    # successful fetch is eligible for the industry's daily history, while a
+    # cache hit may still be perfectly usable for the current board.
+    from_cache: bool = False
     popularity: list[PopularityRankRow] = field(default_factory=list)
     surging: list[PopularityRankRow] = field(default_factory=list)
 
@@ -556,6 +561,7 @@ class OfficialPopularitySnapshot:
             "is_stale": self.is_stale,
             "success_at": self.success_at.isoformat() if self.success_at else None,
             "error": self.error,
+            "from_cache": self.from_cache,
             "popularity": [row.to_dict() for row in self.popularity],
             "surging": [row.to_dict() for row in self.surging],
         }
@@ -569,8 +575,142 @@ class OfficialPopularitySnapshot:
             is_stale=bool(data.get("is_stale", False)),
             success_at=_dt(data.get("success_at")),
             error=data.get("error"),
+            from_cache=bool(data.get("from_cache", False)),
             popularity=[PopularityRankRow.from_dict(item) for item in data.get("popularity", [])],
             surging=[PopularityRankRow.from_dict(item) for item in data.get("surging", [])],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class IndustryHeatRow:
+    """One transparent row of the independent industry-heat board.
+
+    ``a`` is the number of distinct stocks from Eastmoney's comprehensive
+    popularity Top100.  ``b`` is the number of distinct, successfully parsed
+    industry-research articles mapped to this industry in the fixed 24-hour
+    window.  The two inputs deliberately remain visible instead of being
+    hidden behind an opaque score.
+    """
+
+    rank: int
+    industry: str
+    heat: float
+    a: int
+    a_percentile: float
+    b: int
+    b_percentile: float
+    mapping_status: str = "mapped"
+    source_status: str = "complete"
+    article_urls: tuple[str, ...] = ()
+
+    @property
+    def heat_score(self) -> float:
+        """Descriptive alias used by callers that prefer an explicit name."""
+
+        return self.heat
+
+    @property
+    def a_count(self) -> int:
+        return self.a
+
+    @property
+    def b_count(self) -> int:
+        return self.b
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rank": self.rank,
+            "industry": self.industry,
+            "heat": self.heat,
+            "a": self.a,
+            "a_percentile": self.a_percentile,
+            "b": self.b,
+            "b_percentile": self.b_percentile,
+            "mapping_status": self.mapping_status,
+            "source_status": self.source_status,
+            "article_urls": list(self.article_urls),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "IndustryHeatRow":
+        # ``heat_score``/``a_count``/``b_count`` are accepted for early
+        # development snapshots without changing the canonical wire format.
+        return cls(
+            rank=int(data.get("rank", 0)),
+            industry=str(data.get("industry") or ""),
+            heat=float(data.get("heat", data.get("heat_score", 0.0))),
+            a=int(data.get("a", data.get("a_count", 0))),
+            a_percentile=float(data.get("a_percentile", 0.0)),
+            b=int(data.get("b", data.get("b_count", 0))),
+            b_percentile=float(data.get("b_percentile", 0.0)),
+            mapping_status=str(data.get("mapping_status") or "mapped"),
+            source_status=str(data.get("source_status") or "complete"),
+            article_urls=tuple(
+                str(item) for item in data.get("article_urls", []) if str(item).strip()
+            ),
+        )
+
+
+@dataclass(slots=True)
+class IndustryHeatSnapshot:
+    """A serializable industry-heat result and its visible quality counts."""
+
+    snapshot_at: datetime | None = None
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    rows: list[IndustryHeatRow] = field(default_factory=list)
+    top100_total: int = 0
+    top100_mapped: int = 0
+    mapping_coverage: float = 0.0
+    research_article_total: int = 0
+    research_article_mapped: int = 0
+    unmapped_article_count: int = 0
+    mapping_status: str = "unavailable"
+    source_status: str = "unavailable"
+    source_error: str | None = None
+    # Runtime-only current-refresh article objects.  The serialized contract
+    # remains row-based; daily history keeps article URLs and cache rows.
+    articles: list[ParsedArticle] = field(default_factory=list, repr=False, compare=False)
+
+    @property
+    def is_complete(self) -> bool:
+        return self.source_status == "complete" and self.mapping_status == "complete"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "snapshot_at": self.snapshot_at.isoformat() if self.snapshot_at else None,
+            "window_start": self.window_start.isoformat() if self.window_start else None,
+            "window_end": self.window_end.isoformat() if self.window_end else None,
+            "rows": [row.to_dict() for row in self.rows],
+            "top100_total": self.top100_total,
+            "top100_mapped": self.top100_mapped,
+            "mapping_coverage": self.mapping_coverage,
+            "research_article_total": self.research_article_total,
+            "research_article_mapped": self.research_article_mapped,
+            "unmapped_article_count": self.unmapped_article_count,
+            "mapping_status": self.mapping_status,
+            "source_status": self.source_status,
+            "source_error": self.source_error,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "IndustryHeatSnapshot":
+        if not data:
+            return cls()
+        return cls(
+            snapshot_at=_dt(data.get("snapshot_at")),
+            window_start=_dt(data.get("window_start")),
+            window_end=_dt(data.get("window_end")),
+            rows=[IndustryHeatRow.from_dict(item) for item in data.get("rows", [])],
+            top100_total=int(data.get("top100_total", 0)),
+            top100_mapped=int(data.get("top100_mapped", 0)),
+            mapping_coverage=float(data.get("mapping_coverage", 0.0)),
+            research_article_total=int(data.get("research_article_total", 0)),
+            research_article_mapped=int(data.get("research_article_mapped", 0)),
+            unmapped_article_count=int(data.get("unmapped_article_count", 0)),
+            mapping_status=str(data.get("mapping_status") or "unavailable"),
+            source_status=str(data.get("source_status") or "unavailable"),
+            source_error=data.get("source_error"),
         )
 
 
@@ -591,6 +731,8 @@ class Snapshot:
     interaction_coverages: list[InteractionCoverage] = field(default_factory=list)
     # v2 里程碑 2：政策观察来源逐源覆盖（只读列表/失败关闭；绝不进入信号管线）。
     policy_coverages: list[SourceCoverage] = field(default_factory=list)
+    # 行业热度独立于原始四榜和研究信号；旧快照缺少此字段时为空。
+    industry_heat: IndustryHeatSnapshot = field(default_factory=IndustryHeatSnapshot)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -608,6 +750,7 @@ class Snapshot:
             "interaction_rankings": [row.to_dict() for row in self.interaction_rankings],
             "interaction_coverages": [coverage.to_dict() for coverage in self.interaction_coverages],
             "policy_coverages": [coverage.to_dict() for coverage in self.policy_coverages],
+            "industry_heat": self.industry_heat.to_dict(),
         }
 
     @classmethod
@@ -730,6 +873,7 @@ class Snapshot:
                 SourceCoverage.from_dict(item)
                 for item in data.get("policy_coverages", [])
             ],
+            industry_heat=IndustryHeatSnapshot.from_dict(data.get("industry_heat")),
         )
 
 

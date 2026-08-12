@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 APP_NAME = "A股热度"
 APP_SLUG = "AshareHotPot"
-APP_VERSION = "1.1.2"
+APP_VERSION = "1.3.0"
 PROJECT_URL = "https://github.com/3154638220/ashare-hotpot"
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
@@ -239,6 +239,9 @@ class AppSettings:
     app_root: Path = field(default_factory=default_app_root)
     sources: tuple[SourceConfig, ...] = DEFAULT_SOURCES
     interaction_sources: tuple[SourceConfig, ...] = INTERACTION_SOURCES
+    # Legacy research source metadata remains available to compatibility
+    # readers and historical coverage diagnostics.  RefreshService filters
+    # every ``research_activity`` source from active collection/metrics.
     research_sources: tuple[SourceConfig, ...] = RESEARCH_SOURCES
     policy_sources: tuple[PolicySourceConfig, ...] = POLICY_SOURCES
     window_hours: int = 24

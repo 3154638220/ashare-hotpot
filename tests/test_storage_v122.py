@@ -168,10 +168,10 @@ def _seed_activity(storage: Storage) -> None:
         storage.upsert_institution(institution, NOW)
 
 
-def test_fresh_database_reports_122_and_occurrence_schema(tmp_path) -> None:
+def test_fresh_database_reports_current_schema_and_occurrence_schema(tmp_path) -> None:
     storage = Storage(tmp_path / "hotpot.db")
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 122
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_V122_TABLES <= _table_names(connection)
         assert {"metric_version", "source_cohort_id"} <= _metric_columns(connection)
 
@@ -182,7 +182,7 @@ def test_121_upgrade_creates_backup_once_and_preserves_legacy_metric(tmp_path) -
 
     storage = Storage(path)
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 122
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert EXPECTED_V122_TABLES <= _table_names(connection)
 
     backup_path = path.with_name(BACKUP_NAME_122)
@@ -434,5 +434,5 @@ def test_activity_delete_cascades_occurrence_rows(tmp_path) -> None:
     assert storage.get_research_participant_occurrences("act-1") == []
 
 
-def test_schema_constant_is_122() -> None:
-    assert SCHEMA_VERSION == 122
+def test_schema_constant_is_123() -> None:
+    assert SCHEMA_VERSION == 123

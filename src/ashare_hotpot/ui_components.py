@@ -32,6 +32,7 @@ from .models import (
     InteractionRankingRow,
     InteractionRecord,
     NewsEvent,
+    ParsedArticle,
     PopularityRankRow,
     RankingRow,
 )
@@ -160,6 +161,12 @@ class StockDetailPanel(QFrame):
         self.open_button.setEnabled(False)
         self.open_button.clicked.connect(self.open_primary)
         button_row.addWidget(self.open_button)
+        self.official_button = QPushButton("打开东方财富官方页")
+        self.official_button.setIcon(icon("info"))
+        self.official_button.setEnabled(False)
+        self.official_button.clicked.connect(self.open_official)
+        self.official_button.hide()
+        button_row.addWidget(self.official_button)
         layout.addLayout(button_row)
 
     def clear(self) -> None:
@@ -172,8 +179,12 @@ class StockDetailPanel(QFrame):
         self.article_tree.show()
         self.open_button.setEnabled(False)
         self.open_button.setText("打开原文")
+        self.official_button.setEnabled(False)
+        self.official_button.hide()
 
     def set_news(self, row: RankingRow, events: list[NewsEvent]) -> None:
+        self.official_button.hide()
+        self.official_button.setEnabled(False)
         self.current_row = row
         self.current_source = "ths"
         self.title_label.setText(row.name)
@@ -210,6 +221,8 @@ class StockDetailPanel(QFrame):
         self.open_button.setEnabled(self.article_tree.topLevelItemCount() > 0)
 
     def set_interaction(self, row: InteractionRankingRow, records: list[InteractionRecord]) -> None:
+        self.official_button.hide()
+        self.official_button.setEnabled(False)
         self.current_row = row
         self.current_source = "interaction"
         self.title_label.setText(row.name)
@@ -278,20 +291,56 @@ class StockDetailPanel(QFrame):
             parts.append(f"涨跌幅 {row.change_percent:+.2f}%")
         self.summary_label.setText(" · ".join(parts))
         self.article_tree.clear()
-        self.article_tree.hide()
-        self.open_button.setText("打开官方页")
-        self.open_button.setEnabled(bool(row.url))
+        self.article_tree.setColumnCount(3)
+        self.article_tree.setHeaderLabels(["本次新闻快照相关文章", "来源", "时间"])
+        self.article_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.article_tree.header().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.article_tree.header().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.article_tree.show()
+        self.open_button.setText("打开所选新闻")
+        self.official_button.setText("打开东方财富官方页")
+        self.official_button.setVisible(bool(row.url))
+        self.official_button.setEnabled(bool(row.url))
+
+    def set_popularity_articles(
+        self,
+        row: PopularityRankRow,
+        source_key: str,
+        articles: list[ParsedArticle],
+    ) -> None:
+        """Show the ordinary news snapshot alongside the official board row."""
+
+        self.set_popularity(row, source_key)
+        for article in sorted(articles, key=lambda item: item.published_at, reverse=True):
+            if row.code not in {stock.code for stock in article.stocks}:
+                continue
+            item = QTreeWidgetItem(
+                [
+                    article.title,
+                    article.provider_name or article.channel_name or article.source_name,
+                    article.published_at.strftime("%m-%d %H:%M"),
+                ]
+            )
+            item.setData(0, Qt.UserRole, article.url)
+            item.setToolTip(0, article.title)
+            item.setForeground(0, QColor(COLOR_LINK))
+            self.article_tree.addTopLevelItem(item)
+        if self.article_tree.topLevelItemCount():
+            self.article_tree.setCurrentItem(self.article_tree.topLevelItem(0))
+        self.open_button.setEnabled(self.article_tree.topLevelItemCount() > 0)
+        if not self.article_tree.topLevelItemCount():
+            self.summary_label.setText(self.summary_label.text() + " · 本次新闻快照无相关文章")
 
     def open_primary(self) -> None:
-        if isinstance(self.current_row, PopularityRankRow):
-            if self.current_row.url:
-                self.open_url_requested.emit(self.current_row.url)
-            return
         item = self.article_tree.currentItem()
         if item is not None:
             url = item.data(0, Qt.UserRole)
             if url:
                 self.open_url_requested.emit(str(url))
+
+    def open_official(self) -> None:
+        if isinstance(self.current_row, PopularityRankRow) and self.current_row.url:
+            self.open_url_requested.emit(self.current_row.url)
 
     def _open_article(self, item: QTreeWidgetItem, _column: int) -> None:
         url = item.data(0, Qt.UserRole)

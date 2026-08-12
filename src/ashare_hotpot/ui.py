@@ -41,6 +41,7 @@ from .models import (
     InstitutionZ20ViewRow,
     InteractionRankingRow,
     InteractionRecord,
+    IndustryHeatRow,
     NewsEvent,
     PersistenceViewRow,
     PopularityRankRow,

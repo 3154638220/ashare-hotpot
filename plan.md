@@ -2086,3 +2086,92 @@ live 全套三次均为 `12 passed, 1 failed`（互动易活动流 30 秒读超�
 静默卸载成功。安装包 `AshareHotPot-Setup-1.1.1-x64.exe` 为 44,434,994 字节，SHA-256
 `40390E4260559B1052478B0646FB43AFE4D711DFDE411FAF08C77D02FB03E024`。本补丁无对应功能里程碑复选框，未改复选框；
 研究评估仍为 LLM 标注口径，研究机构列名召回 0.857 的既有风险与未签名 SmartScreen 风险继续公开。
+
+---
+
+# 行业热度与资讯联动改造（新增任务）
+
+> 状态：已完成；作为 v1.3.0 发布范围进入发布收尾。
+
+本任务将东方财富综合人气 Top100 的一级行业覆盖（A）与同花顺“行业研究”栏目最近
+24 小时可解析文章数（B）组成独立的“行业热度”榜。飙升榜不参与 A，行业热度不与
+原有四榜或研究信号合成总分。B 优先使用正文显式行业标签，按固定保守别名映射到
+东方财富 EM2016 一级行业；没有显式标签时才按正文明确关联股票回退。无法映射的
+股票和文章不计入对应分母，并对用户显示覆盖/来源状态。
+
+后续里程碑还包括：复用 `industry_research` 的 24 小时来源覆盖、schema 122→123
+行业日快照、独立行业导航与资讯/趋势详情，以及人气/飙升个股与本次新闻快照的联动。
+“机构升温”“持续关注”入口和后台调研抓取退役，但旧表和历史数据保留，不做不可逆清理；
+同花顺问财排名、机构研报数、持仓或研报推断不纳入替代功能。
+
+### 行业热度里程碑 0：数据契约与透明计算
+
+- [x] 新增 `IndustryHeatRow`、`IndustryHeatSnapshot`，并让旧 `Snapshot` 以空
+  `industry_heat` 默认值兼容读取。
+- [x] 冻结 A/B 映射、24 小时边界、并列平均秩分位、B=0、单行业和稳定排序测试。
+
+里程碑 0 已完成模型、固定映射与纯计算验收。当前实现另已接入刷新服务：
+`industry_research` 固定回溯 24 小时，普通新闻榜继续遵循用户窗口；行业热度复用本次
+东方财富综合人气榜和已解析文章生成当前 `Snapshot.industry_heat`，并将来源失败、过期、
+映射覆盖和未映射文章数保留为可见状态。显式行业标签已随 schema 123 持久化，跨刷新
+与日快照均保留文章 URL 和行业映射依据。
+
+### Industry heat milestone 1: schema 123 and durable daily history
+
+- [x] Complete the transactional, idempotent 122→123 migration and create one `hotpot.db.pre-123.bak` backup.
+- [x] Add industry daily snapshot metadata/detail tables; only complete results enter history and an existing day is immutable.
+- [x] Persist explicit article industry tags; legacy articles read with empty tags; `clear_all` and diagnostics explicitly cover the new tables.
+
+Acceptance record: storage-related tests passed (`41 passed`); schema 123 tests, full offline
+regression, active live contracts, and the Windows onedir build are recorded in milestone 2 below.
+
+### Industry heat milestone 2: 18:00 publication gate and navigation
+
+- [x] Only after 18:00 Asia/Shanghai, and only on a fresh non-stale Eastmoney
+  Top100 plus complete 24-hour `industry_research` coverage, write the first
+  complete industry result for that Shanghai day. Failed/partial/cache-only
+  refreshes remain visible but never enter the historical curve; an existing
+  day is immutable and a later refresh may retry a missing day.
+- [x] Add the independent `行业热度` navigation, the fixed eight-column table,
+  stock-news linkage for the 综合人气/飙升榜, industry article details and the
+  30-point trend view with visible gaps.
+- [x] Retire the institution navigation, filters, detail/export entry points,
+  trading-calendar sync and `research_activity` refresh stage. Keep legacy
+  institution tables, models and read paths for historical compatibility.
+
+Milestone 2 product boundary: announcement sources remain available to the
+confirmed-positive and potential-catalyst pipelines; no institution activity,
+Q&A ranking, holdings or research-report inference is used as an industry
+heat substitute. The implementation must preserve visible partial/stale/
+unavailable states and must not change the existing four original boards.
+
+Implementation audit (2026-08-12): service-side 18:00 gating, immutable daily history retry semantics, independent
+industry navigation, stock-news linkage, article detail, CSV/copy parity, trend gaps, and removal
+of institution navigation/filters/detail/export entry points are covered by offline tests. The
+active refresh path filters all `kind="research_activity"` sources and no longer invokes trading
+calendar synchronization or institution metric calculation; legacy tables, models and read
+helpers remain available for compatibility.
+
+Validation note (2026-08-12): active live contracts were explicitly run with
+`ASHARE_HOTPOT_LIVE_TEST=1`: `9 passed, 5 skipped, 653 deselected`. The five skips are the
+retired institution `research_activity` and trading-calendar adapters; their offline parser and
+legacy-read tests remain. The live run includes the new Tonghuashun industry-research list/detail
+and Eastmoney stock-industry mapping contracts. Full offline regression passed with no failures
+and 14 live-marked tests skipped by default. Windows 11 x64 PyInstaller 6.21.0 onedir build
+passed via `scripts/build.ps1 -SkipInstaller`, producing `dist/AshareHotPot`. No version bump,
+commit, push, or release action was performed.
+
+Release audit (2026-08-13, v1.3.0): version metadata, README, project introduction, in-app
+methodology and installer wording were aligned with the active product: industry heat plus the
+four original boards and announcement-driven research signals; institution navigation and active
+research-activity refresh remain retired while legacy storage/read paths are retained. Clipboard
+tests now verify the exact text passed to Qt instead of racing the process-global Windows
+clipboard. Full offline regression passed (`656 passed, 14 skipped`). The first live attempt was
+blocked by sandbox networking (`WinError 10013`); the approved network run passed
+(`9 passed, 5 skipped, 656 deselected`), with only retired adapters skipped. Windows 11 x64,
+Python 3.12.7, PyInstaller 6.21.0 onedir and Inno Setup 6.7.3 installer builds passed. Fresh
+onedir startup initialized schema 123 with `integrity_check=ok`; a silent installer smoke test
+upgraded an isolated schema-122 database to 123, created `hotpot.db.pre-123.bak`, passed
+`integrity_check=ok`, then silently uninstalled. The unsigned installer is
+`AshareHotPot-Setup-1.3.0-x64.exe` (44,457,180 bytes), SHA-256
+`3B0380D25EE3F8A898CED3F7CAC01C87CD5037107DBD37A8C976E4ABDAEBF1C0`.

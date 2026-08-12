@@ -7,6 +7,7 @@ from typing import Iterable
 
 from .models import (
     DiscoveryViewRow,
+    IndustryHeatRow,
     InstitutionZ20ViewRow,
     InteractionRankingRow,
     PersistenceViewRow,
@@ -28,6 +29,7 @@ SOURCE_LABELS = {
     "persist60": "60日持续关注",
     "persist120": "120日持续关注",
     "discovery": "待核验",
+    "industry": "行业热度",
 }
 
 CSV_HEADERS = {
@@ -43,6 +45,7 @@ CSV_HEADERS = {
     "persist120": ("排名", "股票名称", "代码", "窗口", "持续关注分", "活跃周数/比例", "机构集团数", "重复跟进比例", "研究深度", "单日集中度", "主要关注主题", "覆盖状态"),
     "persistence_v2": ("排名", "股票名称", "代码", "窗口", "持续关注规则指数", "活跃周数/比例", "机构集团数", "重复跟进比例", "研究深度", "单日集中度", "主要关注主题", "指标版本", "来源 cohort", "日期质量", "排除组织数", "暂定原因", "覆盖状态"),
     "discovery": ("排名", "股票名称", "代码", "发现类型", "原始标题", "触发原因", "正文状态", "发布时间", "来源", "质量状态"),
+    "industry": ("排名", "行业", "热度", "A", "A分位", "B", "B分位", "映射/来源状态"),
 }
 
 QUALITY_LABELS = {
@@ -66,8 +69,14 @@ def default_export_name(source_key: str, created_at: datetime | None) -> str:
 
 def row_values(
     source_key: str,
-    row: RankingRow | PopularityRankRow | InteractionRankingRow | ShortTermViewRow | InstitutionZ20ViewRow | PersistenceViewRow | DiscoveryViewRow,
+    row: RankingRow | PopularityRankRow | InteractionRankingRow | IndustryHeatRow | ShortTermViewRow | InstitutionZ20ViewRow | PersistenceViewRow | DiscoveryViewRow,
 ) -> tuple[object, ...]:
+    if isinstance(row, IndustryHeatRow):
+        return (
+            row.rank, row.industry, f"{row.heat:.2f}", row.a,
+            f"{row.a_percentile:.2f}", row.b, f"{row.b_percentile:.2f}",
+            f"{row.mapping_status}/{row.source_status}",
+        )
     if isinstance(row, DiscoveryViewRow):
         return (
             row.rank,
@@ -206,7 +215,7 @@ def row_values(
 def export_csv(
     path: Path,
     source_key: str,
-    rows: Iterable[RankingRow | PopularityRankRow | InteractionRankingRow | ShortTermViewRow | InstitutionZ20ViewRow | PersistenceViewRow | DiscoveryViewRow],
+    rows: Iterable[RankingRow | PopularityRankRow | InteractionRankingRow | IndustryHeatRow | ShortTermViewRow | InstitutionZ20ViewRow | PersistenceViewRow | DiscoveryViewRow],
 ) -> int:
     """Export rows in the caller-provided visible order for Excel-friendly use."""
 

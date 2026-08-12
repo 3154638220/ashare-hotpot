@@ -30,17 +30,44 @@ QWidget {{
 QToolBar#commandBar, QToolBar#navigationBar {{
     background: {COLOR_SURFACE};
     border: 0;
-    spacing: 6px;
+    spacing: 8px;
     padding: 6px 12px;
 }}
-QToolBar#navigationBar {{ border-bottom: 1px solid {COLOR_BORDER}; padding: 4px 12px; }}
+QToolBar#navigationBar {{
+    border-bottom: 1px solid {COLOR_BORDER};
+    spacing: 10px;
+    padding: 5px;
+    padding-left: 12px;
+    padding-right: 12px;
+}}
 QToolBar#commandBar::separator, QToolBar#navigationBar::separator {{
     width: 1px;
     background: {COLOR_BORDER};
     margin: 8px 6px;
 }}
 QLabel#brandTitle {{ font-size: 15px; font-weight: 700; padding-right: 8px; }}
-QLabel#navigationGroupLabel {{ color: {COLOR_MUTED}; font-size: 12px; font-weight: 700; padding: 0 4px; }}
+QFrame#navigationGroup {{
+    background: #0D141D;
+    border: 1px solid #202D3B;
+    border-radius: 8px;
+}}
+QFrame#navigationGroup[section="industry"] {{
+    background: #0E181C;
+    border-color: #244047;
+}}
+QFrame#navigationGroup[section="research"] {{
+    background: #101620;
+    border-color: #273549;
+}}
+QLabel#navigationGroupLabel {{
+    min-height: 29px;
+    color: #748399;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 9px 1px 9px;
+}}
+QFrame#navigationGroup[section="industry"] QLabel#navigationGroupLabel {{ color: #6F9695; }}
+QFrame#navigationGroup[section="research"] QLabel#navigationGroupLabel {{ color: #7F8EAA; }}
 QLabel#viewTitle {{ font-size: 17px; font-weight: 700; }}
 QLabel#mutedLabel, QLabel#viewSubtitle, QLabel#toolLabel, QLabel#detailMeta {{ color: {COLOR_MUTED}; }}
 QLabel#viewSubtitle, QLabel#detailMeta {{ font-size: 12px; }}
@@ -96,10 +123,21 @@ QPushButton#sourceTab {{
     border-color: transparent;
     color: {COLOR_MUTED};
     font-weight: 600;
-    padding: 0 8px;
+    min-height: 27px;
+    max-height: 27px;
+    padding: 0 9px 1px 9px;
 }}
-QPushButton#sourceTab:hover {{ background: #192331; color: {COLOR_TEXT}; }}
-QPushButton#sourceTab:checked {{ background: #1A2A40; border-color: #315887; color: #DCEAFF; }}
+QPushButton#sourceTab:hover {{ background: #182330; color: {COLOR_TEXT}; }}
+QPushButton#sourceTab:checked {{
+    background: #1B2D45;
+    border-color: #365F91;
+    color: #E3EEFF;
+}}
+QFrame#navigationGroup[section="industry"] QPushButton#sourceTab:checked {{
+    background: #163238;
+    border-color: #32646A;
+    color: #D7F3F0;
+}}
 QToolButton#moreButton {{ font-size: 19px; font-weight: 700; padding: 0 9px; }}
 QToolButton#qualityToggle {{ background: transparent; border-color: transparent; color: {COLOR_MUTED}; padding: 0 4px; }}
 QLineEdit, QSpinBox, QComboBox {{

@@ -34,6 +34,11 @@ from .storage import Storage
 
 logger = logging.getLogger(__name__)
 
+# Current short-term signals use public announcements and explicit company
+# statements.  Legacy institution-activity documents stay in SQLite for
+# compatibility but never enter this active signal pipeline.
+ACTIVE_SIGNAL_DOCUMENT_KINDS = frozenset({"announcement", "news"})
+
 # plan.md 10.4: source confidence by provider.
 SOURCE_CONFIDENCE: dict[str, float] = {
     "cninfo": 1.00,   # 交易所或巨潮正式披露
@@ -310,7 +315,10 @@ class ShortTermBoardService:
         errors: list[str] = []
         try:
             cluster_result = self.clusterer.process_window(
-                window_start - MERGE_WINDOW, window_end, now
+                window_start - MERGE_WINDOW,
+                window_end,
+                now,
+                kinds=tuple(sorted(ACTIVE_SIGNAL_DOCUMENT_KINDS)),
             )
         except Exception as exc:  # noqa: BLE001 - degrade per refresh
             logger.warning("persistent clustering failed: %s", exc)
@@ -336,6 +344,8 @@ class ShortTermBoardService:
         signals: list[EventSignal] = []
         for cluster in clusters:
             documents = self._cluster_documents(cluster)
+            if not documents:
+                continue
             try:
                 extractions = extractor.extract_all(cluster, documents)
             except Exception as exc:  # noqa: BLE001 - one event only
@@ -761,7 +771,11 @@ class ShortTermBoardService:
             cluster.last_seen_at + MERGE_WINDOW,
         )
         ids = set(cluster.document_ids)
-        return tuple(doc for doc in documents if doc.document_id in ids)
+        return tuple(
+            doc
+            for doc in documents
+            if doc.document_id in ids and doc.kind in ACTIVE_SIGNAL_DOCUMENT_KINDS
+        )
 
     @staticmethod
     def _representative(

@@ -82,3 +82,18 @@ def test_first_page_404_propagates() -> None:
     except Http404Error:
         return
     raise AssertionError("first-page 404 should propagate")
+
+
+def test_first_page_identity_or_structure_break_fails_closed() -> None:
+    for html in (
+        "<html><body>请先登录后查看</body></html>",
+        "<html><body><div class='unexpected-layout'>not a list</div></body></html>",
+    ):
+        source = _source()
+        source.client.pages["https://example.test/list/"] = html  # type: ignore[attr-defined]
+        now = datetime(2026, 8, 5, 22, 0, tzinfo=SHANGHAI_TZ)
+        try:
+            result = source.fetch_page(1, now)
+        except RuntimeError:
+            continue
+        assert result.items == (), "identity/structure page must not become a valid board"

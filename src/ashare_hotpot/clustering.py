@@ -186,8 +186,13 @@ class PersistentEventClusterer:
         start: datetime,
         end: datetime,
         now: datetime,
+        *,
+        kinds: tuple[str, ...] | None = None,
     ) -> ClusterRunResult:
         documents = self.storage.get_source_documents_between(start, end)
+        if kinds is not None:
+            allowed = frozenset(kinds)
+            documents = [document for document in documents if document.kind in allowed]
         return self.process_documents(documents, now)
 
     def process_documents(

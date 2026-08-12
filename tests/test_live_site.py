@@ -15,6 +15,7 @@ from ashare_hotpot.config import (
 )
 from ashare_hotpot.parsing import parse_article_detail
 from ashare_hotpot.pdf import extract_pdf_text
+from ashare_hotpot.industries import fetch_stock_industries
 from ashare_hotpot.policy_sources import PolicySource
 from ashare_hotpot.popularity import fetch_official_popularity
 from ashare_hotpot.sources import (
@@ -50,6 +51,20 @@ def test_live_company_news_page_and_article() -> None:
     assert any(article.stocks for article in parsed)
 
 
+def test_live_industry_research_and_eastmoney_industry_mapping() -> None:
+    settings = AppSettings(request_retries=1, request_timeout_seconds=30)
+    industry_config = next(source for source in DEFAULT_SOURCES if source.key == "industry_research")
+    now = datetime.now(SHANGHAI_TZ)
+    with PoliteHttpClient(settings, threading.Event()) as client:
+        page = NewsSource(industry_config, client).fetch_page(1, now)
+        assert 1 <= len(page.items) <= 50
+        article = parse_article_detail(page.items[0], client.get_text(page.items[0].url))
+        mappings = fetch_stock_industries(client, {stock.code for stock in article.stocks})
+    assert article.channel_key == "industry_research"
+    assert article.title
+    assert mappings or article.stocks == ()
+
+
 def test_live_official_popularity_board() -> None:
     settings = AppSettings(request_retries=1, request_timeout_seconds=20)
     with PoliteHttpClient(settings, threading.Event()) as client:
@@ -82,6 +97,7 @@ def test_live_sse_interaction_feed() -> None:
     assert all(record.question_url.startswith("https://sns.sseinfo.com/qadetail.do?") for record in result.items)
 
 
+@pytest.mark.skip(reason="trading-calendar synchronization retired from the active pipeline")
 def test_live_sse_closed_schedule() -> None:
     settings = AppSettings(request_retries=1, request_timeout_seconds=20)
     with PoliteHttpClient(settings, threading.Event()) as client:
@@ -91,6 +107,7 @@ def test_live_sse_closed_schedule() -> None:
     assert all(value.year == year for value in holidays)
 
 
+@pytest.mark.skip(reason="institution research_activity synchronization retired; parser is covered offline")
 def test_live_cninfo_announcement_and_research_streams() -> None:
     settings = AppSettings(request_retries=1, request_timeout_seconds=20)
     announcement_config = next(
@@ -112,6 +129,7 @@ def test_live_cninfo_announcement_and_research_streams() -> None:
     assert all(item.title for item in research_page.items)
 
 
+@pytest.mark.skip(reason="institution research_activity synchronization retired; parser is covered offline")
 def test_live_irm_ircs_investor_relation_stream() -> None:
     """互动易投资者关系活动公开流（searchTypes=4）免登录契约。
 
@@ -153,6 +171,7 @@ def test_live_irm_ircs_investor_relation_stream() -> None:
     assert first_ids.isdisjoint(second_ids)
 
 
+@pytest.mark.skip(reason="institution research_activity synchronization retired; parser is covered offline")
 def test_live_sse_publish_feed_and_real_pdf() -> None:
     settings = AppSettings(request_retries=1, request_timeout_seconds=20)
     config = next(
@@ -221,6 +240,7 @@ def test_live_sse_announcement_stream() -> None:
     assert first_ids.isdisjoint(second_ids)
 
 
+@pytest.mark.skip(reason="institution research_activity synchronization retired; parser is covered offline")
 def test_live_bse_performance_stream() -> None:
     """北交所业绩说明会/投资者关系活动 JSONP 流免登录契约。"""
 

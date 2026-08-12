@@ -14,7 +14,6 @@ from ashare_hotpot.models import (
     SourceDocument,
     StockMention,
 )
-from ashare_hotpot.research_sync import ResearchSyncResult
 from ashare_hotpot.service import RefreshService
 from ashare_hotpot.sources import PageResult, RefreshCancelled
 from ashare_hotpot.storage import Storage
@@ -143,7 +142,7 @@ def test_refresh_pipeline_and_cache(monkeypatch, tmp_path) -> None:
     assert research_purges == [NOW, NOW]
 
 
-def test_refresh_runs_research_board_stage_and_writes_stats(
+def test_refresh_does_not_run_retired_institution_stage(
     monkeypatch, tmp_path
 ) -> None:
     import ashare_hotpot.service as service_module
@@ -194,15 +193,10 @@ def test_refresh_runs_research_board_stage_and_writes_stats(
 
     snapshot = RefreshService(settings, storage).refresh(now=now, progress=None)
 
-    # 研究榜阶段在刷新内运行：解析文档、持久化活动并写入统计。
-    assert snapshot.stats["research_documents_scanned"] == 1
-    assert snapshot.stats["research_activities"] == 1
-    assert snapshot.stats["research_participants"] == 6
-    assert snapshot.stats["research_z20_stocks"] == 1
-    # 日历不足 120 交易日 → 冷启动暂定。
-    assert snapshot.stats["research_z20_provisional"] == 1
-    assert snapshot.stats["research_persistence_60"] == 1
-    assert snapshot.stats["research_board_errors"] == 0
+    # Legacy source documents remain readable, but refresh no longer parses
+    # institution activity, syncs a calendar, or publishes institution metrics.
+    assert snapshot.stats["research_calendar_days"] == 0
+    assert storage.get_latest_institution_metric_snapshots("z20") == {}
 
 
 def test_refresh_runs_policy_sync_and_writes_stats(monkeypatch, tmp_path) -> None:
@@ -280,42 +274,12 @@ def test_refresh_runs_policy_sync_and_writes_stats(monkeypatch, tmp_path) -> Non
     assert "国务院" in quality
 
 
-@pytest.mark.parametrize("official_calendar_available", [True, False])
-def test_refresh_populates_calendar_before_publishing_institution_metrics(
-    monkeypatch, tmp_path, official_calendar_available
+def test_refresh_ignores_retired_activity_sources_and_calendar(
+    monkeypatch, tmp_path
 ) -> None:
     import ashare_hotpot.service as service_module
 
-    class FakeCalendarSource:
-        def __init__(self, _client) -> None:
-            pass
-
-        def fetch_holidays(self):
-            if not official_calendar_available:
-                raise RuntimeError("休市安排暂时不可用")
-            return NOW.year, (NOW.date().replace(month=1, day=1),)
-
-    class NoopResearchSyncService:
-        def __init__(self, _settings, _storage) -> None:
-            pass
-
-        def sync_once(self, **_kwargs) -> ResearchSyncResult:
-            return ResearchSyncResult(
-                pages_consumed=0,
-                pdfs_consumed=0,
-                documents_added=0,
-                documents_skipped=0,
-                discoveries_added=0,
-                pdf_failures=0,
-                budget_exhausted=False,
-                coverages=(),
-            )
-
     monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
-    monkeypatch.setattr(service_module, "SseCalendarSource", FakeCalendarSource)
-    monkeypatch.setattr(
-        service_module, "ResearchSyncService", NoopResearchSyncService
-    )
     monkeypatch.setattr(
         service_module, "fetch_official_popularity", fake_popularity_fetch
     )
@@ -362,19 +326,9 @@ def test_refresh_populates_calendar_before_publishing_institution_metrics(
 
     snapshot = RefreshService(settings, storage).refresh(now=metric_now)
 
-    assert snapshot.stats["research_calendar_days"] >= 120
-    assert snapshot.stats["research_calendar_fallback"] == int(
-        not official_calendar_available
-    )
-    assert snapshot.stats["research_calendar_errors"] == int(
-        not official_calendar_available
-    )
-    assert snapshot.stats["research_z20_stocks"] == 1
-    assert snapshot.stats["research_persistence_60"] == 1
-    assert snapshot.stats["research_persistence_120"] == 1
-    assert "300999" in storage.get_latest_institution_metric_snapshots("z20")
-    expected_source = "sse" if official_calendar_available else "fallback"
-    assert storage.get_trading_day_source(NOW.year) == expected_source
+    assert snapshot.stats["research_calendar_days"] == 0
+    assert storage.get_latest_institution_metric_snapshots("z20") == {}
+    assert storage.get_trading_day_source(NOW.year) is None
 
 
 def test_refresh_uses_configured_window_hours(monkeypatch, tmp_path) -> None:
@@ -400,6 +354,133 @@ def test_refresh_uses_configured_window_hours(monkeypatch, tmp_path) -> None:
     assert snapshot.window_start == NOW - timedelta(hours=2)
     assert snapshot.window_end == NOW
     assert snapshot.stats["list_items"] == 2
+
+
+def test_industry_research_keeps_24h_window_when_news_window_is_12h(
+    monkeypatch, tmp_path
+) -> None:
+    import ashare_hotpot.service as service_module
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(
+        service_module, "fetch_official_popularity", fake_popularity_fetch
+    )
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(
+            SourceConfig(
+                "industry_research",
+                "行业研究",
+                "https://example.test/industry",
+            ),
+        ),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
+        window_hours=12,
+        max_pages_per_source=3,
+        detail_workers=1,
+    )
+    storage = Storage(settings.database_path)
+
+    snapshot = RefreshService(settings, storage).refresh(now=NOW)
+
+    # The -25h row is the cutoff probe; both -1h and -2h are retained for B,
+    # even though the ordinary snapshot window is only 12 hours.
+    assert snapshot.window_start == NOW - timedelta(hours=12)
+    assert snapshot.stats["list_items"] == 2
+    assert snapshot.industry_heat.window_start == NOW - timedelta(hours=24)
+    assert snapshot.industry_heat.research_article_total == 2
+    assert snapshot.industry_heat.rows[0].industry == "金融"
+    assert snapshot.industry_heat.rows[0].b == 2
+    assert snapshot.industry_heat.source_status == "complete"
+    assert snapshot.stats["industry_heat_source_complete"] == 1
+
+    # The second refresh uses the article and industry caches instead of
+    # fetching details or the public industry endpoint again.
+    detail_calls = FakeClient.detail_calls
+    industry_calls = FakeClient.industry_calls
+    second = RefreshService(settings, storage).refresh(now=NOW)
+    assert second.industry_heat.rows[0].b == 2
+    assert FakeClient.detail_calls == detail_calls
+    assert FakeClient.industry_calls == industry_calls
+
+
+def test_industry_daily_snapshot_publishes_after_18_only_once(
+    monkeypatch, tmp_path
+) -> None:
+    import ashare_hotpot.service as service_module
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("industry_research", "行业研究", "https://example.test/industry"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
+        window_hours=12,
+        max_pages_per_source=3,
+        detail_workers=1,
+    )
+    storage = Storage(settings.database_path)
+    service = RefreshService(settings, storage)
+
+    before = service.refresh(now=datetime(2026, 8, 4, 17, 0, tzinfo=SHANGHAI_TZ))
+    assert before.stats["industry_heat_daily_published"] == 0
+    assert storage.get_industry_daily_snapshots() == []
+
+    first = service.refresh(now=datetime(2026, 8, 4, 18, 0, tzinfo=SHANGHAI_TZ))
+    assert first.stats["industry_heat_daily_published"] == 1
+    assert len(storage.get_industry_daily_snapshots()) == 1
+
+    second = service.refresh(now=datetime(2026, 8, 4, 18, 5, tzinfo=SHANGHAI_TZ))
+    assert second.stats["industry_heat_daily_published"] == 0
+    assert len(storage.get_industry_daily_snapshots()) == 1
+
+
+def test_industry_article_failure_blocks_history_and_retries(
+    monkeypatch, tmp_path
+) -> None:
+    import ashare_hotpot.service as service_module
+
+    class RetryClient(FakeClient):
+        failures_remaining = 1
+
+        def get_text(self, url: str) -> str:
+            if "c1.shtml" in url and type(self).failures_remaining:
+                type(self).failures_remaining -= 1
+                raise RuntimeError("detail timeout")
+            return super().get_text(url)
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", RetryClient)
+    monkeypatch.setattr(service_module, "NewsSource", FakeSource)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
+    settings = AppSettings(
+        app_root=tmp_path,
+        sources=(SourceConfig("industry_research", "行业研究", "https://example.test/industry"),),
+        interaction_sources=(),
+        policy_sources=(),
+        research_sources=(),
+        window_hours=12,
+        max_pages_per_source=3,
+        detail_workers=1,
+    )
+    storage = Storage(settings.database_path)
+    service = RefreshService(settings, storage)
+
+    failed = service.refresh(now=NOW)
+    assert failed.stats["industry_heat_article_failures"] == 1
+    assert failed.industry_heat.source_status == "failed"
+    assert storage.get_industry_daily_snapshots() == []
+
+    recovered = service.refresh(now=NOW + timedelta(minutes=11))
+    assert recovered.stats["industry_heat_article_failures"] == 0
+    assert recovered.industry_heat.source_status == "complete"
+    assert recovered.stats["industry_heat_daily_published"] == 1
+    assert len(storage.get_industry_daily_snapshots()) == 1
 
 
 def test_cancelled_refresh_does_not_create_snapshot(monkeypatch, tmp_path) -> None:

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ashare-hotpot"
-version = "1.1.2"
-description = "A 股基本面消息、官方问答互动与东方财富人气榜的 Windows 桌面工具"
+version = "1.3.0"
+description = "A 股公开信息、行业热度与研究信号的 Windows 桌面工具"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

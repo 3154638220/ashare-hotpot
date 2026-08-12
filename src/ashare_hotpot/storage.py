@@ -28,6 +28,8 @@ from .models import (
     EventSignal,
     EvidenceRef,
     FailureInterval,
+    IndustryHeatRow,
+    IndustryHeatSnapshot,
     Institution,
     InstitutionAlias,
     InstitutionMetricSnapshotRecord,
@@ -50,12 +52,13 @@ from .models import (
 )
 
 
-SCHEMA_VERSION = 122
+SCHEMA_VERSION = 123
 BACKUP_NAME = "hotpot.db.pre-110.bak"
 BACKUP_NAME_111 = "hotpot.db.pre-111.bak"
 BACKUP_NAME_120 = "hotpot.db.pre-120.bak"
 BACKUP_NAME_121 = "hotpot.db.pre-121.bak"
 BACKUP_NAME_122 = "hotpot.db.pre-122.bak"
+BACKUP_NAME_123 = "hotpot.db.pre-123.bak"
 
 # Retention periods per plan.md section 7.4.  The ordinary article/interaction
 # cache purge keeps its own 7-day window; research data uses these cutoffs.
@@ -84,6 +87,7 @@ CREATE TABLE IF NOT EXISTS articles (
     provider_name TEXT NOT NULL DEFAULT '同花顺',
     content_type TEXT NOT NULL DEFAULT '新闻',
     stocks_json TEXT NOT NULL,
+    industry_tags_json TEXT NOT NULL DEFAULT '[]',
     filtered_reason TEXT,
     fetch_error TEXT,
     fetched_ts INTEGER NOT NULL
@@ -679,6 +683,51 @@ V122_TABLE_STATEMENTS: tuple[str, ...] = (
     "ON source_window_coverages(updated_ts)",
 )
 
+# Industry heat history is deliberately independent from the short-lived
+# article cache.  The date key is the Shanghai natural day and makes the
+# no-overwrite rule explicit at the database level.
+V123_TABLE_STATEMENTS: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS industry_heat_snapshots (
+        snapshot_date TEXT PRIMARY KEY,
+        snapshot_at_ts INTEGER NOT NULL,
+        window_start_ts INTEGER,
+        window_end_ts INTEGER,
+        top100_total INTEGER NOT NULL DEFAULT 0,
+        top100_mapped INTEGER NOT NULL DEFAULT 0,
+        mapping_coverage REAL NOT NULL DEFAULT 0,
+        research_article_total INTEGER NOT NULL DEFAULT 0,
+        research_article_mapped INTEGER NOT NULL DEFAULT 0,
+        unmapped_article_count INTEGER NOT NULL DEFAULT 0,
+        mapping_status TEXT NOT NULL,
+        source_status TEXT NOT NULL,
+        source_error TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_industry_heat_snapshots_at "
+    "ON industry_heat_snapshots(snapshot_at_ts DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS industry_heat_rows (
+        snapshot_date TEXT NOT NULL
+            REFERENCES industry_heat_snapshots(snapshot_date) ON DELETE CASCADE,
+        rank INTEGER NOT NULL,
+        industry TEXT NOT NULL,
+        heat REAL NOT NULL,
+        a INTEGER NOT NULL,
+        a_percentile REAL NOT NULL,
+        b INTEGER NOT NULL,
+        b_percentile REAL NOT NULL,
+        mapping_status TEXT NOT NULL,
+        source_status TEXT NOT NULL,
+        article_urls_json TEXT NOT NULL DEFAULT '[]',
+        PRIMARY KEY (snapshot_date, industry),
+        UNIQUE (snapshot_date, rank)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_industry_heat_rows_date_rank "
+    "ON industry_heat_rows(snapshot_date, rank)",
+)
+
 POPULARITY_STATE_KEY = "popularity"
 SOURCE_CACHE_PREFIX = "source_cache:"
 
@@ -714,6 +763,7 @@ class StorageStats:
     activity_occurrence_count: int = 0
     participant_occurrence_count: int = 0
     source_window_coverage_count: int = 0
+    industry_daily_snapshot_count: int = 0
 
 
 class Storage:
@@ -797,6 +847,10 @@ class Storage:
                         self._create_backup_if_needed(BACKUP_NAME_122)
                         self._migrate_to_122(connection)
                         version = 122
+                    if version == 122:
+                        self._create_backup_if_needed(BACKUP_NAME_123)
+                        self._migrate_to_123(connection)
+                        version = 123
                     if version != SCHEMA_VERSION:
                         raise RuntimeError(
                             "数据库版本 %d 无法升级到 %d" % (version, SCHEMA_VERSION)
@@ -837,6 +891,9 @@ class Storage:
                 connection.execute(statement)
             for statement in V122_TABLE_STATEMENTS:
                 connection.execute(statement)
+            for statement in V123_TABLE_STATEMENTS:
+                connection.execute(statement)
+            self._ensure_article_industry_tags_column(connection)
             self._ensure_institution_metric_metadata_columns(connection)
             self._ensure_institution_metric_batch_state(connection)
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
@@ -863,8 +920,11 @@ class Storage:
                 connection.execute(statement)
             for statement in V122_TABLE_STATEMENTS:
                 connection.execute(statement)
+            for statement in V123_TABLE_STATEMENTS:
+                connection.execute(statement)
             self._ensure_source_documents_page_count(connection)
             self._ensure_source_document_stock_names(connection)
+            self._ensure_article_industry_tags_column(connection)
             self._ensure_research_activity_columns(connection)
             self._ensure_institution_metric_metadata_columns(connection)
             self._ensure_institution_metric_batch_state(connection)
@@ -1108,6 +1168,25 @@ class Storage:
             connection.rollback()
             raise
 
+    def _migrate_to_123(self, connection: sqlite3.Connection) -> None:
+        """Add durable industry-heat day snapshots atomically.
+
+        Existing articles and all institution-era tables are retained.  The
+        industry tag column is additive and defaults to an empty list for
+        legacy articles that predate the industry board.
+        """
+
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            for statement in V123_TABLE_STATEMENTS:
+                connection.execute(statement)
+            self._ensure_article_industry_tags_column(connection)
+            connection.execute("PRAGMA user_version = 123")
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+
     def _backfill_discovery_candidates(
         self, connection: sqlite3.Connection
     ) -> None:
@@ -1227,6 +1306,20 @@ class Storage:
                     f"ALTER TABLE articles ADD COLUMN {column} {definition}"  # noqa: S608
                 )
 
+    @staticmethod
+    def _ensure_article_industry_tags_column(connection: sqlite3.Connection) -> None:
+        """Add the serialized explicit industry tags used by industry B."""
+
+        existing = {
+            str(row["name"])
+            for row in connection.execute("PRAGMA table_info(articles)").fetchall()
+        }
+        if "industry_tags_json" not in existing:
+            connection.execute(
+                "ALTER TABLE articles ADD COLUMN industry_tags_json "
+                "TEXT NOT NULL DEFAULT '[]'"
+            )
+
     def _migrate_legacy_guba(self) -> None:
         """Clear the old per-stock-bar scan data and drop old self-computed guba
         results from historical snapshots while keeping the news snapshot."""
@@ -1266,14 +1359,15 @@ class Storage:
 
     def upsert_article(self, article: ParsedArticle, fetched_at: datetime) -> None:
         payload = json.dumps([stock.to_dict() for stock in article.stocks], ensure_ascii=False)
+        industry_tags_payload = json.dumps(list(article.industry_tags), ensure_ascii=False)
         with self._connect() as connection:
             connection.execute(
                 """
                 INSERT INTO articles(
                     url, seq, title, summary, published_ts, channel_key, channel_name,
                     source_name, provider_key, provider_name, content_type, stocks_json,
-                    filtered_reason, fetch_error, fetched_ts
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    industry_tags_json, filtered_reason, fetch_error, fetched_ts
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(url) DO UPDATE SET
                     seq=excluded.seq,
                     title=excluded.title,
@@ -1286,6 +1380,7 @@ class Storage:
                     provider_name=excluded.provider_name,
                     content_type=excluded.content_type,
                     stocks_json=excluded.stocks_json,
+                    industry_tags_json=excluded.industry_tags_json,
                     filtered_reason=excluded.filtered_reason,
                     fetch_error=excluded.fetch_error,
                     fetched_ts=excluded.fetched_ts
@@ -1303,6 +1398,7 @@ class Storage:
                     article.provider_name,
                     article.content_type,
                     payload,
+                    industry_tags_payload,
                     article.filtered_reason,
                     article.fetch_error,
                     int(fetched_at.timestamp()),
@@ -1330,6 +1426,10 @@ class Storage:
 
     @staticmethod
     def _row_to_article(row: sqlite3.Row) -> ParsedArticle:
+        try:
+            industry_tags = json.loads(row["industry_tags_json"] or "[]")
+        except (IndexError, KeyError, TypeError, json.JSONDecodeError):
+            industry_tags = []
         payload: dict[str, Any] = {
             "seq": row["seq"],
             "url": row["url"],
@@ -1343,6 +1443,7 @@ class Storage:
             "provider_name": row["provider_name"],
             "content_type": row["content_type"],
             "stocks": json.loads(row["stocks_json"]),
+            "industry_tags": industry_tags,
             "filtered_reason": row["filtered_reason"],
             "fetch_error": row["fetch_error"],
         }
@@ -1498,6 +1599,11 @@ class Storage:
                     "SELECT COUNT(*) FROM source_window_coverages"
                 ).fetchone()[0]
             )
+            industry_daily_snapshot_count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM industry_heat_snapshots"
+                ).fetchone()[0]
+            )
         try:
             database_bytes = self.database_path.stat().st_size
         except OSError:
@@ -1523,6 +1629,170 @@ class Storage:
             activity_occurrence_count=activity_occurrence_count,
             participant_occurrence_count=participant_occurrence_count,
             source_window_coverage_count=source_window_coverage_count,
+            industry_daily_snapshot_count=industry_daily_snapshot_count,
+        )
+
+    def save_industry_daily_snapshot(
+        self,
+        snapshot: IndustryHeatSnapshot,
+        snapshot_date: date | None = None,
+    ) -> bool:
+        """Persist one complete Shanghai-day point without overwriting it.
+
+        The refresh service decides when the 18:00 gate has been reached;
+        storage enforces the second safety boundary that only complete
+        results enter history and an existing day is immutable.
+        """
+
+        if not snapshot.is_complete or snapshot.snapshot_at is None:
+            return False
+        day = snapshot_date or snapshot.snapshot_at.astimezone(SHANGHAI_TZ).date()
+        day_key = day.isoformat()
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO industry_heat_snapshots(
+                    snapshot_date, snapshot_at_ts, window_start_ts, window_end_ts,
+                    top100_total, top100_mapped, mapping_coverage,
+                    research_article_total, research_article_mapped,
+                    unmapped_article_count, mapping_status, source_status,
+                    source_error
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    day_key,
+                    int(snapshot.snapshot_at.timestamp()),
+                    int(snapshot.window_start.timestamp())
+                    if snapshot.window_start
+                    else None,
+                    int(snapshot.window_end.timestamp())
+                    if snapshot.window_end
+                    else None,
+                    snapshot.top100_total,
+                    snapshot.top100_mapped,
+                    snapshot.mapping_coverage,
+                    snapshot.research_article_total,
+                    snapshot.research_article_mapped,
+                    snapshot.unmapped_article_count,
+                    snapshot.mapping_status,
+                    snapshot.source_status,
+                    snapshot.source_error,
+                ),
+            )
+            if cursor.rowcount == 0:
+                return False
+            connection.executemany(
+                """
+                INSERT INTO industry_heat_rows(
+                    snapshot_date, rank, industry, heat, a, a_percentile,
+                    b, b_percentile, mapping_status, source_status,
+                    article_urls_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        day_key,
+                        row.rank,
+                        row.industry,
+                        row.heat,
+                        row.a,
+                        row.a_percentile,
+                        row.b,
+                        row.b_percentile,
+                        row.mapping_status,
+                        row.source_status,
+                        json.dumps(list(row.article_urls), ensure_ascii=False),
+                    )
+                    for row in snapshot.rows
+                ],
+            )
+        return True
+
+    def get_industry_daily_snapshot(self, snapshot_date: date) -> IndustryHeatSnapshot | None:
+        """Read one immutable industry history point, including its rows."""
+
+        with self._connect() as connection:
+            snapshot_row = connection.execute(
+                "SELECT * FROM industry_heat_snapshots WHERE snapshot_date=?",
+                (snapshot_date.isoformat(),),
+            ).fetchone()
+            if snapshot_row is None:
+                return None
+            row_rows = connection.execute(
+                "SELECT * FROM industry_heat_rows WHERE snapshot_date=? "
+                "ORDER BY rank ASC, industry ASC",
+                (snapshot_date.isoformat(),),
+            ).fetchall()
+        return self._industry_heat_snapshot_from_rows(snapshot_row, row_rows)
+
+    def get_industry_daily_snapshots(self, limit: int = 30) -> list[IndustryHeatSnapshot]:
+        """Read the newest valid daily points for the trend view."""
+
+        bounded_limit = max(0, int(limit))
+        if bounded_limit == 0:
+            return []
+        with self._connect() as connection:
+            snapshot_rows = connection.execute(
+                "SELECT * FROM industry_heat_snapshots "
+                "ORDER BY snapshot_date DESC LIMIT ?",
+                (bounded_limit,),
+            ).fetchall()
+            result: list[IndustryHeatSnapshot] = []
+            for snapshot_row in snapshot_rows:
+                row_rows = connection.execute(
+                    "SELECT * FROM industry_heat_rows WHERE snapshot_date=? "
+                    "ORDER BY rank ASC, industry ASC",
+                    (snapshot_row["snapshot_date"],),
+                ).fetchall()
+                result.append(self._industry_heat_snapshot_from_rows(snapshot_row, row_rows))
+        return result
+
+    @staticmethod
+    def _industry_heat_snapshot_from_rows(
+        snapshot_row: sqlite3.Row,
+        row_rows: Iterable[sqlite3.Row],
+    ) -> IndustryHeatSnapshot:
+        def _timestamp(value: object) -> datetime | None:
+            return (
+                datetime.fromtimestamp(int(value), tz=SHANGHAI_TZ)
+                if value is not None
+                else None
+            )
+
+        rows: list[IndustryHeatRow] = []
+        for row in row_rows:
+            try:
+                article_urls = json.loads(row["article_urls_json"] or "[]")
+            except (TypeError, json.JSONDecodeError):
+                article_urls = []
+            rows.append(
+                IndustryHeatRow(
+                    rank=int(row["rank"]),
+                    industry=str(row["industry"]),
+                    heat=float(row["heat"]),
+                    a=int(row["a"]),
+                    a_percentile=float(row["a_percentile"]),
+                    b=int(row["b"]),
+                    b_percentile=float(row["b_percentile"]),
+                    mapping_status=str(row["mapping_status"]),
+                    source_status=str(row["source_status"]),
+                    article_urls=tuple(str(item) for item in article_urls),
+                )
+            )
+        return IndustryHeatSnapshot(
+            snapshot_at=_timestamp(snapshot_row["snapshot_at_ts"]),
+            window_start=_timestamp(snapshot_row["window_start_ts"]),
+            window_end=_timestamp(snapshot_row["window_end_ts"]),
+            rows=rows,
+            top100_total=int(snapshot_row["top100_total"]),
+            top100_mapped=int(snapshot_row["top100_mapped"]),
+            mapping_coverage=float(snapshot_row["mapping_coverage"]),
+            research_article_total=int(snapshot_row["research_article_total"]),
+            research_article_mapped=int(snapshot_row["research_article_mapped"]),
+            unmapped_article_count=int(snapshot_row["unmapped_article_count"]),
+            mapping_status=str(snapshot_row["mapping_status"]),
+            source_status=str(snapshot_row["source_status"]),
+            source_error=snapshot_row["source_error"],
         )
 
     def get_stock_industries(self, codes: set[str]) -> dict[str, str]:
@@ -4328,6 +4598,8 @@ class Storage:
     def clear_all(self) -> None:
         with self._connect() as connection:
             connection.execute("DELETE FROM snapshots")
+            connection.execute("DELETE FROM industry_heat_rows")
+            connection.execute("DELETE FROM industry_heat_snapshots")
             connection.execute("DELETE FROM refresh_runs")
             connection.execute("DELETE FROM articles")
             connection.execute("DELETE FROM stock_industries")

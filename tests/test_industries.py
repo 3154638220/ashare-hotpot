@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from ashare_hotpot.industries import fetch_stock_industries, parse_stock_industries
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_parse_stock_industries_keeps_only_valid_codes_and_industries() -> None:
@@ -15,6 +21,11 @@ def test_parse_stock_industries_keeps_only_valid_codes_and_industries() -> None:
         }
     }
 
+    assert parse_stock_industries(payload) == {"000001": "金融", "600519": "食品饮料"}
+
+
+def test_parse_stock_industries_fixture_contract() -> None:
+    payload = json.loads((FIXTURES / "eastmoney_industry_page.json").read_text(encoding="utf-8"))
     assert parse_stock_industries(payload) == {"000001": "金融", "600519": "食品饮料"}
 
 
@@ -34,3 +45,8 @@ def test_fetch_stock_industries_keeps_successful_batches() -> None:
 
     assert fetch_stock_industries(client, codes) == {"000001": "金融"}
     assert client.calls == 2
+
+
+def test_parse_stock_industries_fails_closed_on_structural_change() -> None:
+    assert parse_stock_industries({"result": {"unexpected": []}}) == {}
+    assert parse_stock_industries({"result": {"data": "not-a-list"}}) == {}

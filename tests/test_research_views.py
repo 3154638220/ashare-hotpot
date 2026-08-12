@@ -17,6 +17,7 @@ from ashare_hotpot.models import (
     ParsedArticle,
     PersistenceViewRow,
     ResearchActivity,
+    ResearchCoverage,
     ResearchParticipant,
     ReportedParticipantCount,
     ShortTermViewRow,
@@ -254,6 +255,42 @@ def test_short_term_rows_with_coverage_partial_state(tmp_path) -> None:
     assert rows[0].quality_state in {"cold_start", "partial"}
 
 
+def test_coverage_state_is_partial_when_one_source_fails_with_usable_cache() -> None:
+    coverage = ResearchCoverage(
+        requested_start=date(2026, 1, 19),
+        covered_start=date(2026, 8, 1),
+        covered_end=NOW.date(),
+        trading_days_covered=4,
+        sources_scanned=2,
+        sources_total=3,
+        reached_cutoff=False,
+        calendar_fallback=False,
+        last_success_at=NOW,
+        provisional=True,
+        error="首屏空数据或结构变化",
+    )
+
+    assert rv.coverage_state(coverage, has_rows=True) == "partial"
+
+
+def test_coverage_state_is_error_when_all_sources_fail_without_usable_data() -> None:
+    coverage = ResearchCoverage(
+        requested_start=date(2026, 1, 19),
+        covered_start=None,
+        covered_end=None,
+        trading_days_covered=0,
+        sources_scanned=0,
+        sources_total=3,
+        reached_cutoff=False,
+        calendar_fallback=False,
+        last_success_at=None,
+        provisional=True,
+        error="全部公告来源失败",
+    )
+
+    assert rv.coverage_state(coverage, has_rows=False) == "error"
+
+
 def test_z20_rows_sort_full_before_cold_start_and_assign_ranks(tmp_path) -> None:
     storage = make_storage(tmp_path)
     seed_article(storage, code="000001", name="平安银行")
@@ -331,8 +368,8 @@ def test_research_coverage_aggregates_sync_cursors(tmp_path) -> None:
 
     seed_sync_state(storage)
     covered = rv.research_coverage(settings, storage, now=NOW)
-    assert covered.sources_scanned == 3
-    assert covered.sources_total == 7
+    assert covered.sources_scanned == 1
+    assert covered.sources_total == 3
     assert covered.covered_start == date(2026, 1, 19)
     assert covered.last_success_at == NOW
     # 来源游标完整但交易日历仍为空时，必须继续显示冷启动/暂定，不能

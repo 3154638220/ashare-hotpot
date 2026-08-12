@@ -15,9 +15,10 @@ from .filtering import (
     template_filter_reason,
 )
 from .industries import fetch_stock_industries
-from .institution_metrics import ResearchBoardRunResult, ResearchBoardService
+from .industry_heat import build_industry_heat_snapshot
 from .models import (
     ArticleCandidate,
+    IndustryHeatSnapshot,
     InteractionCoverage,
     InteractionRankingRow,
     InteractionRecord,
@@ -41,11 +42,9 @@ from .sources import (
     NewsSource,
     PoliteHttpClient,
     RefreshCancelled,
-    SseCalendarSource,
     SseInteractionSource,
 )
 from .storage import Storage
-from .trading_calendar import TradingCalendarService
 
 
 ProgressCallback = Callable[[int, str], None]
@@ -80,10 +79,6 @@ class RefreshService:
         self.ranking_service = RankingService()
         self.interaction_ranking_service = InteractionRankingService()
         self.signal_service = ShortTermBoardService(settings, storage)
-        self.trading_calendar = TradingCalendarService(storage)
-        self.research_board_service = ResearchBoardService(
-            settings, storage, calendar=self.trading_calendar
-        )
 
     @staticmethod
     def _progress(callback: ProgressCallback | None, value: int, message: str) -> None:
@@ -196,75 +191,6 @@ class RefreshService:
                 "signal feed document persist failed: %s: %s", article.url, exc
             )
 
-    def _ensure_research_calendar(
-        self,
-        client: PoliteHttpClient,
-        *,
-        now: datetime,
-        stats: dict[str, int],
-    ) -> None:
-        """Populate the trading-day cache before institution metrics run.
-
-        The 20/60/120-day boards cannot produce rows without calendar
-        buckets.  Prefer the public SSE annual holiday schedule for the
-        current year.  When it is unavailable, persist a weekday-only
-        fallback and keep the failure in sync state so the UI reports a
-        provisional calendar instead of silently publishing an empty board.
-        Historical years needed by the configured backfill window use the
-        same visible fallback when no cache exists.
-        """
-
-        current_year = now.year
-        current_state = self.trading_calendar.get_calendar_state(current_year)
-        if current_state.source != "sse" or current_state.trading_day_count == 0:
-            try:
-                fetched_year, holidays = SseCalendarSource(client).fetch_holidays()
-                if fetched_year != current_year:
-                    raise ValueError(
-                        f"上交所休市安排年份为 {fetched_year}，预期 {current_year}"
-                    )
-                self.trading_calendar.ensure_year_from_holidays(
-                    current_year, holidays, updated_at=now
-                )
-            except RefreshCancelled:
-                raise
-            except Exception as exc:  # calendar failure degrades only research metrics
-                message = f"官方交易日历获取失败，使用周一至周五降级：{str(exc)[:200]}"
-                logger.warning("trading calendar sync failed: %s", exc)
-                self.trading_calendar.ensure_year_fallback(
-                    current_year, updated_at=now
-                )
-                self.trading_calendar.mark_calendar_error(
-                    current_year, message, updated_at=now
-                )
-
-        requested_start = now.date() - timedelta(days=self.settings.backfill_days)
-        for year in range(requested_start.year, current_year):
-            state = self.trading_calendar.get_calendar_state(year)
-            if state.source is not None and state.trading_day_count:
-                continue
-            message = "历史官方交易日历尚无缓存，使用周一至周五降级"
-            self.trading_calendar.ensure_year_fallback(year, updated_at=now)
-            self.trading_calendar.mark_calendar_error(
-                year, message, updated_at=now
-            )
-
-        calendar_states = [
-            self.trading_calendar.get_calendar_state(year)
-            for year in range(requested_start.year, current_year + 1)
-        ]
-        stats["research_calendar_days"] = (
-            self.trading_calendar.trading_day_count_between(
-                requested_start, now.date()
-            )
-        )
-        stats["research_calendar_fallback"] = int(
-            any(state.calendar_fallback for state in calendar_states)
-        )
-        stats["research_calendar_errors"] = sum(
-            bool(state.last_error) for state in calendar_states
-        )
-
     def _attach_stock_industries(
         self,
         rankings: list[RankingRow],
@@ -295,6 +221,148 @@ class RefreshService:
             else row
             for row in rankings
         ]
+
+    def _resolve_stock_industries(
+        self,
+        codes: set[str],
+        *,
+        now: datetime,
+        cancel: threading.Event,
+    ) -> dict[str, str]:
+        """Resolve a stock universe using the existing cache and public API."""
+
+        industries = self.storage.get_stock_industries(codes)
+        missing_codes = codes.difference(industries)
+        if not missing_codes:
+            return industries
+        with PoliteHttpClient(self.settings, cancel) as client:
+            fetched_industries = fetch_stock_industries(client, missing_codes)
+        resolved = {
+            code: industry
+            for code, industry in fetched_industries.items()
+            if code in missing_codes
+        }
+        if resolved:
+            self.storage.upsert_stock_industries(resolved, now)
+            industries.update(resolved)
+        return industries
+
+    def _build_industry_heat(
+        self,
+        *,
+        popularity: OfficialPopularitySnapshot,
+        current_articles: list[ParsedArticle],
+        coverages: list[SourceCoverage],
+        now: datetime,
+        cancel: threading.Event,
+        article_failures: int = 0,
+    ) -> IndustryHeatSnapshot:
+        """Build the current industry board from the 24-hour source window.
+
+        The normal news window is intentionally not reused here.  The source
+        coverage row is the single completeness signal for the fixed
+        ``industry_research`` source; cached article bodies are still useful
+        for the current board, but they never turn a failed source into a
+        complete result.
+        """
+
+        if not any(config.key == "industry_research" for config in self.settings.sources):
+            return IndustryHeatSnapshot(
+                snapshot_at=now,
+                window_start=now - timedelta(hours=24),
+                window_end=now,
+                source_status="unavailable",
+            )
+
+        window_start = now - timedelta(hours=24)
+        cached_articles = [
+            article
+            for article in self.storage.get_articles_between(window_start, now)
+            if article.channel_key == "industry_research"
+            and not article.filtered_reason
+            and not article.fetch_error
+        ]
+        # Current parsed articles precede cached rows so explicit body tags are
+        # retained for this refresh even before the additive article-cache
+        # migration stores them for future refreshes.
+        articles: list[ParsedArticle] = []
+        seen_urls: set[str] = set()
+        for article in (*current_articles, *cached_articles):
+            key = article.url or article.seq
+            if key in seen_urls:
+                continue
+            seen_urls.add(key)
+            articles.append(article)
+
+        coverage = next(
+            (item for item in coverages if item.source_key == "industry_research"),
+            None,
+        )
+        source_complete = bool(
+            coverage
+            and coverage.reached_cutoff
+            and not coverage.error
+            and article_failures == 0
+        )
+        source_error = coverage.error if coverage else "行业研究来源未生成覆盖状态"
+        if article_failures and not source_error:
+            source_error = f"行业研究文章解析失败 {article_failures} 条"
+        codes = {row.code for row in popularity.popularity}
+        codes.update(stock.code for article in articles for stock in article.stocks)
+        try:
+            industries = self._resolve_stock_industries(
+                codes,
+                now=now,
+                cancel=cancel,
+            )
+        except RefreshCancelled:
+            raise
+        except Exception as exc:
+            logger.warning("industry heat stock mapping failed: %s", exc)
+            industries = self.storage.get_stock_industries(codes)
+            source_error = source_error or f"行业映射失败：{exc}"
+            source_complete = False
+
+        result = build_industry_heat_snapshot(
+            popularity.popularity,
+            articles,
+            industries,
+            window_end=now,
+            source_complete=source_complete,
+            source_error=source_error,
+            popularity_available=popularity.available,
+            popularity_stale=popularity.is_stale,
+        )
+        result.articles = sorted(articles, key=lambda item: item.published_at, reverse=True)
+        return result
+
+    def _publish_industry_daily_snapshot(
+        self,
+        snapshot: IndustryHeatSnapshot,
+        *,
+        popularity: OfficialPopularitySnapshot,
+        now: datetime,
+    ) -> bool:
+        """Publish the first complete industry point after 18:00 Shanghai time.
+
+        The current board is allowed to be partial or based on stale/cache
+        data.  Historical points are stricter: the popularity board must have
+        been fetched during this refresh, and the fixed 24-hour research
+        source plus EM2016 mapping must be complete.  Storage enforces the
+        second half of the rule (same-day immutability).
+        """
+
+        local_now = now.astimezone(SHANGHAI_TZ)
+        if local_now.hour < 18:
+            return False
+        if popularity.from_cache or popularity.is_stale or not popularity.available:
+            return False
+        if not snapshot.is_complete:
+            return False
+        return self.storage.save_industry_daily_snapshot(
+            snapshot,
+            local_now.date(),
+        )
 
     def _attach_interaction_industries(
         self,
@@ -352,6 +420,7 @@ class RefreshService:
             and (now - cached.success_at) < timedelta(minutes=cache_minutes)
         ):
             self._progress(progress, 97, f"东方财富人气榜：{cache_minutes} 分钟内已读取，复用缓存")
+            cached.from_cache = True
             return cached
         try:
             with PoliteHttpClient(self.settings, cancel) as client:
@@ -361,6 +430,7 @@ class RefreshService:
                 is_stale=False,
                 success_at=now,
                 error=None,
+                from_cache=False,
                 popularity=popularity,
                 surging=surging,
             )
@@ -373,12 +443,14 @@ class RefreshService:
             if cached is not None and cached.available:
                 cached.is_stale = True
                 cached.error = str(exc)[:1000]
+                cached.from_cache = False
                 return cached
             return OfficialPopularitySnapshot(
                 available=False,
                 is_stale=False,
                 success_at=None,
                 error=str(exc)[:1000],
+                from_cache=False,
             )
 
     def _collect_interaction_source(
@@ -591,11 +663,21 @@ class RefreshService:
             "research_calendar_days": 0,
             "research_calendar_fallback": 0,
             "research_calendar_errors": 0,
+            "industry_heat_rows": 0,
+            "industry_heat_top100_total": 0,
+            "industry_heat_top100_mapped": 0,
+            "industry_heat_articles": 0,
+            "industry_heat_articles_mapped": 0,
+            "industry_heat_article_failures": 0,
+            "industry_heat_source_complete": 0,
+            "industry_heat_daily_published": 0,
         }
         try:
             self._progress(progress, 1, "准备刷新…")
             candidates: dict[str, ArticleCandidate] = {}
             coverages: list[SourceCoverage] = []
+            current_industry_articles: list[ParsedArticle] = []
+            industry_article_failures = 0
             with PoliteHttpClient(self.settings, cancel) as client:
                 for source_index, source_config in enumerate(self.settings.sources):
                     if cancel.is_set():
@@ -606,6 +688,11 @@ class RefreshService:
                     pages_scanned = 0
                     reached_cutoff = False
                     source_error: str | None = None
+                    source_window_start = (
+                        window_end - timedelta(hours=24)
+                        if source_config.key == "industry_research"
+                        else window_start
+                    )
                     for page in range(1, self.settings.max_pages_per_source + 1):
                         base_progress = 2 + int(30 * (source_index / max(1, len(self.settings.sources))))
                         self._progress(progress, base_progress, f"{source_config.name}：读取第 {page} 页…")
@@ -626,12 +713,14 @@ class RefreshService:
                             break
                         source_items.extend(result.items)
                         oldest_on_page = min(item.published_at for item in result.items)
-                        if oldest_on_page <= window_start:
+                        if oldest_on_page <= source_window_start:
                             reached_cutoff = True
                             break
 
                     in_window = [
-                        item for item in source_items if window_start <= item.published_at <= window_end
+                        item
+                        for item in source_items
+                        if source_window_start <= item.published_at <= window_end
                     ]
                     stats["list_items"] += len(in_window)
                     for candidate in in_window:
@@ -657,7 +746,15 @@ class RefreshService:
                 for candidate in candidates.values():
                     if cancel.is_set():
                         raise RefreshCancelled("刷新已取消")
-                    reason = template_filter_reason(candidate.title, candidate.summary)
+                    # 行业研究的 B 指标 counts successfully parsed research
+                    # articles.  The ordinary news-board brokerage/template
+                    # filter must not erase a valid industry article merely
+                    # because its title contains words such as "融资".
+                    reason = (
+                        None
+                        if candidate.channel_key == "industry_research"
+                        else template_filter_reason(candidate.title, candidate.summary)
+                    )
                     if reason:
                         article = self._filtered_article(candidate, reason)
                         self.storage.upsert_article(article, window_end)
@@ -665,7 +762,15 @@ class RefreshService:
                         continue
                     cached = self.storage.get_cached_article(candidate.url)
                     if cached is not None:
+                        if candidate.channel_key == "industry_research" and cached.fetch_error:
+                            # A failed industry detail is retryable.  Treating
+                            # it as a valid cache would otherwise make a
+                            # transient failure eligible for a daily point.
+                            to_fetch.append(candidate)
+                            continue
                         stats["cached"] += 1
+                        if candidate.channel_key == "industry_research":
+                            current_industry_articles.append(cached)
                         continue
                     to_fetch.append(candidate)
 
@@ -711,12 +816,16 @@ class RefreshService:
                             stats["fetched"] += 1
                             if not article.stocks:
                                 stats["unmapped"] += 1
+                            if candidate.channel_key == "industry_research":
+                                current_industry_articles.append(article)
                         except RefreshCancelled:
                             raise
                         except Exception as exc:
                             logger.warning("article failed: %s: %s", candidate.url, exc)
                             article = self._error_article(candidate, str(exc))
                             stats["failed"] += 1
+                            if candidate.channel_key == "industry_research":
+                                industry_article_failures += 1
                         self.storage.upsert_article(article, window_end)
                         if body_text and article.stocks:
                             self._persist_signal_feed_document(
@@ -752,18 +861,25 @@ class RefreshService:
                     interaction_records.extend(records)
                     interaction_coverages.append(coverage)
 
+                # Institution activity collection is retired from the active
+                # refresh pipeline.  Keep announcement-compatible research
+                # sources available for legacy/short-term evidence, but never
+                # pass research_activity sources to the synchronizer.
+                active_research_sources = tuple(
+                    source
+                    for source in self.settings.research_sources
+                    if source.kind != "research_activity"
+                )
                 research_result: ResearchSyncResult | None = None
-                if self.settings.research_sources:
-                    self._progress(progress, 92, "正在同步交易日历…")
-                    self._ensure_research_calendar(
-                        client,
-                        now=window_end,
-                        stats=stats,
-                    )
+                if active_research_sources:
                     self._progress(progress, 93, "正在渐进回填研究来源…")
                     try:
+                        research_settings = replace(
+                            self.settings,
+                            research_sources=active_research_sources,
+                        )
                         research_result = ResearchSyncService(
-                            self.settings, self.storage
+                            research_settings, self.storage
                         ).sync_once(
                             now=window_end,
                             cancel=cancel,
@@ -840,36 +956,6 @@ class RefreshService:
                 stats["signal_catalyst"] = signal_result.signals_catalyst
                 stats["signal_rejected"] = signal_result.rejected
                 stats["signal_errors"] = len(signal_result.errors)
-            self._progress(progress, 94, "正在生成机构关注指标…")
-            research_board_result: ResearchBoardRunResult | None = None
-            try:
-                research_board_result = self.research_board_service.run(
-                    now=window_end,
-                    publish=False,
-                )
-            except RefreshCancelled:
-                raise
-            except Exception as exc:
-                logger.warning("institution metrics pipeline failed: %s", exc)
-            if research_board_result is not None:
-                stats["research_documents_scanned"] = research_board_result.documents_scanned
-                stats["research_activities"] = research_board_result.activities_persisted
-                stats["research_participants"] = research_board_result.participants_added
-                stats["research_institutions_created"] = research_board_result.institutions_created
-                stats["research_z20_stocks"] = len(research_board_result.z20_rows)
-                stats["research_z20_provisional"] = sum(
-                    1 for row in research_board_result.z20_rows if row.provisional
-                )
-                stats["research_persistence_60"] = len(
-                    research_board_result.persistence_60_rows
-                )
-                stats["research_persistence_120"] = len(
-                    research_board_result.persistence_120_rows
-                )
-                stats["research_coverage_provisional"] = int(
-                    research_board_result.coverage.provisional
-                )
-                stats["research_board_errors"] = len(research_board_result.errors)
             self._progress(progress, 94, "正在去重并生成消息排行…")
             stored_articles = self.storage.get_articles_between(window_start, window_end)
             # Cached articles from an earlier version did not have this filter
@@ -921,6 +1007,24 @@ class RefreshService:
                 cancel=cancel,
                 progress=progress,
             )
+            self._progress(progress, 98, "正在生成行业热度…")
+            industry_heat = self._build_industry_heat(
+                popularity=popularity,
+                current_articles=current_industry_articles,
+                coverages=coverages,
+                article_failures=industry_article_failures,
+                now=window_end,
+                cancel=cancel,
+            )
+            stats["industry_heat_rows"] = len(industry_heat.rows)
+            stats["industry_heat_top100_total"] = industry_heat.top100_total
+            stats["industry_heat_top100_mapped"] = industry_heat.top100_mapped
+            stats["industry_heat_articles"] = industry_heat.research_article_total
+            stats["industry_heat_articles_mapped"] = industry_heat.research_article_mapped
+            stats["industry_heat_article_failures"] = industry_article_failures
+            stats["industry_heat_source_complete"] = int(
+                industry_heat.source_status == "complete"
+            )
             partial = any(
                 not item.reached_cutoff or bool(item.error) for item in coverages
             ) or any(
@@ -954,6 +1058,17 @@ class RefreshService:
                     not cov.reached_cutoff or bool(cov.error)
                     for cov in policy_coverages
                 )
+            try:
+                stats["industry_heat_daily_published"] = int(
+                    self._publish_industry_daily_snapshot(
+                        industry_heat,
+                        popularity=popularity,
+                        now=window_end,
+                    )
+                )
+            except Exception as exc:  # history must not hide a usable current board
+                logger.warning("industry daily snapshot publish failed: %s", exc)
+                stats["industry_heat_daily_published"] = 0
             snapshot = Snapshot(
                 snapshot_id=None,
                 window_start=window_start,
@@ -969,6 +1084,7 @@ class RefreshService:
                 interaction_rankings=interaction_rankings,
                 interaction_coverages=interaction_coverages,
                 policy_coverages=policy_coverages,
+                industry_heat=industry_heat,
             )
             self.storage.save_snapshot(
                 snapshot,
@@ -977,9 +1093,7 @@ class RefreshService:
                     if signal_result is not None and signal_result.completed
                     else None
                 ),
-                institution_metric_batch_at=(
-                    window_end if research_board_result is not None else None
-                ),
+                institution_metric_batch_at=None,
             )
             self.storage.purge_older_than(window_end - timedelta(days=self.settings.retention_days))
             self.storage.purge_research_retention(window_end)
