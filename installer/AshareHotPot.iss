@@ -1,6 +1,6 @@
 #define MyAppName "A股热度"
 #define MyAppEnglishName "AshareHotPot"
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.4.0"
 #define MyAppPublisher "AshareHotPot"
 #define MyAppExeName "AshareHotPot.exe"
 

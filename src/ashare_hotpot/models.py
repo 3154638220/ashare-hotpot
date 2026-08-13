@@ -186,6 +186,11 @@ class ParsedArticle:
     content_type: str = "新闻"
     filtered_reason: str | None = None
     fetch_error: str | None = None
+    # Narrow concepts explicitly linked by the source or matched by the fixed
+    # high-confidence taxonomy.  Kept at the end to preserve the positional
+    # constructor used by legacy integrations.
+    industry_concepts: tuple[str, ...] = ()
+    industry_parse_version: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -202,6 +207,8 @@ class ParsedArticle:
             "content_type": self.content_type,
             "stocks": [stock.to_dict() for stock in self.stocks],
             "industry_tags": list(self.industry_tags),
+            "industry_concepts": list(self.industry_concepts),
+            "industry_parse_version": self.industry_parse_version,
             "filtered_reason": self.filtered_reason,
             "fetch_error": self.fetch_error,
         }
@@ -222,6 +229,10 @@ class ParsedArticle:
             content_type=str(data.get("content_type") or "新闻"),
             stocks=tuple(StockMention.from_dict(item) for item in data.get("stocks", [])),
             industry_tags=tuple(str(item) for item in data.get("industry_tags", []) if str(item).strip()),
+            industry_concepts=tuple(
+                str(item) for item in data.get("industry_concepts", []) if str(item).strip()
+            ),
+            industry_parse_version=int(data.get("industry_parse_version", 0)),
             filtered_reason=data.get("filtered_reason"),
             fetch_error=data.get("fetch_error"),
         )
@@ -602,6 +613,7 @@ class IndustryHeatRow:
     mapping_status: str = "mapped"
     source_status: str = "complete"
     article_urls: tuple[str, ...] = ()
+    stock_codes: tuple[str, ...] = ()
 
     @property
     def heat_score(self) -> float:
@@ -629,6 +641,7 @@ class IndustryHeatRow:
             "mapping_status": self.mapping_status,
             "source_status": self.source_status,
             "article_urls": list(self.article_urls),
+            "stock_codes": list(self.stock_codes),
         }
 
     @classmethod
@@ -648,6 +661,9 @@ class IndustryHeatRow:
             article_urls=tuple(
                 str(item) for item in data.get("article_urls", []) if str(item).strip()
             ),
+            stock_codes=tuple(
+                str(item) for item in data.get("stock_codes", []) if str(item).strip()
+            ),
         )
 
 
@@ -665,6 +681,13 @@ class IndustryHeatSnapshot:
     research_article_total: int = 0
     research_article_mapped: int = 0
     unmapped_article_count: int = 0
+    explicit_article_count: int = 0
+    concept_article_count: int = 0
+    stock_fallback_article_count: int = 0
+    unknown_label_article_count: int = 0
+    unknown_concept_article_count: int = 0
+    no_evidence_article_count: int = 0
+    stock_industry_unmapped_article_count: int = 0
     mapping_status: str = "unavailable"
     source_status: str = "unavailable"
     source_error: str | None = None
@@ -688,6 +711,13 @@ class IndustryHeatSnapshot:
             "research_article_total": self.research_article_total,
             "research_article_mapped": self.research_article_mapped,
             "unmapped_article_count": self.unmapped_article_count,
+            "explicit_article_count": self.explicit_article_count,
+            "concept_article_count": self.concept_article_count,
+            "stock_fallback_article_count": self.stock_fallback_article_count,
+            "unknown_label_article_count": self.unknown_label_article_count,
+            "unknown_concept_article_count": self.unknown_concept_article_count,
+            "no_evidence_article_count": self.no_evidence_article_count,
+            "stock_industry_unmapped_article_count": self.stock_industry_unmapped_article_count,
             "mapping_status": self.mapping_status,
             "source_status": self.source_status,
             "source_error": self.source_error,
@@ -708,6 +738,17 @@ class IndustryHeatSnapshot:
             research_article_total=int(data.get("research_article_total", 0)),
             research_article_mapped=int(data.get("research_article_mapped", 0)),
             unmapped_article_count=int(data.get("unmapped_article_count", 0)),
+            explicit_article_count=int(data.get("explicit_article_count", 0)),
+            concept_article_count=int(data.get("concept_article_count", 0)),
+            stock_fallback_article_count=int(data.get("stock_fallback_article_count", 0)),
+            unknown_label_article_count=int(data.get("unknown_label_article_count", 0)),
+            unknown_concept_article_count=int(
+                data.get("unknown_concept_article_count", 0)
+            ),
+            no_evidence_article_count=int(data.get("no_evidence_article_count", 0)),
+            stock_industry_unmapped_article_count=int(
+                data.get("stock_industry_unmapped_article_count", 0)
+            ),
             mapping_status=str(data.get("mapping_status") or "unavailable"),
             source_status=str(data.get("source_status") or "unavailable"),
             source_error=data.get("source_error"),

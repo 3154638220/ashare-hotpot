@@ -19,6 +19,7 @@ def _article(
     published_at: datetime,
     *,
     tags: tuple[str, ...] = (),
+    concepts: tuple[str, ...] = (),
     stocks: tuple[StockMention, ...] = (),
     url: str | None = None,
 ) -> ParsedArticle:
@@ -33,12 +34,16 @@ def _article(
         source_name="同花顺",
         stocks=stocks,
         industry_tags=tags,
+        industry_concepts=concepts,
     )
 
 
 def test_industry_aliases_are_fixed_and_conservative() -> None:
     assert map_industry_alias(" 化工 ") == "基础化工"
-    assert map_industry_alias("家电") == "家用电器"
+    assert map_industry_alias("家电") == "家电"
+    assert map_industry_alias("电子设备") == "电子设备"
+    assert map_industry_alias("信息技术") == "信息技术"
+    assert map_industry_alias("互联网") == "互联网"
     assert map_industry_alias("新能源") is None
     assert map_industry_alias("金融") == "金融"  # current EM2016 primary label
 
@@ -93,7 +98,7 @@ def test_build_industry_heat_uses_fallback_dedup_and_24h_boundary() -> None:
     assert snapshot.mapping_coverage == 1.0
     assert [(row.rank, row.industry, row.a, row.b) for row in snapshot.rows] == [
         (1, "金融", 2, 0),
-        (2, "电子", 1, 3),
+            (2, "电子设备", 1, 3),
     ]
     assert snapshot.rows[1].article_urls == (
         "https://news.test/explicit",
@@ -104,17 +109,17 @@ def test_build_industry_heat_uses_fallback_dedup_and_24h_boundary() -> None:
 
 def test_industry_heat_average_rank_ties_single_industry_and_stable_sort() -> None:
     popularity = [_pop("000001", 1), _pop("000002", 2), _pop("000003", 3)]
-    stocks = {"000001": "金融", "000002": "电子", "000003": "传媒"}
+    stocks = {"000001": "金融", "000002": "电子设备", "000003": "文化传媒"}
     articles = [
         _article("bank", NOW - timedelta(hours=1), tags=("金融",)),
         _article("electronic", NOW - timedelta(hours=1), tags=("电子",)),
     ]
     snapshot = build_industry_heat_snapshot(popularity, articles, stocks, window_end=NOW)
     rows = {row.industry: row for row in snapshot.rows}
-    assert rows["传媒"].b == 0
-    assert rows["金融"].b_percentile == rows["电子"].b_percentile == 75.0
-    assert rows["传媒"].b_percentile == 0.0
-    assert [row.industry for row in snapshot.rows] == ["电子", "金融", "传媒"]
+    assert rows["文化传媒"].b == 0
+    assert rows["金融"].b_percentile == rows["电子设备"].b_percentile == 75.0
+    assert rows["文化传媒"].b_percentile == 0.0
+    assert [row.industry for row in snapshot.rows] == ["电子设备", "金融", "文化传媒"]
 
     single = build_industry_heat_snapshot(
         [_pop("000001", 1)], [], {"000001": "金融"}, window_end=NOW
@@ -156,7 +161,43 @@ def test_industry_heat_snapshot_roundtrip_and_old_snapshot_default() -> None:
         "research_article_total": 0,
         "research_article_mapped": 0,
         "unmapped_article_count": 0,
+        "explicit_article_count": 0,
+        "concept_article_count": 0,
+        "stock_fallback_article_count": 0,
+        "unknown_label_article_count": 0,
+        "unknown_concept_article_count": 0,
+        "no_evidence_article_count": 0,
+        "stock_industry_unmapped_article_count": 0,
         "mapping_status": "unavailable",
         "source_status": "unavailable",
         "source_error": None,
     }
+
+
+def test_concept_attribution_precedes_stock_fallback_and_reports_paths() -> None:
+    popularity = [_pop("000001", 1), _pop("000002", 2)]
+    industries = {"000001": "房地产", "000002": "电子设备"}
+    articles = [
+        _article("地产", NOW - timedelta(hours=1), concepts=("内房股",)),
+        _article("芯片", NOW - timedelta(hours=2), concepts=("AI ASIC",)),
+        _article(
+            "股票回退",
+            NOW - timedelta(hours=3),
+            stocks=(StockMention("000002", "芯片公司"),),
+        ),
+        _article("泛化 AI 不归类", NOW - timedelta(hours=4)),
+    ]
+
+    snapshot = build_industry_heat_snapshot(
+        popularity, articles, industries, window_end=NOW
+    )
+
+    by_industry = {row.industry: row for row in snapshot.rows}
+    assert by_industry["房地产"].b == 1
+    assert by_industry["电子设备"].b == 2
+    assert by_industry["房地产"].stock_codes == ("000001",)
+    assert by_industry["电子设备"].stock_codes == ("000002",)
+    assert snapshot.concept_article_count == 2
+    assert snapshot.stock_fallback_article_count == 1
+    assert snapshot.no_evidence_article_count == 1
+    assert snapshot.unmapped_article_count == 1

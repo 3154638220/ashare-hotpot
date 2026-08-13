@@ -79,6 +79,35 @@ def test_parse_industry_research_article_preserves_explicit_industry_tag() -> No
     assert [stock.code for stock in article.stocks] == ["000001"]
 
 
+def test_parse_live_style_linked_concept_and_fixed_text_concepts() -> None:
+    candidate = ArticleCandidate(
+        seq="concept",
+        url="https://stock.10jqka.com.cn/20260812/cconcept.shtml",
+        title="内房股走高，AI ASIC与存储产业景气",
+        summary="",
+        published_at=datetime(2026, 8, 12, 17, 0, tzinfo=SHANGHAI_TZ),
+        channel_key="industry_research",
+        channel_name="行业研究",
+    )
+    html = """
+    <html><body><div class="news-content-parsed">
+      明确终端本地AI算力为
+      <a href="https://q.10jqka.com.cn/gn/detail/code/301558/">消费电子（881124）</a>
+      升级主线。
+    </div></body></html>
+    """
+
+    article = parse_article_detail(candidate, html)
+
+    assert article.industry_tags == ()
+    assert article.industry_concepts == (
+        "消费电子",
+        "房地产",
+        "AI ASIC",
+        "存储产业",
+    )
+
+
 def test_parse_industry_research_fixture_list_page() -> None:
     html = (FIXTURES / "ths_industry_research_list_page.html").read_text(encoding="utf-8")
     items = parse_list_page(

@@ -55,7 +55,7 @@ def _snapshot(*, heat: float = 75.0, complete: bool = True) -> IndustryHeatSnaps
 def test_fresh_database_has_schema_123_and_industry_tables(tmp_path) -> None:
     storage = Storage(tmp_path / "hotpot.db")
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 123
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 124
         assert {"industry_heat_snapshots", "industry_heat_rows"} <= _tables(connection)
         article_columns = {
             str(row[1]) for row in connection.execute("PRAGMA table_info(articles)")
@@ -77,7 +77,7 @@ def test_122_upgrade_is_atomic_backed_up_and_idempotent(tmp_path) -> None:
     assert backup.exists()
     backup_before = backup.read_bytes()
     with storage._connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 123
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 124
         assert {"industry_heat_snapshots", "industry_heat_rows"} <= _tables(connection)
         assert "industry_tags_json" in {
             str(row[1]) for row in connection.execute("PRAGMA table_info(articles)")

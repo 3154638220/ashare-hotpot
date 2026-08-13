@@ -52,13 +52,14 @@ from .models import (
 )
 
 
-SCHEMA_VERSION = 123
+SCHEMA_VERSION = 124
 BACKUP_NAME = "hotpot.db.pre-110.bak"
 BACKUP_NAME_111 = "hotpot.db.pre-111.bak"
 BACKUP_NAME_120 = "hotpot.db.pre-120.bak"
 BACKUP_NAME_121 = "hotpot.db.pre-121.bak"
 BACKUP_NAME_122 = "hotpot.db.pre-122.bak"
 BACKUP_NAME_123 = "hotpot.db.pre-123.bak"
+BACKUP_NAME_124 = "hotpot.db.pre-124.bak"
 
 # Retention periods per plan.md section 7.4.  The ordinary article/interaction
 # cache purge keeps its own 7-day window; research data uses these cutoffs.
@@ -728,6 +729,11 @@ V123_TABLE_STATEMENTS: tuple[str, ...] = (
     "ON industry_heat_rows(snapshot_date, rank)",
 )
 
+# Schema 124 keeps attribution evidence and the industry -> stock navigation
+# durable.  Columns are additive so old snapshots and article rows remain
+# readable with safe empty/zero defaults.
+V124_TABLE_STATEMENTS: tuple[str, ...] = ()
+
 POPULARITY_STATE_KEY = "popularity"
 SOURCE_CACHE_PREFIX = "source_cache:"
 
@@ -807,6 +813,9 @@ class Storage:
         - A version-121 database gets a one-time ``hotpot.db.pre-122.bak``
           backup and is migrated to 122 inside a ``BEGIN IMMEDIATE``
           transaction.
+        - A version-123 database gets a one-time ``hotpot.db.pre-124.bak``
+          backup and gains transparent concept-attribution and industry-stock
+          drill-down columns without rewriting legacy rows.
         - Calling ``initialize`` again on an already-migrated database safely
           repairs any missing additive tables (including the v0.2 interaction
           cache) and never creates a second backup.
@@ -851,6 +860,10 @@ class Storage:
                         self._create_backup_if_needed(BACKUP_NAME_123)
                         self._migrate_to_123(connection)
                         version = 123
+                    if version == 123:
+                        self._create_backup_if_needed(BACKUP_NAME_124)
+                        self._migrate_to_124(connection)
+                        version = 124
                     if version != SCHEMA_VERSION:
                         raise RuntimeError(
                             "数据库版本 %d 无法升级到 %d" % (version, SCHEMA_VERSION)
@@ -893,7 +906,10 @@ class Storage:
                 connection.execute(statement)
             for statement in V123_TABLE_STATEMENTS:
                 connection.execute(statement)
+            for statement in V124_TABLE_STATEMENTS:
+                connection.execute(statement)
             self._ensure_article_industry_tags_column(connection)
+            self._ensure_v124_columns(connection)
             self._ensure_institution_metric_metadata_columns(connection)
             self._ensure_institution_metric_batch_state(connection)
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
@@ -922,9 +938,12 @@ class Storage:
                 connection.execute(statement)
             for statement in V123_TABLE_STATEMENTS:
                 connection.execute(statement)
+            for statement in V124_TABLE_STATEMENTS:
+                connection.execute(statement)
             self._ensure_source_documents_page_count(connection)
             self._ensure_source_document_stock_names(connection)
             self._ensure_article_industry_tags_column(connection)
+            self._ensure_v124_columns(connection)
             self._ensure_research_activity_columns(connection)
             self._ensure_institution_metric_metadata_columns(connection)
             self._ensure_institution_metric_batch_state(connection)
@@ -1187,6 +1206,20 @@ class Storage:
             connection.rollback()
             raise
 
+    def _migrate_to_124(self, connection: sqlite3.Connection) -> None:
+        """Add transparent industry attribution and drill-down data."""
+
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            for statement in V124_TABLE_STATEMENTS:
+                connection.execute(statement)
+            self._ensure_v124_columns(connection)
+            connection.execute("PRAGMA user_version = 124")
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+
     def _backfill_discovery_candidates(
         self, connection: sqlite3.Connection
     ) -> None:
@@ -1320,6 +1353,54 @@ class Storage:
                 "TEXT NOT NULL DEFAULT '[]'"
             )
 
+    @staticmethod
+    def _ensure_v124_columns(connection: sqlite3.Connection) -> None:
+        article_columns = {
+            str(row["name"])
+            for row in connection.execute("PRAGMA table_info(articles)").fetchall()
+        }
+        if "industry_concepts_json" not in article_columns:
+            connection.execute(
+                "ALTER TABLE articles ADD COLUMN industry_concepts_json "
+                "TEXT NOT NULL DEFAULT '[]'"
+            )
+        if "industry_parse_version" not in article_columns:
+            connection.execute(
+                "ALTER TABLE articles ADD COLUMN industry_parse_version "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        row_columns = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(industry_heat_rows)"
+            ).fetchall()
+        }
+        if "stock_codes_json" not in row_columns:
+            connection.execute(
+                "ALTER TABLE industry_heat_rows ADD COLUMN stock_codes_json "
+                "TEXT NOT NULL DEFAULT '[]'"
+            )
+        snapshot_columns = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(industry_heat_snapshots)"
+            ).fetchall()
+        }
+        migrations = (
+            ("explicit_article_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("concept_article_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("stock_fallback_article_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("unknown_label_article_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("unknown_concept_article_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("no_evidence_article_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("stock_industry_unmapped_article_count", "INTEGER NOT NULL DEFAULT 0"),
+        )
+        for column, definition in migrations:
+            if column not in snapshot_columns:
+                connection.execute(
+                    f"ALTER TABLE industry_heat_snapshots ADD COLUMN {column} {definition}"  # noqa: S608
+                )
+
     def _migrate_legacy_guba(self) -> None:
         """Clear the old per-stock-bar scan data and drop old self-computed guba
         results from historical snapshots while keeping the news snapshot."""
@@ -1360,14 +1441,18 @@ class Storage:
     def upsert_article(self, article: ParsedArticle, fetched_at: datetime) -> None:
         payload = json.dumps([stock.to_dict() for stock in article.stocks], ensure_ascii=False)
         industry_tags_payload = json.dumps(list(article.industry_tags), ensure_ascii=False)
+        industry_concepts_payload = json.dumps(
+            list(article.industry_concepts), ensure_ascii=False
+        )
         with self._connect() as connection:
             connection.execute(
                 """
                 INSERT INTO articles(
                     url, seq, title, summary, published_ts, channel_key, channel_name,
                     source_name, provider_key, provider_name, content_type, stocks_json,
-                    industry_tags_json, filtered_reason, fetch_error, fetched_ts
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    industry_tags_json, industry_concepts_json, industry_parse_version,
+                    filtered_reason, fetch_error, fetched_ts
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(url) DO UPDATE SET
                     seq=excluded.seq,
                     title=excluded.title,
@@ -1381,6 +1466,8 @@ class Storage:
                     content_type=excluded.content_type,
                     stocks_json=excluded.stocks_json,
                     industry_tags_json=excluded.industry_tags_json,
+                    industry_concepts_json=excluded.industry_concepts_json,
+                    industry_parse_version=excluded.industry_parse_version,
                     filtered_reason=excluded.filtered_reason,
                     fetch_error=excluded.fetch_error,
                     fetched_ts=excluded.fetched_ts
@@ -1399,6 +1486,8 @@ class Storage:
                     article.content_type,
                     payload,
                     industry_tags_payload,
+                    industry_concepts_payload,
+                    article.industry_parse_version,
                     article.filtered_reason,
                     article.fetch_error,
                     int(fetched_at.timestamp()),
@@ -1430,6 +1519,10 @@ class Storage:
             industry_tags = json.loads(row["industry_tags_json"] or "[]")
         except (IndexError, KeyError, TypeError, json.JSONDecodeError):
             industry_tags = []
+        try:
+            industry_concepts = json.loads(row["industry_concepts_json"] or "[]")
+        except (IndexError, KeyError, TypeError, json.JSONDecodeError):
+            industry_concepts = []
         payload: dict[str, Any] = {
             "seq": row["seq"],
             "url": row["url"],
@@ -1444,6 +1537,12 @@ class Storage:
             "content_type": row["content_type"],
             "stocks": json.loads(row["stocks_json"]),
             "industry_tags": industry_tags,
+            "industry_concepts": industry_concepts,
+            "industry_parse_version": (
+                int(row["industry_parse_version"])
+                if "industry_parse_version" in row.keys()
+                else 0
+            ),
             "filtered_reason": row["filtered_reason"],
             "fetch_error": row["fetch_error"],
         }
@@ -1656,8 +1755,12 @@ class Storage:
                     top100_total, top100_mapped, mapping_coverage,
                     research_article_total, research_article_mapped,
                     unmapped_article_count, mapping_status, source_status,
-                    source_error
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    source_error, explicit_article_count,
+                    concept_article_count, stock_fallback_article_count,
+                    unknown_label_article_count, no_evidence_article_count,
+                    stock_industry_unmapped_article_count,
+                    unknown_concept_article_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     day_key,
@@ -1677,6 +1780,13 @@ class Storage:
                     snapshot.mapping_status,
                     snapshot.source_status,
                     snapshot.source_error,
+                    snapshot.explicit_article_count,
+                    snapshot.concept_article_count,
+                    snapshot.stock_fallback_article_count,
+                    snapshot.unknown_label_article_count,
+                    snapshot.no_evidence_article_count,
+                    snapshot.stock_industry_unmapped_article_count,
+                    snapshot.unknown_concept_article_count,
                 ),
             )
             if cursor.rowcount == 0:
@@ -1686,8 +1796,8 @@ class Storage:
                 INSERT INTO industry_heat_rows(
                     snapshot_date, rank, industry, heat, a, a_percentile,
                     b, b_percentile, mapping_status, source_status,
-                    article_urls_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    article_urls_json, stock_codes_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -1702,6 +1812,7 @@ class Storage:
                         row.mapping_status,
                         row.source_status,
                         json.dumps(list(row.article_urls), ensure_ascii=False),
+                        json.dumps(list(row.stock_codes), ensure_ascii=False),
                     )
                     for row in snapshot.rows
                 ],
@@ -1765,6 +1876,10 @@ class Storage:
                 article_urls = json.loads(row["article_urls_json"] or "[]")
             except (TypeError, json.JSONDecodeError):
                 article_urls = []
+            try:
+                stock_codes = json.loads(row["stock_codes_json"] or "[]")
+            except (IndexError, KeyError, TypeError, json.JSONDecodeError):
+                stock_codes = []
             rows.append(
                 IndustryHeatRow(
                     rank=int(row["rank"]),
@@ -1777,6 +1892,7 @@ class Storage:
                     mapping_status=str(row["mapping_status"]),
                     source_status=str(row["source_status"]),
                     article_urls=tuple(str(item) for item in article_urls),
+                    stock_codes=tuple(str(item) for item in stock_codes),
                 )
             )
         return IndustryHeatSnapshot(
@@ -1790,6 +1906,21 @@ class Storage:
             research_article_total=int(snapshot_row["research_article_total"]),
             research_article_mapped=int(snapshot_row["research_article_mapped"]),
             unmapped_article_count=int(snapshot_row["unmapped_article_count"]),
+            explicit_article_count=int(snapshot_row["explicit_article_count"]),
+            concept_article_count=int(snapshot_row["concept_article_count"]),
+            stock_fallback_article_count=int(
+                snapshot_row["stock_fallback_article_count"]
+            ),
+            unknown_label_article_count=int(
+                snapshot_row["unknown_label_article_count"]
+            ),
+            unknown_concept_article_count=int(
+                snapshot_row["unknown_concept_article_count"]
+            ),
+            no_evidence_article_count=int(snapshot_row["no_evidence_article_count"]),
+            stock_industry_unmapped_article_count=int(
+                snapshot_row["stock_industry_unmapped_article_count"]
+            ),
             mapping_status=str(snapshot_row["mapping_status"]),
             source_status=str(snapshot_row["source_status"]),
             source_error=snapshot_row["source_error"],

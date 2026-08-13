@@ -8,108 +8,17 @@ industry-research articles, and the cached stock-to-EM2016 mapping.
 from __future__ import annotations
 
 import math
-import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Iterable, Mapping
 
 from .models import IndustryHeatRow, IndustryHeatSnapshot, ParsedArticle, PopularityRankRow
-
-
-# EM2016's primary industry labels are the canonical values.  Aliases are
-# deliberately explicit: no substring/fuzzy matching or model inference is
-# allowed to decide an industry.
-EM2016_INDUSTRIES: frozenset[str] = frozenset(
-    {
-        "农林牧渔",
-        "基础化工",
-        "钢铁",
-        "有色金属",
-        "电子",
-        "汽车",
-        "家用电器",
-        "食品饮料",
-        "纺织服饰",
-        "轻工制造",
-        "医药生物",
-        "公用事业",
-        "交通运输",
-        "房地产",
-        "商贸零售",
-        "社会服务",
-        "金融",
-        "银行",
-        "非银金融",
-        "建筑材料",
-        "建筑装饰",
-        "电力设备",
-        "国防军工",
-        "计算机",
-        "传媒",
-        "通信",
-        "煤炭",
-        "石油石化",
-        "环保",
-        "美容护理",
-        "机械设备",
-        "综合",
-    }
+from .industry_taxonomy import (
+    EM2016_INDUSTRIES,
+    infer_industry_concepts,
+    map_industry_alias,
+    merge_industry_concepts,
 )
-
-
-def _compact(value: str) -> str:
-    return re.sub(r"[\s·・_\-—–（）()]+", "", value.strip())
-
-
-# Keep this table small and reviewable.  Canonical EM2016 labels are included
-# so parsing a value from the public stock endpoint never depends on a branch.
-INDUSTRY_ALIASES: dict[str, str] = {
-    **{_compact(name): name for name in EM2016_INDUSTRIES},
-    "基础化工": "基础化工",
-    "化工": "基础化工",
-    "农林牧副渔": "农林牧渔",
-    "农牧业": "农林牧渔",
-    "有色": "有色金属",
-    "有色金属冶炼": "有色金属",
-    "半导体": "电子",
-    "集成电路": "电子",
-    "家电": "家用电器",
-    "纺织": "纺织服饰",
-    "服装家纺": "纺织服饰",
-    "轻工": "轻工制造",
-    "医药": "医药生物",
-    "电力": "公用事业",
-    "公用": "公用事业",
-    "运输": "交通运输",
-    "地产": "房地产",
-    "零售": "商贸零售",
-    "社会服务业": "社会服务",
-    "银行": "金融",
-    "金融业": "金融",
-    "证券": "非银金融",
-    "券商": "非银金融",
-    "建材": "建筑材料",
-    "建筑": "建筑装饰",
-    "电气设备": "电力设备",
-    "军工": "国防军工",
-    "计算机应用": "计算机",
-    "传媒娱乐": "传媒",
-    "石油天然气": "石油石化",
-    "环保工程": "环保",
-    "专用设备": "机械设备",
-}
-
-
-def map_industry_alias(value: str | None) -> str | None:
-    """Map one explicit label to an EM2016 primary industry.
-
-    Matching is normalized only for whitespace and fixed punctuation.  A
-    value not present in :data:`INDUSTRY_ALIASES` is intentionally rejected.
-    """
-
-    if not value:
-        return None
-    return INDUSTRY_ALIASES.get(_compact(value))
 
 
 def _article_key(article: ParsedArticle) -> str:
@@ -127,10 +36,10 @@ def _in_window(article: ParsedArticle, start: datetime, end: datetime) -> bool:
     return start <= article.published_at <= end
 
 
-def _article_industries(
+def _article_attribution(
     article: ParsedArticle,
     stock_industries: Mapping[str, str],
-) -> tuple[str, ...]:
+) -> tuple[tuple[str, ...], str]:
     explicit_tags = tuple(
         dict.fromkeys(
             mapped
@@ -141,8 +50,21 @@ def _article_industries(
     if article.industry_tags:
         # An explicit but unknown label is not silently replaced by a stock
         # guess; the source must be corrected or a later rule can be added.
-        return explicit_tags
-    return tuple(
+        return explicit_tags, "explicit" if explicit_tags else "unknown_label"
+    concepts = merge_industry_concepts(
+        article.industry_concepts,
+        infer_industry_concepts(article.title, article.summary),
+    )
+    concept_industries = tuple(
+        dict.fromkeys(
+            mapped
+            for concept in concepts
+            if (mapped := map_industry_alias(concept)) is not None
+        )
+    )
+    if concept_industries:
+        return concept_industries, "concept"
+    stock_fallback = tuple(
         sorted(
             {
                 mapped
@@ -152,6 +74,18 @@ def _article_industries(
             }
         )
     )
+    if stock_fallback:
+        return stock_fallback, "stock"
+    if article.stocks:
+        return (), "stock_unmapped"
+    return (), "unknown_concept" if concepts else "no_evidence"
+
+
+def _article_industries(
+    article: ParsedArticle,
+    stock_industries: Mapping[str, str],
+) -> tuple[str, ...]:
+    return _article_attribution(article, stock_industries)[0]
 
 
 def _average_rank_percentiles(values: Mapping[str, float]) -> dict[str, float]:
@@ -239,6 +173,7 @@ def build_industry_heat_snapshot(
             mapping_status="mapped",
             source_status="complete" if source_complete else "partial",
             article_urls=tuple(sorted(article_urls_by_industry.get(industry, set()))),
+            stock_codes=tuple(sorted(top100_by_industry[industry])),
         )
         for industry in industries
     ]
@@ -258,10 +193,35 @@ def build_industry_heat_snapshot(
             mapping_status=row.mapping_status,
             source_status=row.source_status,
             article_urls=row.article_urls,
+            stock_codes=row.stock_codes,
         )
         for index, row in enumerate(ordered_rows, start=1)
     ]
     mapped_article_count = sum(bool(items) for items in article_industries.values())
+    explicit_article_count = 0
+    concept_article_count = 0
+    stock_fallback_article_count = 0
+    unknown_label_article_count = 0
+    unknown_concept_article_count = 0
+    no_evidence_article_count = 0
+    stock_industry_unmapped_article_count = 0
+    for key, mapped_industries in article_industries.items():
+        article = unique_articles[key]
+        _mapped, path = _article_attribution(article, stock_industries)
+        if path == "explicit":
+            explicit_article_count += 1
+        elif path == "unknown_label":
+            unknown_label_article_count += 1
+        elif path == "unknown_concept":
+            unknown_concept_article_count += 1
+        elif path == "concept":
+            concept_article_count += 1
+        elif path == "stock":
+            stock_fallback_article_count += 1
+        elif path == "stock_unmapped":
+            stock_industry_unmapped_article_count += 1
+        elif path == "no_evidence":
+            no_evidence_article_count += 1
     top100_mapped = sum(len(codes) for codes in top100_by_industry.values())
     total = len(top100_codes)
     if not popularity_available:
@@ -285,6 +245,7 @@ def build_industry_heat_snapshot(
             mapping_status=row.mapping_status,
             source_status=row_source_status,
             article_urls=row.article_urls,
+            stock_codes=row.stock_codes,
         )
         for row in rows
     ]
@@ -299,6 +260,13 @@ def build_industry_heat_snapshot(
         research_article_total=len(unique_articles),
         research_article_mapped=mapped_article_count,
         unmapped_article_count=len(unique_articles) - mapped_article_count,
+        explicit_article_count=explicit_article_count,
+        concept_article_count=concept_article_count,
+        stock_fallback_article_count=stock_fallback_article_count,
+        unknown_label_article_count=unknown_label_article_count,
+        unknown_concept_article_count=unknown_concept_article_count,
+        no_evidence_article_count=no_evidence_article_count,
+        stock_industry_unmapped_article_count=stock_industry_unmapped_article_count,
         mapping_status="complete" if top100_mapped == total else "partial",
         source_status=source_status,
         source_error=source_error,
@@ -307,7 +275,6 @@ def build_industry_heat_snapshot(
 
 __all__ = [
     "EM2016_INDUSTRIES",
-    "INDUSTRY_ALIASES",
     "build_industry_heat_snapshot",
     "map_industry_alias",
 ]

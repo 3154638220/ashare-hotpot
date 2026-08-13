@@ -448,6 +448,7 @@ def test_industry_navigation_detail_trend_and_export_share_columns(
                 1, "金融", 75.0, 2, 100.0, 1, 50.0,
                 mapping_status="complete", source_status="complete",
                 article_urls=(article.url,),
+                stock_codes=("000001",),
             ),
             IndustryHeatRow(
                 2, "电子", 25.0, 1, 50.0, 0, 0.0,
@@ -474,7 +475,10 @@ def test_industry_navigation_detail_trend_and_export_share_columns(
     index = window.industry_table_model.index(0, 0)
     window.table.clicked.emit(index)
     assert window.industry_detail_panel.title_label.text() == "金融"
-    assert window.industry_detail_panel.article_tree.topLevelItemCount() == 1
+    assert window.industry_detail_panel.article_tree.topLevelItemCount() == 2
+    stock_item = window.industry_detail_panel.article_tree.topLevelItem(0)
+    assert "000001" in stock_item.text(0)
+    assert stock_item.childCount() == 1
     assert "50%" in window.industry_detail_panel.summary_label.text()
     assert window.industry_detail_panel.trend.points[-1][1] == 75.0
 

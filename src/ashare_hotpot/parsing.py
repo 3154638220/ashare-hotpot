@@ -10,6 +10,11 @@ from bs4 import BeautifulSoup, Tag
 
 from .config import SHANGHAI_TZ
 from .filtering import filter_brokerage_research_mentions
+from .industry_taxonomy import (
+    INDUSTRY_ATTRIBUTION_VERSION,
+    infer_industry_concepts,
+    merge_industry_concepts,
+)
 from .models import (
     ArticleCandidate,
     InteractionRecord,
@@ -1093,6 +1098,28 @@ def _extract_industry_tags_from_dom(body: Tag | BeautifulSoup) -> tuple[str, ...
     return tuple(tags)
 
 
+def _extract_industry_concepts_from_dom(
+    body: Tag | BeautifulSoup,
+) -> tuple[str, ...]:
+    """Extract linked Tonghuashun concepts that are not stock mentions."""
+
+    concepts: list[str] = []
+    for anchor in body.select("a[href*='q.10jqka.com.cn'], a[data-code]"):
+        href = str(anchor.get("href", ""))
+        code = str(anchor.get("data-code", "")).strip()
+        text = re.sub(r"\s+", " ", anchor.get_text(" ", strip=True)).strip()
+        match = re.search(r"(?<!\d)(8[58]\d{4})(?!\d)", f"{code} {href} {text}")
+        if not match:
+            continue
+        concept_code = match.group(1)
+        concept = re.sub(
+            r"[（(]?\s*" + re.escape(concept_code) + r"\s*[）)]?", "", text
+        ).strip(" ：:，,[]【】")
+        if concept and concept not in concepts:
+            concepts.append(concept)
+    return tuple(concepts)
+
+
 def _extract_stocks_from_embedded_data(html: str) -> dict[str, str]:
     stocks: dict[str, str] = {}
     unescaped = html.replace("\\u003c", "<").replace("\\u003e", ">").replace("\\\"", '"')
@@ -1152,6 +1179,11 @@ def parse_article_detail(candidate: ArticleCandidate, html: str) -> ParsedArticl
         body_text=body.get_text(" ", strip=True),
     )
     industry_tags = _extract_industry_tags_from_dom(body)
+    body_text = body.get_text(" ", strip=True)
+    industry_concepts = merge_industry_concepts(
+        _extract_industry_concepts_from_dom(body),
+        infer_industry_concepts(candidate.title, candidate.summary, body_text),
+    )
     return ParsedArticle(
         seq=candidate.seq,
         url=candidate.url,
@@ -1166,4 +1198,6 @@ def parse_article_detail(candidate: ArticleCandidate, html: str) -> ParsedArticl
         content_type=candidate.content_type,
         stocks=ordered_stocks,
         industry_tags=industry_tags,
+        industry_concepts=industry_concepts,
+        industry_parse_version=INDUSTRY_ATTRIBUTION_VERSION,
     )

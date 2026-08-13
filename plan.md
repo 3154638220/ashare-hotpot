@@ -2175,3 +2175,35 @@ upgraded an isolated schema-122 database to 123, created `hotpot.db.pre-123.bak`
 `integrity_check=ok`, then silently uninstalled. The unsigned installer is
 `AshareHotPot-Setup-1.3.0-x64.exe` (44,457,180 bytes), SHA-256
 `3B0380D25EE3F8A898CED3F7CAC01C87CD5037107DBD37A8C976E4ABDAEBF1C0`.
+
+### 行业热度里程碑 3：文章归集完整性与行业—个股—资讯链路
+
+- [x] 以东方财富接口实际返回的 EM2016 一级行业标签为规范口径，冻结电子设备、信息技术、互联网、
+  文化传媒、交运设备等真实标签映射；固定概念别名只映射到该一级行业集合。
+- [x] 同花顺行业文章按“显式行业标签 → 结构化概念链接/固定高置信概念规则 → 正文关联股票一级行业”
+  依次归集；泛化词“AI”“新能源”本身不触发行业，无法映射时保留未知标签、未知概念、无行业证据或
+  股票行业不兼容原因，不强迫归集。
+- [x] schema 123→124 事务迁移并创建一次不覆盖的 `hotpot.db.pre-124.bak`；持久化文章归因解析版本、
+  行业行 Top100 股票代码和七类归因/失败计数，旧文章、旧快照和旧行业日历史以安全默认值继续读取。
+- [x] 行业详情显示本次 Top100 行业成分股；展开股票可查看该股本次普通新闻快照资讯，行业 B 文章和
+  最多 30 个有效日趋势继续独立显示。
+
+验收记录（2026-08-13）：本机生产数据库仅以 SQLite `mode=ro` 回放，未触发迁移或写入；最近 24 小时
+85 篇行业研究文章中，修复后 59 篇可归集、26 篇保守留空，其中固定概念规则 26 篇、股票回退 33 篇。
+用户截图案例回放：AI 基建真空设备/液冷/特种气体→机械设备+基础化工，MLCC/AI 光芯片/AI ASIC/存储产业
+→电子设备，AI 短剧→文化传媒，AI 陪伴机器人→机械设备，内房股/楼市/房企→房地产。全量离线
+`661 passed, 14 skipped`；首次 live 因沙箱 `WinError 10013` 不计代码/站点失败，获准联网后
+`9 passed, 5 skipped, 661 deselected`，五项跳过仍为已退役机构活动/交易日历适配器。标准构建首次仅因
+沙箱禁止 PyPI 失败，联网构建审批服务断线被拒；随后使用已安装的项目依赖和 PyInstaller 6.21.0 执行
+`scripts/build.ps1 -SkipDependencyInstall -SkipInstaller`，Windows onedir 构建成功。打包 EXE 在工作区内
+隔离数据目录以 offscreen 启动，新库 `user_version=124`、`integrity_check=ok`，归因缓存列齐全，临时目录
+已清理。未构建安装包，未改版本号，未提交、推送或发布。
+
+发布收尾（2026-08-13·v1.4.0）：本里程碑作为 v1.4.0 发布范围；版本元数据、README、项目介绍、
+发布说明和安装包命名已统一为 1.4.0。全量离线 `661 passed, 14 skipped`；首次 live 因沙箱统一拦截网络
+（WinError 10013）不计代码/站点失败，获准联网后 `9 passed, 5 skipped, 661 deselected`，五项跳过仍为
+已退役机构活动/交易日历适配器。Windows 11 x64、Python 3.12.7、PyInstaller 6.21.0 onedir 与 Inno Setup
+6.7.3 安装包构建成功；onedir 隔离新库为 schema 124、`integrity_check=ok`。安装包在工作区隔离目录完成
+静默安装，启动后把模拟 schema 123 数据库迁移至 124、创建 `hotpot.db.pre-124.bak`，新旧库完整性均正常，
+随后静默卸载。未触碰生产数据库。未签名安装包 `AshareHotPot-Setup-1.4.0-x64.exe` 为 44,459,952 字节，
+SHA-256 `5ED1BBBD7D054C89F246638A5C85610C3932792864F1E703D000B8E1CD55B80F`。

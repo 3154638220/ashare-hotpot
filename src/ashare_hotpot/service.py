@@ -15,6 +15,7 @@ from .filtering import (
     template_filter_reason,
 )
 from .industries import fetch_stock_industries
+from .industry_taxonomy import INDUSTRY_ATTRIBUTION_VERSION
 from .industry_heat import build_industry_heat_snapshot
 from .models import (
     ArticleCandidate,
@@ -668,6 +669,13 @@ class RefreshService:
             "industry_heat_top100_mapped": 0,
             "industry_heat_articles": 0,
             "industry_heat_articles_mapped": 0,
+            "industry_heat_articles_explicit": 0,
+            "industry_heat_articles_concept": 0,
+            "industry_heat_articles_stock_fallback": 0,
+            "industry_heat_articles_unknown_label": 0,
+            "industry_heat_articles_unknown_concept": 0,
+            "industry_heat_articles_no_evidence": 0,
+            "industry_heat_articles_stock_unmapped": 0,
             "industry_heat_article_failures": 0,
             "industry_heat_source_complete": 0,
             "industry_heat_daily_published": 0,
@@ -762,6 +770,16 @@ class RefreshService:
                         continue
                     cached = self.storage.get_cached_article(candidate.url)
                     if cached is not None:
+                        if (
+                            candidate.channel_key == "industry_research"
+                            and cached.industry_parse_version
+                            < INDUSTRY_ATTRIBUTION_VERSION
+                        ):
+                            # Schema-123 cache rows never parsed live concept
+                            # links. Re-fetch each legacy detail exactly once;
+                            # versioned empty results remain valid afterwards.
+                            to_fetch.append(candidate)
+                            continue
                         if candidate.channel_key == "industry_research" and cached.fetch_error:
                             # A failed industry detail is retryable.  Treating
                             # it as a valid cache would otherwise make a
@@ -1021,6 +1039,23 @@ class RefreshService:
             stats["industry_heat_top100_mapped"] = industry_heat.top100_mapped
             stats["industry_heat_articles"] = industry_heat.research_article_total
             stats["industry_heat_articles_mapped"] = industry_heat.research_article_mapped
+            stats["industry_heat_articles_explicit"] = industry_heat.explicit_article_count
+            stats["industry_heat_articles_concept"] = industry_heat.concept_article_count
+            stats["industry_heat_articles_stock_fallback"] = (
+                industry_heat.stock_fallback_article_count
+            )
+            stats["industry_heat_articles_unknown_label"] = (
+                industry_heat.unknown_label_article_count
+            )
+            stats["industry_heat_articles_unknown_concept"] = (
+                industry_heat.unknown_concept_article_count
+            )
+            stats["industry_heat_articles_no_evidence"] = (
+                industry_heat.no_evidence_article_count
+            )
+            stats["industry_heat_articles_stock_unmapped"] = (
+                industry_heat.stock_industry_unmapped_article_count
+            )
             stats["industry_heat_article_failures"] = industry_article_failures
             stats["industry_heat_source_complete"] = int(
                 industry_heat.source_status == "complete"

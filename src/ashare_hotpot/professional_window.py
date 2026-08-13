@@ -252,8 +252,8 @@ class IndustryDetailPanel(QFrame):
         self.summary_label.setObjectName("mutedLabel")
         layout.addWidget(self.summary_label)
         self.article_tree = QTreeWidget()
-        self.article_tree.setHeaderLabels(["参与 B 的行业文章", "来源", "发布时间"])
-        self.article_tree.setRootIsDecorated(False)
+        self.article_tree.setHeaderLabels(["行业成分股 / 资讯", "类型/来源", "发布时间"])
+        self.article_tree.setRootIsDecorated(True)
         self.article_tree.itemDoubleClicked.connect(self._open_article)
         layout.addWidget(self.article_tree, 1)
         self.trend_label = QLabel("最近 30 个有效日趋势")
@@ -285,6 +285,32 @@ class IndustryDetailPanel(QFrame):
             f"行业热度 {row.heat:.2f} = 50% × {row.a_percentile:.2f} + 50% × {row.b_percentile:.2f}"
         )
         self.article_tree.clear()
+        stock_names = self.storage.get_stock_names(set(row.stock_codes))
+        for code in row.stock_codes:
+            stock_item = QTreeWidgetItem(
+                [f"{stock_names.get(code, code)}（{code}）", "A 成分股", ""]
+            )
+            stock_item.setData(0, Qt.UserRole + 1, code)
+            related = [
+                article
+                for article in snapshot.articles
+                if code in {stock.code for stock in article.stocks}
+                and article.channel_key != "industry_research"
+            ]
+            for article in sorted(
+                related, key=lambda item: item.published_at, reverse=True
+            ):
+                child = QTreeWidgetItem(
+                    [
+                        article.title,
+                        article.provider_name or article.source_name,
+                        article.published_at.strftime("%m-%d %H:%M"),
+                    ]
+                )
+                child.setData(0, Qt.UserRole, article.url)
+                stock_item.addChild(child)
+            self.article_tree.addTopLevelItem(stock_item)
+            stock_item.setExpanded(True)
         allowed = set(row.article_urls)
         for article in sorted(snapshot.articles, key=lambda item: item.published_at, reverse=True):
             if (article.url or article.seq) not in allowed:
@@ -298,7 +324,15 @@ class IndustryDetailPanel(QFrame):
             self.article_tree.addTopLevelItem(item)
         if self.article_tree.topLevelItemCount():
             self.article_tree.setCurrentItem(self.article_tree.topLevelItem(0))
-        self.open_button.setEnabled(self.article_tree.topLevelItemCount() > 0)
+        def has_url(item: QTreeWidgetItem) -> bool:
+            return bool(item.data(0, Qt.UserRole)) or any(
+                has_url(item.child(index)) for index in range(item.childCount())
+            )
+
+        self.open_button.setEnabled(any(
+            has_url(self.article_tree.topLevelItem(index))
+            for index in range(self.article_tree.topLevelItemCount())
+        ))
         history = list(reversed(self.storage.get_industry_daily_snapshots(30)))
         history_by_day = {
             item.snapshot_at.astimezone(SHANGHAI_TZ).date(): item
@@ -927,11 +961,18 @@ class ProfessionalMainWindow(QMainWindow):
 
     def set_snapshot(self, snapshot: Snapshot) -> None:
         self.snapshot = snapshot
-        if snapshot.industry_heat.rows and not snapshot.industry_heat.articles:
-            snapshot.industry_heat.articles = self.storage.get_articles_between(
+        if snapshot.industry_heat.rows:
+            cached = self.storage.get_articles_between(
                 snapshot.industry_heat.window_start or snapshot.window_start,
                 snapshot.industry_heat.window_end or snapshot.window_end,
             )
+            by_url = {
+                article.url or article.seq: article
+                for article in (*snapshot.industry_heat.articles, *cached)
+            }
+            # Industry details need both the B research articles and ordinary
+            # stock news for the industry -> stock -> news drill-down.
+            snapshot.industry_heat.articles = list(by_url.values())
         self.industry_button.setEnabled(True)
         for key in ("pop", "surge"):
             self.source_buttons[key].setEnabled(snapshot.popularity.available)
@@ -1314,7 +1355,12 @@ class ProfessionalMainWindow(QMainWindow):
                 chip.label.setText(label)
                 chip.set_value(value)
             self.quality_label.setText(
-                f"A映射覆盖率 {heat.mapping_coverage * 100:.2f}% · 未映射文章 {heat.unmapped_article_count} · "
+                f"A映射覆盖率 {heat.mapping_coverage * 100:.2f}% · "
+                f"B归因：显式标签 {heat.explicit_article_count} / 概念规则 {heat.concept_article_count} / "
+                f"股票回退 {heat.stock_fallback_article_count} · 未映射 {heat.unmapped_article_count}"
+                f"（未知标签 {heat.unknown_label_article_count}、无行业证据 {heat.no_evidence_article_count}、"
+                f"未知概念 {heat.unknown_concept_article_count}、"
+                f"股票行业不兼容 {heat.stock_industry_unmapped_article_count}） · "
                 f"来源状态 {heat.source_status}{(' · ' + heat.source_error) if heat.source_error else ''}"
             )
             self._set_freshness(
@@ -1920,7 +1966,7 @@ class ProfessionalMainWindow(QMainWindow):
             <p>来自<b>巨潮资讯、上交所与北交所</b>公开公司公告。先对公开文档做持久化事件聚类（同一股票、72 小时内的高置信相似内容合并，金额/客户/日期冲突时宁拆不并），再按十六类固定事件类型做规则抽取，输出正向机制、量化字段、确定性、意外性、新颖性与反证；确定性利好要求重大性 L≥2、确定性≥0.70、得分≥60 且无高度反证；潜在催化要求 L≥1、确定性≥0.40、得分≥35，并醒目标注“尚未落地”。`no_valid_signal` 是正常且高频的结果，产品不强迫每条信息生成利好。</p>
             <p><b>待核验</b>：所有公开列表项先进入发现层（财务报告、合同订单、审批客户、资本动作、产能项目、政策补贴、其他需核验披露），附件按“新调研资料 → 高优先级待核验事件 → 最旧普通待解析资料”循环下载；额度不足只标记延后。候选不计分、不称为利好，正文证据决定是否进入确定性利好或潜在催化榜。</p>
             <h3>行业热度</h3>
-            <p>A 是东方财富综合人气 Top100 的一级行业覆盖，B 是同花顺“行业研究”最近 24 小时可解析文章数；两项分别使用并列平均秩分位，行业热度 = 50%×A分位 + 50%×B分位。飙升榜不参与 A。优先采用正文明确行业标签，缺失时才按正文明确关联股票保守回退；无法映射的样本不计入分母并显示覆盖状态。</p>
+            <p>A 是东方财富综合人气 Top100 的一级行业覆盖，B 是同花顺“行业研究”最近 24 小时可解析文章数；两项分别使用并列平均秩分位，行业热度 = 50%×A分位 + 50%×B分位。飙升榜不参与 A。文章依次采用正文明确行业标签、同花顺结构化概念链接/固定高置信概念规则、正文明确关联股票的一级行业；泛化词“AI”“新能源”本身不触发行业。显式标签、概念规则、股票回退及各类未映射原因分别显示，不能可靠归集的样本保持为空。</p>
             <p>只有上海时间 18:00 后、东方财富 Top100 新鲜且行业研究 24 小时覆盖完整时，才写入当天首份不可变日快照。失败、部分覆盖或仅缓存结果仍可查看，但不进入历史趋势。行业热度只用于公开信息整理，不预测股价或收益。</p>
             <h3>可选 AI 增强</h3>
             <p>默认关闭；开启后仅向模型发送规则初筛后的事件代表文本，输出经同一数据契约严格校验，模型故障只降级当前事件（显示“规则降级”），不影响整榜。密钥使用 Windows DPAPI 加密保存在独立文件，不写入数据库、日志、导出或剪贴板。</p>

@@ -434,5 +434,5 @@ def test_activity_delete_cascades_occurrence_rows(tmp_path) -> None:
     assert storage.get_research_participant_occurrences("act-1") == []
 
 
-def test_schema_constant_is_123() -> None:
-    assert SCHEMA_VERSION == 123
+def test_schema_constant_is_124() -> None:
+    assert SCHEMA_VERSION == 124

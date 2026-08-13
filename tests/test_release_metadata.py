@@ -7,11 +7,11 @@ from ashare_hotpot import __version__
 from ashare_hotpot.config import APP_VERSION, release_url
 
 
-EXPECTED_RELEASE_VERSION = "1.3.0"
+EXPECTED_RELEASE_VERSION = "1.4.0"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_v130_release_metadata_is_consistent() -> None:
+def test_v140_release_metadata_is_consistent() -> None:
     project = tomllib.loads(
         (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )
@@ -25,6 +25,6 @@ def test_v130_release_metadata_is_consistent() -> None:
     assert __version__ == EXPECTED_RELEASE_VERSION
     assert f'#define MyAppVersion "{EXPECTED_RELEASE_VERSION}"' in installer
     assert release_url() == (
-        "https://github.com/3154638220/ashare-hotpot/releases/tag/v1.3.0"
+        "https://github.com/3154638220/ashare-hotpot/releases/tag/v1.4.0"
     )
-    assert "AshareHotPot-Setup-1.3.0-x64.exe" in readme
+    assert "AshareHotPot-Setup-1.4.0-x64.exe" in readme
