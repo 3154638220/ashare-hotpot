@@ -2207,3 +2207,5 @@ upgraded an isolated schema-122 database to 123, created `hotpot.db.pre-123.bak`
 静默安装，启动后把模拟 schema 123 数据库迁移至 124、创建 `hotpot.db.pre-124.bak`，新旧库完整性均正常，
 随后静默卸载。未触碰生产数据库。未签名安装包 `AshareHotPot-Setup-1.4.0-x64.exe` 为 44,459,952 字节，
 SHA-256 `5ED1BBBD7D054C89F246638A5C85610C3932792864F1E703D000B8E1CD55B80F`。
+
+v1.4.1 补丁发布审计（2026-09-04）：综合人气榜与飙升榜新增所属行业列，刷新时复用公开一级行业映射并把结果写入人气快照；旧快照缺失行业时只用已有本地映射缓存补全，无法映射则显示“未标注”。表格、复制和 CSV 导出口径一致。行业详情移除最近 30 个有效日趋势区域，资讯树接管释放的纵向空间；行业日历史表和既有快照继续保留，不做数据删除。SQLite schema 保持 124，未改变行业热度公式、研究信号规则、来源或阈值。版本元数据、README、项目介绍、发布说明和安装包命名统一为 1.4.1。定向版本/服务/存储/UI 回归 `57 passed`；全量离线 `663 passed, 14 skipped`。首次 live 因沙箱 `WinError 10013` 不计代码/站点失败，获准联网后 `9 passed, 5 skipped, 663 deselected`，五项跳过仍为已退役机构活动/交易日历适配器。Windows 11 x64、Python 3.12.7、PyInstaller 6.21.0 onedir 与 Inno Setup 6.7.3 安装包构建成功；onedir 与静默安装后的应用均在隔离数据目录启动，新库为 schema 124、`integrity_check=ok`，安装包随后静默卸载。未触碰生产数据库。未签名安装包 `AshareHotPot-Setup-1.4.1-x64.exe` 为 44,464,764 字节，SHA-256 `EE40A237D7C75F55B4EF1B347FD8BD300E7E2AE4541C89BA145A83A379C5B1A3`。

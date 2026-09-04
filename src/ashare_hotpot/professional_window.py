@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import html
 import platform
-from datetime import timedelta
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QPainter, QPen
+from PySide6.QtGui import QAction, QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -173,54 +173,6 @@ class IndustryTableModel(QAbstractTableModel):
         self.layoutChanged.emit()
 
 
-class IndustryTrendWidget(QFrame):
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.points: list[tuple[str, float | None]] = []
-        self.setMinimumHeight(150)
-
-    def set_points(self, points: list[tuple[str, float | None]]) -> None:
-        self.points = points
-        self.update()
-
-    def paintEvent(self, event) -> None:  # noqa: N802
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        rect = self.rect().adjusted(30, 12, -12, -24)
-        painter.setPen(QPen(QColor("#425064"), 1))
-        painter.drawRect(rect)
-        if not self.points:
-            painter.setPen(QColor("#8b98aa"))
-            painter.drawText(rect, Qt.AlignCenter, "暂无有效快照")
-            return
-        painter.setPen(QColor("#8b98aa"))
-        for value in (0, 50, 100):
-            y = rect.bottom() - value * rect.height() / 100
-            painter.drawText(2, int(y - 8), 24, 16, Qt.AlignRight, str(value))
-        if len(self.points) == 1:
-            step = 0
-        else:
-            step = rect.width() / (len(self.points) - 1)
-        painter.setPen(QPen(QColor("#5bc0eb"), 2))
-        last = None
-        for index, (_day, value) in enumerate(self.points):
-            if value is None:
-                last = None
-                continue
-            point = rect.left() + step * index, rect.bottom() - value * rect.height() / 100
-            if last is not None:
-                painter.drawLine(last[0], int(last[1]), int(point[0]), int(point[1]))
-            last = point
-        if all(value is None for _day, value in self.points):
-            painter.setPen(QColor("#8b98aa"))
-            painter.drawText(rect, Qt.AlignCenter, "暂无有效快照")
-        painter.setPen(QColor("#8b98aa"))
-        if self.points:
-            painter.drawText(rect.left(), rect.bottom() + 5, 100, 18, Qt.AlignLeft, self.points[0][0])
-            painter.drawText(rect.right() - 100, rect.bottom() + 5, 100, 18, Qt.AlignRight, self.points[-1][0])
-
-
 class IndustryDetailPanel(QFrame):
     open_url_requested = Signal(str)
     close_requested = Signal()
@@ -256,11 +208,6 @@ class IndustryDetailPanel(QFrame):
         self.article_tree.setRootIsDecorated(True)
         self.article_tree.itemDoubleClicked.connect(self._open_article)
         layout.addWidget(self.article_tree, 1)
-        self.trend_label = QLabel("最近 30 个有效日趋势")
-        self.trend_label.setObjectName("sectionTitle")
-        layout.addWidget(self.trend_label)
-        self.trend = IndustryTrendWidget()
-        layout.addWidget(self.trend)
         self.open_button = QPushButton("打开所选文章")
         self.open_button.clicked.connect(self._open_selected)
         self.open_button.setEnabled(False)
@@ -272,7 +219,6 @@ class IndustryDetailPanel(QFrame):
         self.title_label.setText("行业热度详情")
         self.meta_label.setText("选择行业查看明细")
         self.article_tree.clear()
-        self.trend.set_points([])
         self.open_button.setEnabled(False)
 
     def set_row(self, row: IndustryHeatRow, snapshot: IndustryHeatSnapshot) -> None:
@@ -333,32 +279,6 @@ class IndustryDetailPanel(QFrame):
             has_url(self.article_tree.topLevelItem(index))
             for index in range(self.article_tree.topLevelItemCount())
         ))
-        history = list(reversed(self.storage.get_industry_daily_snapshots(30)))
-        history_by_day = {
-            item.snapshot_at.astimezone(SHANGHAI_TZ).date(): item
-            for item in history
-            if item.snapshot_at
-        }
-        points: list[tuple[str, float | None]] = []
-        if history_by_day:
-            day = min(history_by_day)
-            last_day = max(history_by_day)
-            while day <= last_day:
-                # The history table stores successful points only.  Fill
-                # weekday gaps explicitly so the painter breaks the line and
-                # the user can distinguish a missing point from a zero score.
-                item = history_by_day.get(day) if day.weekday() < 5 else None
-                value = (
-                    next(
-                        (candidate.heat for candidate in item.rows if candidate.industry == row.industry),
-                        None,
-                    )
-                    if item is not None
-                    else None
-                )
-                points.append((day.isoformat(), value))
-                day += timedelta(days=1)
-        self.trend.set_points(points)
 
     def _open_selected(self) -> None:
         item = self.article_tree.currentItem()
@@ -961,6 +881,18 @@ class ProfessionalMainWindow(QMainWindow):
 
     def set_snapshot(self, snapshot: Snapshot) -> None:
         self.snapshot = snapshot
+        popularity_rows = (*snapshot.popularity.popularity, *snapshot.popularity.surging)
+        missing_codes = {row.code for row in popularity_rows if not row.industry}
+        if missing_codes:
+            cached_industries = self.storage.get_stock_industries(missing_codes)
+            snapshot.popularity.popularity = [
+                replace(row, industry=cached_industries.get(row.code) or row.industry)
+                for row in snapshot.popularity.popularity
+            ]
+            snapshot.popularity.surging = [
+                replace(row, industry=cached_industries.get(row.code) or row.industry)
+                for row in snapshot.popularity.surging
+            ]
         if snapshot.industry_heat.rows:
             cached = self.storage.get_articles_between(
                 snapshot.industry_heat.window_start or snapshot.window_start,
@@ -1590,12 +1522,16 @@ class ProfessionalMainWindow(QMainWindow):
             self.table.setColumnWidth(9, 110)
             self.table.setColumnWidth(10, 90)
         elif self.selected_source == "pop":
-            self.table.setColumnWidth(3, 96)
-            self.table.setColumnWidth(4, PERCENT_COLUMN_WIDTH)
-        elif self.selected_source == "surge":
-            self.table.setColumnWidth(3, 110)
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_INDUSTRY_COLUMN, 120)
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_CODE_COLUMN, 82)
             self.table.setColumnWidth(4, 96)
             self.table.setColumnWidth(5, PERCENT_COLUMN_WIDTH)
+        elif self.selected_source == "surge":
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_INDUSTRY_COLUMN, 120)
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_CODE_COLUMN, 82)
+            self.table.setColumnWidth(4, 110)
+            self.table.setColumnWidth(5, 96)
+            self.table.setColumnWidth(6, PERCENT_COLUMN_WIDTH)
         elif self.selected_source == "interaction":
             self.table.setColumnWidth(RankingTableModel.INDUSTRY_COLUMN, 145)
             self.table.setColumnWidth(RankingTableModel.HEAT_COLUMN, 88)
@@ -1636,7 +1572,7 @@ class ProfessionalMainWindow(QMainWindow):
         state = self.preferences.header_state(self._table_pref_key(source_key))
         if not state.isEmpty():
             header.restoreState(state)
-            percent_column = 4 if source_key == "pop" else (5 if source_key == "surge" else None)
+            percent_column = 5 if source_key == "pop" else (6 if source_key == "surge" else None)
             if percent_column is not None and header.sectionSize(percent_column) < PERCENT_COLUMN_WIDTH:
                 header.resizeSection(percent_column, PERCENT_COLUMN_WIDTH)
         column, order = self.preferences.sort(self._table_pref_key(source_key))

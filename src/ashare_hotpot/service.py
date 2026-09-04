@@ -248,6 +248,36 @@ class RefreshService:
             industries.update(resolved)
         return industries
 
+    def _attach_popularity_industries(
+        self,
+        snapshot: OfficialPopularitySnapshot,
+        *,
+        now: datetime,
+        cancel: threading.Event,
+    ) -> OfficialPopularitySnapshot:
+        """Attach the cached/public primary-industry label to both official boards."""
+
+        codes = {
+            row.code
+            for row in (*snapshot.popularity, *snapshot.surging)
+        }
+        if not codes:
+            return snapshot
+        industries = self._resolve_stock_industries(
+            codes,
+            now=now,
+            cancel=cancel,
+        )
+        snapshot.popularity = [
+            replace(row, industry=industries.get(row.code) or row.industry)
+            for row in snapshot.popularity
+        ]
+        snapshot.surging = [
+            replace(row, industry=industries.get(row.code) or row.industry)
+            for row in snapshot.surging
+        ]
+        return snapshot
+
     def _build_industry_heat(
         self,
         *,
@@ -1025,6 +1055,26 @@ class RefreshService:
                 cancel=cancel,
                 progress=progress,
             )
+            if popularity.available:
+                try:
+                    popularity = self._attach_popularity_industries(
+                        popularity,
+                        now=window_end,
+                        cancel=cancel,
+                    )
+                    stats["popularity_industry_mapped"] = sum(
+                        bool(row.industry)
+                        for row in (*popularity.popularity, *popularity.surging)
+                    )
+                    # A fresh popularity cache is initially persisted by
+                    # _refresh_popularity. Replace it with the enriched form
+                    # so later cache hits retain the industry column too.
+                    if not popularity.is_stale and not popularity.from_cache:
+                        self.storage.set_popularity_state(popularity, window_end)
+                except RefreshCancelled:
+                    raise
+                except Exception as exc:
+                    logger.warning("popularity industry lookup failed: %s", exc)
             self._progress(progress, 98, "正在生成行业热度…")
             industry_heat = self._build_industry_heat(
                 popularity=popularity,

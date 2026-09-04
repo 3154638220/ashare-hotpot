@@ -56,7 +56,7 @@ def test_storage_article_and_snapshot_roundtrip(tmp_path) -> None:
             success_at=now,
             error=None,
             popularity=[
-                PopularityRankRow(1, "000001", "平安银行", None, 11.25, 1.5, "https://guba.eastmoney.com/rank/stock?code=000001")
+                PopularityRankRow(1, "000001", "平安银行", None, 11.25, 1.5, "https://guba.eastmoney.com/rank/stock?code=000001", "金融")
             ],
             surging=[
                 PopularityRankRow(3, "600519", "贵州茅台", 2, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519")
@@ -72,12 +72,15 @@ def test_storage_article_and_snapshot_roundtrip(tmp_path) -> None:
     assert loaded.popularity.available is True
     assert loaded.popularity.popularity[0].code == "000001"
     assert loaded.popularity.popularity[0].current_price == 11.25
+    assert loaded.popularity.popularity[0].industry == "金融"
     assert loaded.popularity.surging[0].change == 2
 
     legacy_payload = snapshot.to_dict()
+    legacy_payload["popularity"]["popularity"][0].pop("industry")
     legacy_payload["guba"] = {"available": True, "rankings": []}
     loaded_legacy = Snapshot.from_dict(legacy_payload)
     assert loaded_legacy.popularity.available is True
+    assert loaded_legacy.popularity.popularity[0].industry is None
     assert not hasattr(loaded_legacy, "guba")
 
     popularity_state = OfficialPopularitySnapshot(

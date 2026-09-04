@@ -520,6 +520,7 @@ class PopularityRankRow:
     current_price: float | None
     change_percent: float | None
     url: str
+    industry: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -530,6 +531,7 @@ class PopularityRankRow:
             "current_price": self.current_price,
             "change_percent": self.change_percent,
             "url": self.url,
+            "industry": self.industry,
         }
 
     @classmethod
@@ -542,6 +544,7 @@ class PopularityRankRow:
             current_price=_to_float(data.get("current_price")),
             change_percent=_to_float(data.get("change_percent")),
             url=str(data.get("url") or ""),
+            industry=str(data["industry"]).strip() if data.get("industry") else None,
         )
 
 

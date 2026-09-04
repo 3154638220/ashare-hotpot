@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 
 from PySide6.QtCore import Qt
@@ -195,11 +196,11 @@ def make_snapshot() -> Snapshot:
             success_at=now,
             error=None,
             popularity=[
-                PopularityRankRow(1, "000001", "平安银行", None, 11.25, 1.5, "https://guba.eastmoney.com/rank/stock?code=000001"),
-                PopularityRankRow(2, "600519", "贵州茅台", None, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519"),
+                PopularityRankRow(1, "000001", "平安银行", None, 11.25, 1.5, "https://guba.eastmoney.com/rank/stock?code=000001", "金融"),
+                PopularityRankRow(2, "600519", "贵州茅台", None, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519", "食品饮料"),
             ],
             surging=[
-                PopularityRankRow(3, "600519", "贵州茅台", 5, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519"),
+                PopularityRankRow(3, "600519", "贵州茅台", 5, 1600.0, 2.0, "https://guba.eastmoney.com/rank/stock?code=600519", "食品饮料"),
             ],
         ),
     )
@@ -261,17 +262,20 @@ def test_professional_shell_displays_snapshot_and_filters(qtbot, tmp_path) -> No
     window._select_source("pop")
     assert window.selected_source == "pop"
     assert window.industry_filter.isHidden()
-    assert window.table_model.headerData(3, Qt.Horizontal) == "现价"
+    assert window.table_model.headerData(2, Qt.Horizontal) == "所属行业"
+    assert window.table_model.data(window.table_model.index(0, 2), Qt.DisplayRole) == "金融"
+    assert window.table_model.headerData(3, Qt.Horizontal) == "代码"
     assert window.proxy_model.rowCount() == 2
     name_alignment = window.table_model.data(
         window.table_model.index(0, RankingTableModel.STOCK_NAME_COLUMN), Qt.TextAlignmentRole
     )
     assert name_alignment == int(Qt.AlignVCenter | Qt.AlignLeft)
-    assert window.table.columnWidth(4) == 150  # 涨跌幅
-    window._select_source("surge")
-    assert window.table_model.headerData(3, Qt.Horizontal) == "较昨日变动"
-    assert window.table_model.data(window.table_model.index(0, 3), Qt.DisplayRole) == "↑ 5"
     assert window.table.columnWidth(5) == 150  # 涨跌幅
+    window._select_source("surge")
+    assert window.table_model.headerData(2, Qt.Horizontal) == "所属行业"
+    assert window.table_model.headerData(4, Qt.Horizontal) == "较昨日变动"
+    assert window.table_model.data(window.table_model.index(0, 4), Qt.DisplayRole) == "↑ 5"
+    assert window.table.columnWidth(6) == 150  # 涨跌幅
 
     window._select_source("news")
     assert window.industry_filter.selected_tags == frozenset({"白酒"})
@@ -418,6 +422,46 @@ def test_popularity_single_click_does_not_open_and_activation_does(qtbot, tmp_pa
     assert opened[-1] == "https://guba.eastmoney.com/rank/stock?code=000001"
 
 
+def test_popularity_export_and_copy_include_industry(qtbot, tmp_path, monkeypatch) -> None:
+    window = make_window(tmp_path, qtbot)
+    window.set_snapshot(make_snapshot())
+    window._select_source("pop")
+    target = tmp_path / "popularity.csv"
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QFileDialog.getSaveFileName",
+        lambda *_args, **_kwargs: (str(target), "CSV 文件 (*.csv)"),
+    )
+    copied_text: list[str] = []
+    monkeypatch.setattr(
+        "ashare_hotpot.professional_window.QApplication.clipboard",
+        lambda: type("Clip", (), {"setText": lambda _self, value: copied_text.append(value)})(),
+    )
+
+    window.export_current_results()
+    with target.open("r", encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.reader(stream))
+    assert rows[0] == ["排名", "股票名称", "所属行业", "代码", "现价", "涨跌幅"]
+    assert rows[1] == ["1", "平安银行", "金融", "000001", "11.25", "+1.50%"]
+
+    window.table.setCurrentIndex(window.proxy_model.index(0, 0))
+    window.copy_selected_row()
+    assert copied_text == ["\t".join(rows[1])]
+
+
+def test_old_popularity_snapshot_uses_cached_industry(qtbot, tmp_path) -> None:
+    window = make_window(tmp_path, qtbot)
+    snapshot = make_snapshot()
+    snapshot.popularity.popularity[0] = replace(
+        snapshot.popularity.popularity[0], industry=None
+    )
+    window.storage.upsert_stock_industries({"000001": "金融"}, snapshot.created_at)
+
+    window.set_snapshot(snapshot)
+    window._select_source("pop")
+
+    assert window.table_model.data(window.table_model.index(0, 2), Qt.DisplayRole) == "金融"
+
+
 def test_stale_popularity_is_explicit_and_keeps_rows(qtbot, tmp_path) -> None:
     window = make_window(tmp_path, qtbot)
     snapshot = make_snapshot()
@@ -433,7 +477,7 @@ def test_stale_popularity_is_explicit_and_keeps_rows(qtbot, tmp_path) -> None:
     assert "身份核实页" in window.quality_label.text()
 
 
-def test_industry_navigation_detail_trend_and_export_share_columns(
+def test_industry_navigation_detail_and_export_share_columns(
     qtbot, tmp_path, monkeypatch
 ) -> None:
     window = make_window(tmp_path, qtbot)
@@ -464,7 +508,6 @@ def test_industry_navigation_detail_trend_and_export_share_columns(
         source_status="complete",
         articles=[article],
     )
-    window.storage.save_industry_daily_snapshot(snapshot.industry_heat, snapshot.created_at.date())
     window.set_snapshot(snapshot)
     window._select_source("industry")
 
@@ -480,7 +523,9 @@ def test_industry_navigation_detail_trend_and_export_share_columns(
     assert "000001" in stock_item.text(0)
     assert stock_item.childCount() == 1
     assert "50%" in window.industry_detail_panel.summary_label.text()
-    assert window.industry_detail_panel.trend.points[-1][1] == 75.0
+    detail_layout = window.industry_detail_panel.layout()
+    assert not hasattr(window.industry_detail_panel, "trend")
+    assert detail_layout.stretch(detail_layout.indexOf(window.industry_detail_panel.article_tree)) == 1
 
     target = tmp_path / "industry.csv"
     monkeypatch.setattr(
@@ -647,14 +692,14 @@ def test_saved_narrow_percent_column_is_widened_to_minimum(qtbot, tmp_path) -> N
     snapshot = make_snapshot()
     first.set_snapshot(snapshot)
     first._select_source("pop")
-    first.table.setColumnWidth(4, 90)
+    first.table.setColumnWidth(5, 90)
     first._save_table_state("pop")
     first.preferences.sync()
 
     second = make_window(tmp_path, qtbot)
     second.set_snapshot(snapshot)
     assert second.selected_source == "pop"
-    assert second.table.columnWidth(4) == 150
+    assert second.table.columnWidth(5) == 150
 
 
 def test_about_dialog_shows_support_information_and_opens_links(qtbot, monkeypatch) -> None:

@@ -394,10 +394,12 @@ class HeatBarDelegate(QStyledItemDelegate):
 class RankingTableModel(QAbstractTableModel):
     NEWS_HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效事件", "原始篇数", "最近事件")
     INTERACTION_HEADERS = ("排名", "股票名称", "代码", "所属行业", "有效提问", "已回复", "回复率", "最近回复")
-    POP_HEADERS = ("排名", "股票名称", "代码", "现价", "涨跌幅")
-    SURGE_HEADERS = ("排名", "股票名称", "代码", "较昨日变动", "现价", "涨跌幅")
+    POP_HEADERS = ("排名", "股票名称", "所属行业", "代码", "现价", "涨跌幅")
+    SURGE_HEADERS = ("排名", "股票名称", "所属行业", "代码", "较昨日变动", "现价", "涨跌幅")
     STOCK_NAME_COLUMN = 1
     INDUSTRY_COLUMN = 3
+    POPULARITY_INDUSTRY_COLUMN = 2
+    POPULARITY_CODE_COLUMN = 3
     HEAT_COLUMN = 4
 
     def __init__(self, parent: QObject | None = None) -> None:
@@ -450,6 +452,7 @@ class RankingTableModel(QAbstractTableModel):
                 raw_values = (
                     row.rank,
                     row.name,
+                    row.industry or "未标注",
                     row.code,
                     row.change,
                     row.current_price,
@@ -458,6 +461,7 @@ class RankingTableModel(QAbstractTableModel):
                 display_values = (
                     str(row.rank),
                     row.name,
+                    row.industry or "未标注",
                     row.code,
                     format_change(row.change),
                     format_price(row.current_price),
@@ -467,6 +471,7 @@ class RankingTableModel(QAbstractTableModel):
                 raw_values = (
                     row.rank,
                     row.name,
+                    row.industry or "未标注",
                     row.code,
                     row.current_price,
                     row.change_percent,
@@ -474,6 +479,7 @@ class RankingTableModel(QAbstractTableModel):
                 display_values = (
                     str(row.rank),
                     row.name,
+                    row.industry or "未标注",
                     row.code,
                     format_price(row.current_price),
                     format_percent(row.change_percent),
@@ -523,7 +529,12 @@ class RankingTableModel(QAbstractTableModel):
         if role == Qt.UserRole:
             return raw_values[index.column()]
         if role == Qt.TextAlignmentRole:
-            centered = {0, 2}
+            centered = {
+                0,
+                self.POPULARITY_CODE_COLUMN
+                if isinstance(row, PopularityRankRow)
+                else 2,
+            }
             if index.column() in centered:
                 return int(Qt.AlignCenter)
             if index.column() == self.STOCK_NAME_COLUMN:
@@ -534,17 +545,27 @@ class RankingTableModel(QAbstractTableModel):
         if role == Qt.ForegroundRole and index.column() == self.STOCK_NAME_COLUMN:
             return QColor(COLOR_LINK)
         if isinstance(row, PopularityRankRow):
-            percent_column = 4 if self.source_key == "pop" else 5
+            percent_column = 5 if self.source_key == "pop" else 6
             if index.column() == percent_column and row.change_percent is not None:
                 if row.change_percent > 0:
                     return QColor(COLOR_HOT)
                 if row.change_percent < 0:
                     return QColor(COLOR_SUCCESS)
-        if role == Qt.ForegroundRole and index.column() == self.HEAT_COLUMN:
+        if (
+            role == Qt.ForegroundRole
+            and not isinstance(row, PopularityRankRow)
+            and index.column() == self.HEAT_COLUMN
+        ):
             return QColor(COLOR_HOT)
         if role == Qt.ForegroundRole and index.column() == 0 and row.rank <= 3:
             return QColor(COLOR_WARNING)
-        if role == Qt.FontRole and index.column() in {self.STOCK_NAME_COLUMN, self.HEAT_COLUMN}:
+        if role == Qt.FontRole and (
+            index.column() == self.STOCK_NAME_COLUMN
+            or (
+                not isinstance(row, PopularityRankRow)
+                and index.column() == self.HEAT_COLUMN
+            )
+        ):
             font = QFont()
             font.setBold(True)
             return font
@@ -1900,15 +1921,19 @@ class LegacyMainWindow(QMainWindow):
         for column in range(2, self.table_model.columnCount()):
             header.setSectionResizeMode(column, QHeaderView.Interactive)
         self.table.setColumnWidth(0, 58)
-        self.table.setColumnWidth(2, 82)
         if self.selected_source == "pop":
-            self.table.setColumnWidth(3, 96)
-            self.table.setColumnWidth(4, 130)
-        elif self.selected_source == "surge":
-            self.table.setColumnWidth(3, 110)
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_INDUSTRY_COLUMN, 120)
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_CODE_COLUMN, 82)
             self.table.setColumnWidth(4, 96)
             self.table.setColumnWidth(5, 130)
+        elif self.selected_source == "surge":
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_INDUSTRY_COLUMN, 120)
+            self.table.setColumnWidth(RankingTableModel.POPULARITY_CODE_COLUMN, 82)
+            self.table.setColumnWidth(4, 110)
+            self.table.setColumnWidth(5, 96)
+            self.table.setColumnWidth(6, 130)
         else:
+            self.table.setColumnWidth(2, 82)
             self.table.setColumnWidth(RankingTableModel.INDUSTRY_COLUMN, 160)
             self.table.setColumnWidth(RankingTableModel.HEAT_COLUMN, 92)
             self.table.setColumnWidth(5, 92)

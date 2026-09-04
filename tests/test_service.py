@@ -47,7 +47,14 @@ class FakeClient:
 
     def get_json(self, _url: str) -> dict[str, object]:
         type(self).industry_calls += 1
-        return {"result": {"data": [{"SECURITY_CODE": "000001", "EM2016": "金融-银行"}]}}
+        return {
+            "result": {
+                "data": [
+                    {"SECURITY_CODE": "000001", "EM2016": "金融-银行"},
+                    {"SECURITY_CODE": "600519", "EM2016": "食品饮料-白酒"},
+                ]
+            }
+        }
 
 
 class FakeSource:
@@ -130,15 +137,17 @@ def test_refresh_pipeline_and_cache(monkeypatch, tmp_path) -> None:
     assert progress[-1] == (100, "刷新完成")
     assert snapshot.popularity.available is True
     assert snapshot.popularity.popularity[0].code == "000001"
+    assert snapshot.popularity.popularity[0].industry == "金融"
     assert snapshot.popularity.surging[0].change == 3
     assert FakeClient.detail_calls == 1
-    assert FakeClient.industry_calls == 1
+    assert snapshot.popularity.surging[0].industry == "食品饮料"
+    assert FakeClient.industry_calls == 2
 
     second = RefreshService(settings, storage).refresh(now=NOW)
     assert second.stats["cached"] == 1
     assert second.rankings[0].industry_tags == ("金融",)
     assert FakeClient.detail_calls == 1
-    assert FakeClient.industry_calls == 1
+    assert FakeClient.industry_calls == 2
     assert research_purges == [NOW, NOW]
 
 

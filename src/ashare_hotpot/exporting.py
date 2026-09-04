@@ -35,8 +35,8 @@ SOURCE_LABELS = {
 CSV_HEADERS = {
     "news": ("排名", "股票名称", "代码", "所属行业", "有效事件", "原始篇数", "最近事件", "来源", "数据源", "内容类型"),
     "interaction": ("排名", "股票名称", "代码", "所属行业", "有效提问", "已回复", "回复率", "最近回复", "平台"),
-    "pop": ("排名", "股票名称", "代码", "现价", "涨跌幅"),
-    "surge": ("排名", "股票名称", "代码", "较昨日变动", "现价", "涨跌幅"),
+    "pop": ("排名", "股票名称", "所属行业", "代码", "现价", "涨跌幅"),
+    "surge": ("排名", "股票名称", "所属行业", "代码", "较昨日变动", "现价", "涨跌幅"),
     "confirm": ("排名", "股票名称", "代码", "事件类型", "正向机制", "重大性", "关键相对量", "确定性", "主要反证/落地风险", "事件时间", "质量状态"),
     "catalyst": ("排名", "股票名称", "代码", "事件类型", "正向机制", "重大性", "关键相对量", "确定性", "主要反证/落地风险", "事件时间", "质量状态"),
     "z20": ("排名", "股票名称", "代码", "行业", "z20", "机构集团数", "新增机构集团", "分析师数", "高深度占比", "最近活动", "覆盖状态"),
@@ -198,6 +198,7 @@ def row_values(
         return (
             row.rank,
             row.name,
+            row.industry or "未标注",
             row.code,
             "" if row.change is None else row.change,
             "" if row.current_price is None else f"{row.current_price:.2f}",
@@ -206,6 +207,7 @@ def row_values(
     return (
         row.rank,
         row.name,
+        row.industry or "未标注",
         row.code,
         "" if row.current_price is None else f"{row.current_price:.2f}",
         "" if row.change_percent is None else f"{row.change_percent:+.2f}%",
