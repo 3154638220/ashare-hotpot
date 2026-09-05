@@ -32,7 +32,7 @@ from .models import (
 )
 from .parsing import extract_body_text, is_a_share_code, parse_article_detail
 from .pdf import sha256_hex
-from .popularity import fetch_official_popularity
+from .popularity import fetch_official_popularity, refresh_popularity_quotes, restore_popularity_names
 from .ranking import InteractionRankingService, RankingService
 from .research_sync import ResearchSyncResult, ResearchSyncService
 from .policy_sources import PolicySyncResult, PolicySyncService
@@ -452,6 +452,18 @@ class RefreshService:
         ):
             self._progress(progress, 97, f"东方财富人气榜：{cache_minutes} 分钟内已读取，复用缓存")
             cached.from_cache = True
+            rows = (*cached.popularity, *cached.surging)
+            attempt_at = cached.quote_attempt_at or cached.success_at
+            # A rank cache hit must not lock missing supplementary data out
+            # for ten minutes. Repair only quotes, at most once per minute.
+            if any(row.quote_incomplete for row in rows) and (now - attempt_at) >= timedelta(minutes=1):
+                with PoliteHttpClient(self.settings, cancel) as client:
+                    cached.popularity, cached.surging = refresh_popularity_quotes(
+                        client, cached.popularity, cached.surging,
+                    )
+                cached.quote_attempt_at = now
+                restore_popularity_names(cached, self.storage.get_stock_names({row.code for row in rows}))
+                self.storage.set_popularity_state(cached, now)
             return cached
         try:
             with PoliteHttpClient(self.settings, cancel) as client:
@@ -464,7 +476,16 @@ class RefreshService:
                 from_cache=False,
                 popularity=popularity,
                 surging=surging,
+                quote_attempt_at=now,
             )
+            codes = {row.code for row in (*popularity, *surging) if "股票名称" in row.missing_quote_fields}
+            if codes:
+                names = self.storage.get_stock_names(codes)
+                if cached is not None:
+                    for row in (*cached.popularity, *cached.surging):
+                        if row.code in codes and "股票名称" not in row.missing_quote_fields:
+                            names[row.code] = row.name
+                restore_popularity_names(snapshot, names)
             self.storage.set_popularity_state(snapshot, now)
             return snapshot
         except RefreshCancelled:

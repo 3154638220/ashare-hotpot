@@ -477,6 +477,26 @@ def test_stale_popularity_is_explicit_and_keeps_rows(qtbot, tmp_path) -> None:
     assert "身份核实页" in window.quality_label.text()
 
 
+def test_missing_popularity_quotes_are_visible_and_names_restore_offline(qtbot, tmp_path, monkeypatch) -> None:
+    window = make_window(tmp_path, qtbot)
+    snapshot = make_snapshot()
+    snapshot.popularity.popularity[0] = replace(
+        snapshot.popularity.popularity[0], name="000001", current_price=None, change_percent=None
+    )
+    monkeypatch.setattr(window.storage, "get_stock_names", lambda codes: {"000001": "平安银行"})
+    window.set_snapshot(snapshot)
+    window._select_source("pop")
+    assert window.table_model.data(window.table_model.index(0, 1), Qt.DisplayRole) == "平安银行"
+    assert window.table_model.data(window.table_model.index(0, 4), Qt.DisplayRole) == "—"
+    assert "本地缓存" in window.table_model.data(window.table_model.index(0, 1), Qt.ToolTipRole)
+    assert window.kpi_chips[2].value.text() == "部分数据"
+    assert window.freshness_label.text() == "行情待补全"
+    assert "1 只缺少" in window.quality_label.text()
+    assert "1 只名称使用本地缓存" in window.quality_label.text()
+    window._select_source("surge")
+    assert window.kpi_chips[2].value.text() == "正常"
+
+
 def test_industry_navigation_detail_and_export_share_columns(
     qtbot, tmp_path, monkeypatch
 ) -> None:

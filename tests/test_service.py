@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -709,3 +710,80 @@ def fake_popularity_fetch(_client):
             )
         ],
     )
+
+
+def test_incomplete_popularity_cache_repairs_quotes_without_refetching_ranks(monkeypatch, tmp_path) -> None:
+    import ashare_hotpot.service as service_module
+
+    fetch_calls = []
+    repair_calls = []
+    def fetch(client):
+        fetch_calls.append(1)
+        a, b = fake_popularity_fetch(client)
+        return [replace(a[0], name="000001", current_price=None, change_percent=None)], b
+
+    def repair(client, a, b):
+        repair_calls.append(1)
+        return fake_popularity_fetch(client)
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fetch)
+    monkeypatch.setattr(service_module, "refresh_popularity_quotes", repair)
+    settings = AppSettings(app_root=tmp_path)
+    storage = Storage(settings.database_path)
+    service = RefreshService(settings, storage)
+    initial = service._refresh_popularity(now=NOW, cancel=threading.Event(), progress=None)
+    assert initial.popularity[0].quote_incomplete
+    service._refresh_popularity(now=NOW + timedelta(seconds=30), cancel=threading.Event(), progress=None)
+    assert not repair_calls
+    result = service._refresh_popularity(now=NOW + timedelta(minutes=1), cancel=threading.Event(), progress=None)
+    assert len(fetch_calls) == len(repair_calls) == 1
+    assert result.from_cache
+    assert result.success_at == NOW
+    assert result.quote_attempt_at == NOW + timedelta(minutes=1)
+    assert not result.popularity[0].quote_incomplete
+    assert storage.get_popularity_state().popularity[0].name == "平安银行"
+
+
+def test_new_ranking_uses_cached_name_but_never_old_prices(monkeypatch, tmp_path) -> None:
+    import ashare_hotpot.service as service_module
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    monkeypatch.setattr(service_module, "fetch_official_popularity", fake_popularity_fetch)
+    settings = AppSettings(app_root=tmp_path)
+    storage = Storage(settings.database_path)
+    service = RefreshService(settings, storage)
+    service._refresh_popularity(now=NOW, cancel=threading.Event(), progress=None)
+
+    def missing(client):
+        a, b = fake_popularity_fetch(client)
+        return [replace(a[0], name=a[0].code, current_price=None, change_percent=None)], b
+
+    monkeypatch.setattr(service_module, "fetch_official_popularity", missing)
+    result = service._refresh_popularity(now=NOW + timedelta(minutes=11), cancel=threading.Event(), progress=None)
+    row = result.popularity[0]
+    assert row.name == "平安银行" and row.name_from_cache
+    assert row.current_price is None and row.change_percent is None
+    assert row.quote_incomplete
+    assert storage.get_popularity_state().popularity[0].name_from_cache
+
+
+def test_cancelled_quote_cache_repair_does_not_publish(monkeypatch, tmp_path) -> None:
+    import ashare_hotpot.service as service_module
+
+    monkeypatch.setattr(service_module, "PoliteHttpClient", FakeClient)
+    def missing(client):
+        a, b = fake_popularity_fetch(client)
+        return [replace(a[0], current_price=None)], b
+    monkeypatch.setattr(service_module, "fetch_official_popularity", missing)
+    settings = AppSettings(app_root=tmp_path)
+    storage = Storage(settings.database_path)
+    service = RefreshService(settings, storage)
+    service._refresh_popularity(now=NOW, cancel=threading.Event(), progress=None)
+    before = storage.get_popularity_state().to_dict()
+    def cancelled(*args):
+        raise RefreshCancelled("刷新已取消")
+    monkeypatch.setattr(service_module, "refresh_popularity_quotes", cancelled)
+    with pytest.raises(RefreshCancelled):
+        service._refresh_popularity(now=NOW + timedelta(minutes=1), cancel=threading.Event(), progress=None)
+    assert storage.get_popularity_state().to_dict() == before

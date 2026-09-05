@@ -1,6 +1,6 @@
 # A股热度
 
-> **当前版本：** v1.4.1。质量评估采用已冻结的全量 LLM 标注口径，未进行真实人工抽检；相关指标和已知限制见下文。
+> **当前版本：** v1.4.2。质量评估采用已冻结的全量 LLM 标注口径，未进行真实人工抽检；相关指标和已知限制见下文。
 
 一个 Windows 10/11 x64 原生桌面工具。用户手动刷新后，软件展示四个独立榜单：**基本面消息**（同花顺公开新闻 + 巨潮资讯全市场公告）、**基本面互动**（深交所互动易 + 上证 e 互动的官方问答代理指标）、**综合人气**与**飙升榜**（东方财富官方榜单）。数据零配置、手动刷新、公开发布，只读取全市场信息流，不逐只股票抓帖。
 
@@ -8,10 +8,10 @@
 
 ## 下载与安装
 
-Windows x64 安装包可从 [v1.4.1 Release](https://github.com/3154638220/ashare-hotpot/releases/tag/v1.4.1) 下载：
-[AshareHotPot-Setup-1.4.1-x64.exe](https://github.com/3154638220/ashare-hotpot/releases/download/v1.4.1/AshareHotPot-Setup-1.4.1-x64.exe)。
+Windows x64 安装包可从 [v1.4.2 Release](https://github.com/3154638220/ashare-hotpot/releases/tag/v1.4.2) 下载：
+[AshareHotPot-Setup-1.4.2-x64.exe](https://github.com/3154638220/ashare-hotpot/releases/download/v1.4.2/AshareHotPot-Setup-1.4.2-x64.exe)。
 
-v1.4.1 为综合人气榜和飙升榜补充一级行业列，并移除行业详情中的 30 日趋势区域，让成分股与资讯列表获得更大的浏览空间。SQLite schema 保持 124，既有缓存、快照和历史数据继续保留。
+v1.4.2 增强综合人气榜和飙升榜的名称、现价与涨跌幅补全：分批请求、缺项有限重试、不完整缓存限频补取，并为股票名称增加本地缓存兜底。缺失行情明确显示“部分数据”，不以旧价格填充；上游不可用时仍可能缺失，不保证零缺失。保留 v1.4.1 的所属行业列和行业详情布局。SQLite schema 保持 124，既有缓存、快照和历史数据继续保留。
 
 ## 功能
 

@@ -74,6 +74,13 @@ def test_live_official_popularity_board() -> None:
     assert all(row.rank >= 1 for row in popularity)
     assert all(row.name and len(row.code) == 6 for row in popularity)
     assert all(row.url.startswith("https://guba.eastmoney.com/rank/stock?code=") for row in popularity)
+    # Codes masquerading as names and wholly missing quote columns used to
+    # pass this contract. Prices may legitimately be absent for individual
+    # securities, but an all-empty quote response is never a healthy result.
+    for rows in (popularity, surging):
+        assert all(row.name != row.code for row in rows)
+        assert any(row.current_price is not None for row in rows)
+        assert any(row.change_percent is not None for row in rows)
 
 
 def test_live_irm_question_stream() -> None:

@@ -1,6 +1,9 @@
 #define MyAppName "A股热度"
 #define MyAppEnglishName "AshareHotPot"
-#define MyAppVersion "1.4.1"
+#define MyAppVersion "1.4.2"
+#ifndef MyAppSourceDir
+#define MyAppSourceDir "..\dist\AshareHotPot"
+#endif
 #define MyAppPublisher "AshareHotPot"
 #define MyAppExeName "AshareHotPot.exe"
 
@@ -37,7 +40,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务："; Flags: unchecked
 
 [Files]
-Source: "..\dist\AshareHotPot\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

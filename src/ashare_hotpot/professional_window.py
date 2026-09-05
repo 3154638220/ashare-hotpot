@@ -54,6 +54,7 @@ from .models import (
     ParsedArticle,
 )
 from .preferences import UiPreferences
+from .popularity import restore_popularity_names
 from .research_views import (
     COVERAGE_STATE_LABELS,
     build_discovery_quality,
@@ -882,6 +883,9 @@ class ProfessionalMainWindow(QMainWindow):
     def set_snapshot(self, snapshot: Snapshot) -> None:
         self.snapshot = snapshot
         popularity_rows = (*snapshot.popularity.popularity, *snapshot.popularity.surging)
+        missing_names = {row.code for row in popularity_rows if "股票名称" in row.missing_quote_fields}
+        if missing_names:
+            restore_popularity_names(snapshot.popularity, self.storage.get_stock_names(missing_names))
         missing_codes = {row.code for row in popularity_rows if not row.industry}
         if missing_codes:
             cached_industries = self.storage.get_stock_industries(missing_codes)
@@ -1375,7 +1379,11 @@ class ProfessionalMainWindow(QMainWindow):
             board_label = "官方关注度排名" if source_key == "pop" else "较昨日排名提升"
             self.view_subtitle.setText(f"东方财富官方{SOURCE_LABELS[source_key]} · {board_label}")
             success_text = popularity.success_at.strftime("%m-%d %H:%M") if popularity.success_at else "—"
-            state = "已过期" if popularity.is_stale else ("正常" if popularity.available else "不可用")
+            quote_rows = popularity.popularity if source_key == "pop" else popularity.surging
+            incomplete = sum(row.quote_incomplete for row in quote_rows)
+            state = "已过期" if popularity.is_stale else (
+                ("部分数据" if incomplete else "正常") if popularity.available else "不可用"
+            )
             values = (
                 ("结果", f"{len(rows)} 只"),
                 ("数据截至", success_text),
@@ -1389,8 +1397,17 @@ class ProfessionalMainWindow(QMainWindow):
                 self.quality_label.setText(f"沿用上次成功榜单 · 本次失败：{popularity.error or '未知原因'}")
                 self._set_freshness("数据已过期", "stale")
             elif popularity.available:
-                self.quality_label.setText("官方榜单完整可用；产品不推导未公开的热度分值或权重。")
-                self._set_freshness(f"更新于 {success_text}", "fresh")
+                if incomplete:
+                    missing = sum(bool(row.missing_quote_fields) for row in quote_rows)
+                    cached_names = sum(row.name_from_cache for row in quote_rows)
+                    self.quality_label.setText(
+                        f"官方排名可用；{missing} 只缺少名称或行情字段，{cached_names} 只名称使用本地缓存。"
+                        "缺失行情显示 —，不使用旧价格填充；再次刷新可限频补取。"
+                    )
+                    self._set_freshness("行情待补全", "stale")
+                else:
+                    self.quality_label.setText("官方榜单完整可用；产品不推导未公开的热度分值或权重。")
+                    self._set_freshness(f"更新于 {success_text}", "fresh")
             else:
                 self.quality_label.setText(f"本次读取失败：{popularity.error or '未知原因'}")
                 self._set_freshness("读取失败", "error")

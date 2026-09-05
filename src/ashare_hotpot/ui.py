@@ -448,6 +448,13 @@ class RankingTableModel(QAbstractTableModel):
             return None
         row = self.rows[index.row()]
         if isinstance(row, PopularityRankRow):
+            if role == Qt.ToolTipRole:
+                notes = []
+                if row.missing_quote_fields:
+                    notes.append("未获取：" + "、".join(row.missing_quote_fields))
+                if row.name_from_cache:
+                    notes.append("股票名称使用本地缓存；非本次行情返回")
+                return "；".join(notes) if notes else None
             if self.source_key == "surge":
                 raw_values = (
                     row.rank,

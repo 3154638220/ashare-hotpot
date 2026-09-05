@@ -521,6 +521,19 @@ class PopularityRankRow:
     change_percent: float | None
     url: str
     industry: str | None = None
+    name_from_cache: bool = False
+
+    @property
+    def missing_quote_fields(self) -> tuple[str, ...]:
+        return tuple(label for label, missing in (
+            ("股票名称", not self.name or self.name == self.code or self.name == "-"),
+            ("现价", self.current_price is None),
+            ("涨跌幅", self.change_percent is None),
+        ) if missing)
+
+    @property
+    def quote_incomplete(self) -> bool:
+        return bool(self.missing_quote_fields or self.name_from_cache)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -532,6 +545,7 @@ class PopularityRankRow:
             "change_percent": self.change_percent,
             "url": self.url,
             "industry": self.industry,
+            "name_from_cache": self.name_from_cache,
         }
 
     @classmethod
@@ -545,6 +559,7 @@ class PopularityRankRow:
             change_percent=_to_float(data.get("change_percent")),
             url=str(data.get("url") or ""),
             industry=str(data["industry"]).strip() if data.get("industry") else None,
+            name_from_cache=bool(data.get("name_from_cache", False)),
         )
 
 
@@ -568,6 +583,8 @@ class OfficialPopularitySnapshot:
     from_cache: bool = False
     popularity: list[PopularityRankRow] = field(default_factory=list)
     surging: list[PopularityRankRow] = field(default_factory=list)
+    # Separate from ranking time: quote-only repair must not freshen the ranks.
+    quote_attempt_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -578,6 +595,7 @@ class OfficialPopularitySnapshot:
             "from_cache": self.from_cache,
             "popularity": [row.to_dict() for row in self.popularity],
             "surging": [row.to_dict() for row in self.surging],
+            "quote_attempt_at": self.quote_attempt_at.isoformat() if self.quote_attempt_at else None,
         }
 
     @classmethod
@@ -592,6 +610,7 @@ class OfficialPopularitySnapshot:
             from_cache=bool(data.get("from_cache", False)),
             popularity=[PopularityRankRow.from_dict(item) for item in data.get("popularity", [])],
             surging=[PopularityRankRow.from_dict(item) for item in data.get("surging", [])],
+            quote_attempt_at=_dt(data.get("quote_attempt_at")),
         )
 
 

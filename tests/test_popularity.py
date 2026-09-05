@@ -3,12 +3,19 @@ from __future__ import annotations
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from datetime import datetime
+
+from ashare_hotpot.config import SHANGHAI_TZ
+from ashare_hotpot.models import OfficialPopularitySnapshot, PopularityRankRow
+from ashare_hotpot.sources import RefreshCancelled
 
 from ashare_hotpot.popularity import (
     fetch_official_popularity,
     parse_quotes,
     parse_rank_rows,
     stock_rank_url,
+    refresh_popularity_quotes,
+    restore_popularity_names,
 )
 
 
@@ -116,7 +123,10 @@ def test_fetch_official_popularity_merges_quotes_and_builds_secids() -> None:
     assert surging[0].change == 12
     assert surging[1].name == "平安银行"
     assert len(client.post_calls) == 2
-    assert len(client.get_calls) == 1
+    # Retry only missing fields/rows, not the already complete quotes.
+    assert len(client.get_calls) == 2
+    retry_secids = parse_qs(urlparse(client.get_calls[1]).query)["secids"][0]
+    assert set(retry_secids.split(",")) == {"0.920001", "1.688001"}
     secids = parse_qs(urlparse(client.get_calls[0]).query)["secids"][0]
     assert "0.000001" in secids
     assert "1.600519" in secids
@@ -138,3 +148,83 @@ def test_fetch_official_popularity_quote_failure_is_best_effort() -> None:
     assert popularity[0].name == "000001"
     assert popularity[0].current_price is None
     assert surging[0].change == 12
+
+
+def test_quote_repair_batches_and_keeps_successful_fields() -> None:
+    rows = [PopularityRankRow(i, f"600{i:03}", f"600{i:03}", None, None, None, "", "金融")
+            for i in range(1, 102)]
+    calls = []
+
+    class Client:
+        def get_json(self, url):
+            codes = [s.split(".")[1] for s in parse_qs(urlparse(url).query)["secids"][0].split(",")]
+            calls.append(codes)
+            assert len(codes) <= 50
+            if len(calls) == 1:
+                return {"data": {"diff": [{"f12": code, "f14": "样例", "f2": 12, "f3": 0}
+                                           for code in codes if code != "600001"]}}
+            return {"data": {"diff": [{"f12": code, "f14": "样例", "f2": 12, "f3": 0} for code in codes]}}
+
+    result, _ = refresh_popularity_quotes(Client(), rows, [])
+    assert [len(c) for c in calls] == [50, 50, 1, 1]
+    assert calls[-1] == ["600001"]
+    assert all(not row.quote_incomplete and row.industry == "金融" for row in result)
+
+
+@pytest.mark.parametrize("first", [{"data": None}, {"data": {"diff": []}}, {"data": {"diff": [
+    {"f12": "000001", "f14": "平安银行", "f2": 12, "f3": "-"}
+]}}])
+def test_empty_or_partial_quote_json_is_repaired_once(first) -> None:
+    calls = []
+
+    class Client:
+        def get_json(self, url):
+            calls.append(url)
+            if len(calls) == 1:
+                return first
+            return QUOTE_PAYLOAD
+
+    row = parse_rank_rows(CURRENT_PAYLOAD, with_change=False)[0]
+    result, _ = refresh_popularity_quotes(Client(), [row], [])
+    assert len(calls) == 2
+    assert result[0].name == "平安银行"
+    assert result[0].current_price == 11.25
+    assert result[0].change_percent == 1.5
+
+
+def test_partial_retry_does_not_erase_first_response_or_accept_nan() -> None:
+    payloads = iter([
+        {"data": {"diff": [{"f12": "000001", "f14": "平安银行", "f2": 12, "f3": "NaN"}]}},
+        {"data": {"diff": [{"f12": "000001", "f14": "-", "f2": "Infinity", "f3": 0}]}},
+    ])
+    class Client:
+        def get_json(self, url):
+            return next(payloads)
+
+    row = parse_rank_rows(CURRENT_PAYLOAD, with_change=False)[0]
+    result, _ = refresh_popularity_quotes(Client(), [row], [])
+    assert (result[0].name, result[0].current_price, result[0].change_percent) == ("平安银行", 12, 0)
+
+
+def test_quote_cancellation_is_not_swallowed() -> None:
+    class Client:
+        def get_json(self, url):
+            raise RefreshCancelled("刷新已取消")
+
+    with pytest.raises(RefreshCancelled):
+        refresh_popularity_quotes(Client(), parse_rank_rows(CURRENT_PAYLOAD, with_change=False), [])
+
+
+def test_quote_quality_roundtrip_and_name_only_cache_fallback() -> None:
+    row = parse_rank_rows(CURRENT_PAYLOAD, with_change=False)[0]
+    snapshot = OfficialPopularitySnapshot(popularity=[row], quote_attempt_at=datetime(2026, 9, 4, tzinfo=SHANGHAI_TZ))
+    restore_popularity_names(snapshot, {"000001": "平安银行"})
+    restored = OfficialPopularitySnapshot.from_dict(snapshot.to_dict())
+    assert restored == snapshot
+    assert restored.popularity[0].name_from_cache
+    assert restored.popularity[0].missing_quote_fields == ("现价", "涨跌幅")
+    assert restored.popularity[0].quote_incomplete
+    assert restored.popularity[0].current_price is None
+    legacy = PopularityRankRow.from_dict(row.to_dict() | {"name_from_cache": False})
+    assert legacy.missing_quote_fields == ("股票名称", "现价", "涨跌幅")
+    assert OfficialPopularitySnapshot.from_dict({}).quote_attempt_at is None
